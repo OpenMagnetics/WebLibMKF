@@ -5,21 +5,26 @@ option(JS_ONLY "Compiles to native JS (No WASM)" OFF)
 add_definitions(-std=c++23 -O3)
 include_directories(include)
 
-SET(CMAKE_BUILD_TYPE RelWithDebInfo)
+SET(CMAKE_BUILD_TYPE MinSizeRel)
 
-SET(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch")
+SET(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -fwasm-exceptions")
 
 option(BUILD_TESTS      "Build tests"    OFF)
 option(BUILD_EXAMPLES   "Build examples" OFF)
 option(UTPP_INCLUDE_TESTS_IN_BUILD   "Build tests" OFF)
+option(INCLUDE_MKF_TESTS      "Build tests"    OFF)
+option(DEBUG_WASM      "Build in debug mode"    OFF)
 
 include(FetchContent)
 include(ExternalProject)
 
 FetchContent_Declare(MKF
         GIT_REPOSITORY https://github.com/OpenMagnetics/MKF.git
-        GIT_TAG get-rid-of-boost-dependency)
+        GIT_TAG main)
 
+FetchContent_Declare(magic-enum
+        GIT_REPOSITORY https://github.com/Neargye/magic_enum
+        GIT_TAG  tags/v0.9.3)
 
 FetchContent_Declare(
        mas
@@ -37,13 +42,11 @@ add_subdirectory(${mas_SOURCE_DIR} EXCLUDE_FROM_ALL)
 
 SET(MAS_DIRECTORY "${CMAKE_BINARY_DIR}/MAS/")
 SET(MAS_DIR ${mas_SOURCE_DIR})
-option(INCLUDE_MKF_TESTS  "Build tests"    OFF)
-option(INCLUDE_PYMKF  "Build PyMKF tests"    OFF)
 message(STATUS ${MAS_DIRECTORY})
 
 
-FetchContent_MakeAvailable(MKF)
-SET(CMAKE_CXX_FLAGS "-Wall -Wextra")
+FetchContent_MakeAvailable(MKF magic-enum)
+SET(CMAKE_CXX_FLAGS "-Wall -Wextra -fwasm-exceptions")
 
 find_program(NAMES quicktype REQUIRED)
 find_program(NAMES libgtest-dev REQUIRED)
@@ -55,7 +58,6 @@ add_executable(libMKF ${SOURCES})
 include_directories("${CMAKE_BINARY_DIR}/_deps/json-src/include/nlohmann/")
 include_directories("${CMAKE_BINARY_DIR}/_deps/pybind11-src/include/")
 include_directories("${CMAKE_BINARY_DIR}/_deps/pybind11_json-src/include/pybind11_json/")
-include_directories("${CMAKE_BINARY_DIR}/_deps/unittest++-src/UnitTest++/")
 include_directories("${CMAKE_BINARY_DIR}/_deps/json-src/include/nlohmann/")
 include_directories("${CMAKE_BINARY_DIR}/_deps/magic-enum-src/include")
 include_directories("${CMAKE_BINARY_DIR}/_deps/svg-src/src")
@@ -75,5 +77,6 @@ if(JS_ONLY)
 else(JS_ONLY)
     message(STATUS "Setting compilation target to WASM")
     set(CMAKE_EXECUTABLE_SUFFIX ".wasm.js")
-    set_target_properties(libMKF PROPERTIES LINK_FLAGS "-s WASM=1  -s EXPORT_ES6=1 -l embind --bind")
+    set_target_properties(libMKF PROPERTIES LINK_FLAGS "-O3 -s WASM=1 -s MAXIMUM_MEMORY=4gb -sSTACK_SIZE=67108864 -s INITIAL_MEMORY=134217728 -s ALLOW_MEMORY_GROWTH -s EXPORT_ES6=1 -std=c++23 -s EXCEPTION_CATCHING_ALLOWED=[..] -fwasm-exceptions -l embind --bind")
+    # set_target_properties(libMKF PROPERTIES LINK_FLAGS "-s WASM=1 -s MAXIMUM_MEMORY=4gb -sSTACK_SIZE=67108864 -s INITIAL_MEMORY=134217728 -s ALLOW_MEMORY_GROWTH -s EXPORT_ES6=1 -std=c++23 -g3 -s ASSERTIONS=2 -s SAFE_HEAP=1 -s STACK_OVERFLOW_CHECK=2 -s DEMANGLE_SUPPORT=1 -s EXCEPTION_CATCHING_ALLOWED=[..] -fwasm-exceptions --source-map-base http://localhost:5173/ -l embind --bind")
 endif(JS_ONLY)
