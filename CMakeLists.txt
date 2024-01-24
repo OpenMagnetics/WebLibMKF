@@ -2,10 +2,12 @@ cmake_minimum_required(VERSION 3.5.1)
 project (libMKF)
 option(JS_ONLY "Compiles to native JS (No WASM)" OFF)
 
-add_definitions(-std=c++23 -O3)
+add_definitions(-std=c++23)
 include_directories(include)
 
-SET(CMAKE_BUILD_TYPE MinSizeRel)
+# SET(CMAKE_BUILD_TYPE MinSizeRel)
+SET(CMAKE_BUILD_TYPE Release)
+# SET(CMAKE_BUILD_TYPE RelWithDebInfo)
 
 SET(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -fwasm-exceptions")
 
@@ -36,12 +38,12 @@ message(STATUS ${mas_POPULATED})
 if(NOT mas_POPULATED)
   FetchContent_Populate(mas)
 endif()
-message(STATUS ${mas_SOURCE_DIR})
+message(STATUS ${MAS_SOURCE_DIR})
 
-add_subdirectory(${mas_SOURCE_DIR} EXCLUDE_FROM_ALL)
+# add_subdirectory(${MAS_SOURCE_DIR} EXCLUDE_FROM_ALL)
 
 SET(MAS_DIRECTORY "${CMAKE_BINARY_DIR}/MAS/")
-SET(MAS_DIR ${mas_SOURCE_DIR})
+SET(MAS_DIR ${MAS_SOURCE_DIR})
 message(STATUS ${MAS_DIRECTORY})
 
 
@@ -52,8 +54,9 @@ find_program(NAMES quicktype REQUIRED)
 find_program(NAMES libgtest-dev REQUIRED)
 
 
-file(GLOB SOURCES src/*.cpp)
-add_executable(libMKF ${SOURCES})
+add_executable(libMKF src/libMKF.cpp)
+add_executable(libInsulationCoordinator src/libInsulationCoordinator.cpp)
+add_executable(libCoreAdviser src/libCoreAdviser.cpp)
 
 include_directories("${CMAKE_BINARY_DIR}/_deps/json-src/include/nlohmann/")
 include_directories("${CMAKE_BINARY_DIR}/_deps/pybind11-src/include/")
@@ -68,6 +71,8 @@ message(STATUS MAS_DIRECTORY)
 message(STATUS ${MAS_DIRECTORY})
 
 target_link_libraries(libMKF MKF)
+target_link_libraries(libInsulationCoordinator MKF)
+target_link_libraries(libCoreAdviser MKF)
 
 
 if(JS_ONLY)
@@ -77,6 +82,9 @@ if(JS_ONLY)
 else(JS_ONLY)
     message(STATUS "Setting compilation target to WASM")
     set(CMAKE_EXECUTABLE_SUFFIX ".wasm.js")
-    set_target_properties(libMKF PROPERTIES LINK_FLAGS "-O3 -s WASM=1 -s MAXIMUM_MEMORY=4gb -sSTACK_SIZE=67108864 -s INITIAL_MEMORY=134217728 -s ALLOW_MEMORY_GROWTH -s EXPORT_ES6=1 -std=c++23 -s EXCEPTION_CATCHING_ALLOWED=[..] -fwasm-exceptions -l embind --bind")
-    # set_target_properties(libMKF PROPERTIES LINK_FLAGS "-s WASM=1 -s MAXIMUM_MEMORY=4gb -sSTACK_SIZE=67108864 -s INITIAL_MEMORY=134217728 -s ALLOW_MEMORY_GROWTH -s EXPORT_ES6=1 -std=c++23 -g3 -s ASSERTIONS=2 -s SAFE_HEAP=1 -s STACK_OVERFLOW_CHECK=2 -s DEMANGLE_SUPPORT=1 -s EXCEPTION_CATCHING_ALLOWED=[..] -fwasm-exceptions --source-map-base http://localhost:5173/ -l embind --bind")
+    set_target_properties(libMKF PROPERTIES LINK_FLAGS "-O3 -s WASM=1 -s MAXIMUM_MEMORY=4gb -sSTACK_SIZE=67108864 -s INITIAL_MEMORY=134217728 -s ALLOW_MEMORY_GROWTH -s EXPORT_ES6=1 -std=c++23 -s EXCEPTION_CATCHING_ALLOWED=[..] -fwasm-exceptions -l embind --bind --use-preload-cache")
+    set_target_properties(libInsulationCoordinator PROPERTIES LINK_FLAGS "-O3 -s WASM=1 -s MAXIMUM_MEMORY=4gb -sSTACK_SIZE=67108864 -s INITIAL_MEMORY=134217728 -s ALLOW_MEMORY_GROWTH -s EXPORT_ES6=1 -std=c++23 -s EXCEPTION_CATCHING_ALLOWED=[..] -fwasm-exceptions -l embind --bind --use-preload-cache")
+    set_target_properties(libCoreAdviser PROPERTIES LINK_FLAGS "-O3 -s WASM=1 -s MAXIMUM_MEMORY=4gb -sSTACK_SIZE=67108864 -s INITIAL_MEMORY=134217728 -s ALLOW_MEMORY_GROWTH -s EXPORT_ES6=1 -std=c++23 -s EXCEPTION_CATCHING_ALLOWED=[..] -fwasm-exceptions -l embind --bind --use-preload-cache")
+
+    # set_target_properties(libMKF PROPERTIES LINK_FLAGS "-s WASM=1 -s MAXIMUM_MEMORY=4gb -sSTACK_SIZE=67108864 -s INITIAL_MEMORY=134217728 -s ALLOW_MEMORY_GROWTH -s EXPORT_ES6=1 -std=c++23 -g3 -s ASSERTIONS=2 -s SAFE_HEAP=1 -s STACK_OVERFLOW_CHECK=2 -s DEMANGLE_SUPPORT=1 -s EXCEPTION_CATCHING_ALLOWED=[..] -fwasm-exceptions --source-map-base http://localhost:5173/ -l embind --bind --use-preload-cache")
 endif(JS_ONLY)

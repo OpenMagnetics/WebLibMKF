@@ -1,10 +1,3 @@
-// #include "libMKF.so"
-// #include <cmath>
-// #include <filesystem>
-// #include <fstream>
-// #include <map>
-// #include <numbers>
-// #include <streambuf>
 #include <iostream>
 #include <vector>
 #include "json.hpp"
@@ -70,11 +63,7 @@ std::string calculate_core_data(std::string coreDataString, bool includeMaterial
     return result.dump(4);
 }
 
-std::string load_core_data(std::string coresString, std::string dataString){
-    json data;
-    data["coreShapes"] = json::parse(dataString);
-    OpenMagnetics::load_databases(data, true);
-
+std::string load_core_data(std::string coresString){
     json result = json::array();
     for (auto& coreJson : json::parse(coresString)) {
         OpenMagnetics::CoreWrapper core(coreJson, false);
@@ -85,11 +74,7 @@ std::string load_core_data(std::string coresString, std::string dataString){
     return result.dump(4);
 }
 
-std::string get_material_data(std::string materialName, std::string dataString){
-    json data;
-    data["coreMaterials"] = json::parse(dataString);
-
-    OpenMagnetics::load_databases(data, true);
+std::string get_material_data(std::string materialName){
 
     auto materialData = OpenMagnetics::find_core_material_by_name(materialName);
     json result;
@@ -111,11 +96,7 @@ std::string get_core_temperature_dependant_parameters(std::string coreData, doub
     return result.dump(4);
 }
 
-std::string get_shape_data(std::string shapeName, std::string dataString){
-    json data;
-    data["coreShapes"] = json::parse(dataString);
-
-    OpenMagnetics::load_databases(data, true);
+std::string get_shape_data(std::string shapeName){
 
     auto shapeData = OpenMagnetics::find_core_shape_by_name(shapeName);
 
@@ -167,11 +148,7 @@ std::string get_gap_reluctance_model_information(){
 double calculate_inductance_from_number_turns_and_gapping(std::string coreData,
                                                           std::string coilData,
                                                           std::string operatingPointData,
-                                                          std::string modelsData,
-                                                          std::string dataString){
-    json data;
-    data["coreMaterials"] = json::parse(dataString);
-    OpenMagnetics::load_databases(data, true);
+                                                          std::string modelsData){
     OpenMagnetics::CoreWrapper core(json::parse(coreData));
     OpenMagnetics::CoilWrapper coil(json::parse(coilData));
     OpenMagnetics::OperatingPoint operatingPoint(json::parse(operatingPointData));
@@ -194,11 +171,7 @@ double calculate_inductance_from_number_turns_and_gapping(std::string coreData,
 
 double calculate_number_turns_from_gapping_and_inductance(std::string coreData,
                                                           std::string inputsData,    
-                                                          std::string modelsData,
-                                                          std::string dataString){
-    json data;
-    data["coreMaterials"] = json::parse(dataString);
-    OpenMagnetics::load_databases(data, true);
+                                                          std::string modelsData){
     OpenMagnetics::CoreWrapper core(json::parse(coreData));
     OpenMagnetics::InputsWrapper inputs(json::parse(inputsData));
 
@@ -223,12 +196,7 @@ std::string calculate_gapping_from_number_turns_and_inductance(std::string coreD
                                                                std::string inputsData,
                                                                std::string gappingTypeString,
                                                                int decimals,
-                                                               std::string modelsData,
-                                                               std::string dataString){
-    json data;
-    data["coreMaterials"] = json::parse(dataString);
-    OpenMagnetics::load_databases(data, true);
-
+                                                               std::string modelsData){
     OpenMagnetics::CoreWrapper core(json::parse(coreData));
     OpenMagnetics::CoilWrapper coil(json::parse(coilData));
     OpenMagnetics::InputsWrapper inputs(json::parse(inputsData));
@@ -266,11 +234,7 @@ std::string calculate_gapping_from_number_turns_and_inductance(std::string coreD
 std::string calculate_core_losses(std::string coreData,
                                   std::string coilData,
                                   std::string inputsData,    
-                                  std::string modelsData,
-                                  std::string dataString){
-    json data;
-    data["coreMaterials"] = json::parse(dataString);
-    OpenMagnetics::load_databases(data, true);
+                                  std::string modelsData){
 
     OpenMagnetics::CoreWrapper core(json::parse(coreData));
     OpenMagnetics::CoilWrapper coil(json::parse(coilData));
@@ -338,11 +302,7 @@ std::string calculate_core_losses(std::string coreData,
     return result.dump(4);
 }
 
-std::string get_core_losses_model_information(std::string material, std::string dataString){
-    json data;
-    data["coreMaterials"] = json::parse(dataString);
-    OpenMagnetics::load_databases(data, true);
-
+std::string get_core_losses_model_information(std::string material){
     json info;
     info["information"] = OpenMagnetics::CoreLossesModel::get_models_information();
     info["errors"] = OpenMagnetics::CoreLossesModel::get_models_errors();
@@ -403,11 +363,11 @@ std::string calculate_reflected_secondary(std::string primaryExcitationString, d
 
     auto voltageSampledWaveform = OpenMagnetics::InputsWrapper::calculate_sampled_waveform(voltageSignalDescriptor.get_waveform().value(), excitationOfThisWinding.get_frequency());
     voltageSignalDescriptor.set_harmonics(OpenMagnetics::InputsWrapper::calculate_harmonics_data(voltageSampledWaveform, excitationOfThisWinding.get_frequency()));
-    voltageSignalDescriptor.set_processed(OpenMagnetics::InputsWrapper::calculate_processed_data(voltageSignalDescriptor, voltageSampledWaveform, true, true));
+    voltageSignalDescriptor.set_processed(OpenMagnetics::InputsWrapper::calculate_processed_data(voltageSignalDescriptor, voltageSampledWaveform, true));
 
     auto currentSampledWaveform = OpenMagnetics::InputsWrapper::calculate_sampled_waveform(currentSignalDescriptor.get_waveform().value(), excitationOfThisWinding.get_frequency());
     currentSignalDescriptor.set_harmonics(OpenMagnetics::InputsWrapper::calculate_harmonics_data(currentSampledWaveform, excitationOfThisWinding.get_frequency()));
-    currentSignalDescriptor.set_processed(OpenMagnetics::InputsWrapper::calculate_processed_data(currentSignalDescriptor, currentSampledWaveform, true, true));
+    currentSignalDescriptor.set_processed(OpenMagnetics::InputsWrapper::calculate_processed_data(currentSignalDescriptor, currentSampledWaveform, true));
 
     excitationOfThisWinding.set_voltage(voltageSignalDescriptor);
     excitationOfThisWinding.set_current(currentSignalDescriptor);
@@ -426,11 +386,11 @@ std::string calculate_reflected_primary(std::string secondaryExcitationString, d
 
     auto voltageSampledWaveform = OpenMagnetics::InputsWrapper::calculate_sampled_waveform(voltageSignalDescriptor.get_waveform().value(), excitationOfThisWinding.get_frequency());
     voltageSignalDescriptor.set_harmonics(OpenMagnetics::InputsWrapper::calculate_harmonics_data(voltageSampledWaveform, excitationOfThisWinding.get_frequency()));
-    voltageSignalDescriptor.set_processed(OpenMagnetics::InputsWrapper::calculate_processed_data(voltageSignalDescriptor, voltageSampledWaveform, true, true));
+    voltageSignalDescriptor.set_processed(OpenMagnetics::InputsWrapper::calculate_processed_data(voltageSignalDescriptor, voltageSampledWaveform, true));
 
     auto currentSampledWaveform = OpenMagnetics::InputsWrapper::calculate_sampled_waveform(currentSignalDescriptor.get_waveform().value(), excitationOfThisWinding.get_frequency());
     currentSignalDescriptor.set_harmonics(OpenMagnetics::InputsWrapper::calculate_harmonics_data(currentSampledWaveform, excitationOfThisWinding.get_frequency()));
-    currentSignalDescriptor.set_processed(OpenMagnetics::InputsWrapper::calculate_processed_data(currentSignalDescriptor, currentSampledWaveform, true, true));
+    currentSignalDescriptor.set_processed(OpenMagnetics::InputsWrapper::calculate_processed_data(currentSignalDescriptor, currentSampledWaveform, true));
 
     excitationOfThisWinding.set_voltage(voltageSignalDescriptor);
     excitationOfThisWinding.set_current(currentSignalDescriptor);
@@ -470,13 +430,13 @@ double calculate_rms_power(std::string excitationString){
     if (!voltageSignalDescriptor.get_processed()) {
         auto voltageSampledWaveform = OpenMagnetics::InputsWrapper::calculate_sampled_waveform(voltageSignalDescriptor.get_waveform().value(), excitation.get_frequency());
         voltageSignalDescriptor.set_harmonics(OpenMagnetics::InputsWrapper::calculate_harmonics_data(voltageSampledWaveform, excitation.get_frequency()));
-        voltageSignalDescriptor.set_processed(OpenMagnetics::InputsWrapper::calculate_processed_data(voltageSignalDescriptor, voltageSampledWaveform, true, true));
+        voltageSignalDescriptor.set_processed(OpenMagnetics::InputsWrapper::calculate_processed_data(voltageSignalDescriptor, voltageSampledWaveform, true));
     }
 
     if (!currentSignalDescriptor.get_processed()) {
         auto currentSampledWaveform = OpenMagnetics::InputsWrapper::calculate_sampled_waveform(currentSignalDescriptor.get_waveform().value(), excitation.get_frequency());
         currentSignalDescriptor.set_harmonics(OpenMagnetics::InputsWrapper::calculate_harmonics_data(currentSampledWaveform, excitation.get_frequency()));
-        currentSignalDescriptor.set_processed(OpenMagnetics::InputsWrapper::calculate_processed_data(currentSignalDescriptor, currentSampledWaveform, true, true));
+        currentSignalDescriptor.set_processed(OpenMagnetics::InputsWrapper::calculate_processed_data(currentSignalDescriptor, currentSampledWaveform, true));
     }
 
     double rmsPower = currentSignalDescriptor.get_processed().value().get_rms().value() * voltageSignalDescriptor.get_processed().value().get_rms().value();
@@ -513,15 +473,8 @@ std::string scale_waveform_time_to_frequency(std::string waveformString, double 
     return result.dump(4);
 }
 
-std::string calculate_advised_cores(std::string inputsString, std::string weightsString, std::string coresString, std::string dataString, int maximumNumberResults){
-    {
-        json data;
-        data = json::parse(dataString);
-        OpenMagnetics::load_databases(data, true);
-    }
-
+std::string calculate_advised_cores(std::string inputsString, std::string weightsString, int maximumNumberResults){
     OpenMagnetics::InputsWrapper inputs(json::parse(inputsString));
-    std::vector<OpenMagnetics::CoreWrapper> cores = json::parse(coresString);
     std::map<std::string, double> weightsKeysString = json::parse(weightsString);
     std::map<OpenMagnetics::CoreAdviser::CoreAdviserFilters, double> weights;
     for (auto const& pair : weightsKeysString) {
@@ -529,7 +482,7 @@ std::string calculate_advised_cores(std::string inputsString, std::string weight
     }
 
     OpenMagnetics::CoreAdviser coreAdviser(false);
-    auto masMagnetics = coreAdviser.get_advised_core(inputs, weights, &cores, maximumNumberResults);
+    auto masMagnetics = coreAdviser.get_advised_core(inputs, weights, maximumNumberResults);
     auto log = coreAdviser.read_log();
     auto scoring = coreAdviser.get_scorings();
     std::map<std::string, std::map<std::string, double>> filteredScoring;
@@ -578,19 +531,13 @@ std::vector<std::string> get_available_core_filters(){
     return filters;
 }
 
-std::string calculate_insulation(std::string inputsString, std::string standardsDataString, std::string dataString){
-    json data;
-
-    data["wireMaterials"] = json::parse(dataString);
-    OpenMagnetics::load_databases(data, true);
-    auto standardsData = json::parse(standardsDataString);
-    auto standard = OpenMagnetics::InsulationCoordinator(standardsData);
+std::string calculate_insulation(std::string inputsString){
+    auto standard = OpenMagnetics::InsulationCoordinator();
     OpenMagnetics::InputsWrapper inputs(json::parse(inputsString), false);
 
     json result;
     try
     {
-
         result["creepageDistance"] = standard.calculate_creepage_distance(inputs);
         result["clearance"] = standard.calculate_clearance(inputs);
         result["withstandVoltage"] = standard.calculate_withstand_voltage(inputs);
@@ -612,6 +559,13 @@ std::string calculate_insulation(std::string inputsString, std::string standards
     return result.dump(4);
 }
 
+void load_cores(bool includeToroids, bool useOnlyCoresInStock){
+    OpenMagnetics::load_cores(includeToroids, useOnlyCoresInStock);
+}
+
+void clear_loaded_cores(){
+    OpenMagnetics::clear_loaded_cores();
+}
 
 
 EMSCRIPTEN_BINDINGS(my_bindings) {
@@ -647,6 +601,8 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("calculate_advised_cores", &calculate_advised_cores);
     function("get_available_core_filters", &get_available_core_filters);
     function("calculate_insulation", &calculate_insulation);
+    function("load_cores", &load_cores);
+    function("clear_loaded_cores", &clear_loaded_cores);
     
     register_map<std::string, double>("map<string, double>");
     register_map<std::string, std::string>("map<string, string>");
