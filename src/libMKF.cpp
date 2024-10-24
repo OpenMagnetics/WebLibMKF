@@ -502,7 +502,7 @@ double calculate_inductance_from_number_turns_and_gapping(std::string coreData,
                                                           std::string operatingPointData,
                                                           std::string modelsData){
     OpenMagnetics::CoreWrapper core(json::parse(coreData));
-    OpenMagnetics::CoilWrapper coil(json::parse(coilData));
+    OpenMagnetics::CoilWrapper coil(json::parse(coilData), false);
     OpenMagnetics::OperatingPoint operatingPoint(json::parse(operatingPointData));
 
     std::map<std::string, std::string> models = json::parse(modelsData).get<std::map<std::string, std::string>>();
@@ -550,7 +550,7 @@ std::string calculate_gapping_from_number_turns_and_inductance(std::string coreD
                                                                int decimals,
                                                                std::string modelsData){
     OpenMagnetics::CoreWrapper core(json::parse(coreData));
-    OpenMagnetics::CoilWrapper coil(json::parse(coilData));
+    OpenMagnetics::CoilWrapper coil(json::parse(coilData), false);
     OpenMagnetics::InputsWrapper inputs(json::parse(inputsData));
 
     std::map<std::string, std::string> models = json::parse(modelsData).get<std::map<std::string, std::string>>();
@@ -589,7 +589,7 @@ std::string calculate_core_losses(std::string coreData,
                                   std::string modelsData){
 
     OpenMagnetics::CoreWrapper core(json::parse(coreData));
-    OpenMagnetics::CoilWrapper coil(json::parse(coilData));
+    OpenMagnetics::CoilWrapper coil(json::parse(coilData), false);
     OpenMagnetics::InputsWrapper inputs(json::parse(inputsData));
     auto operatingPoint = inputs.get_operating_point(0);
     OpenMagnetics::OperatingPointExcitation excitation = operatingPoint.get_excitations_per_winding()[0];
@@ -1004,9 +1004,7 @@ bool check_requirement(std::string requirementString, double value){
 std::string wind(std::string coilString, size_t repetitions, std::string proportionPerWindingString, std::string patternString, std::string marginPairsString) {
     try {
         auto coilJson = json::parse(coilString);
-        std::cout << marginPairsString << std::endl;
         auto marginPairs = std::vector<std::vector<double>>(json::parse(marginPairsString));
-        std::cout << marginPairs.size() << std::endl;
 
         std::vector<double> proportionPerWinding = json::parse(proportionPerWindingString);
         std::vector<size_t> pattern = json::parse(patternString);
@@ -1285,7 +1283,7 @@ std::string delimit_and_compact(std::string coilString) {
 
 std::string get_layers_by_winding_index(std::string coilString, int windingIndex){
     try {
-        OpenMagnetics::CoilWrapper coil(json::parse(coilString));
+        OpenMagnetics::CoilWrapper coil(json::parse(coilString), false);
 
         json result = json::array();
         for (auto& layer : coil.get_layers_by_winding_index(windingIndex)) {
@@ -1303,7 +1301,7 @@ std::string get_layers_by_winding_index(std::string coilString, int windingIndex
 std::string get_layers_by_section(std::string coilString, std::string sectionName){
     try {
         json result = json::array();
-        OpenMagnetics::CoilWrapper coil(json::parse(coilString));
+        OpenMagnetics::CoilWrapper coil(json::parse(coilString), false);
         for (auto& layer : coil.get_layers_by_section(sectionName)) {
             json aux;
             to_json(aux, layer);
@@ -1319,7 +1317,7 @@ std::string get_layers_by_section(std::string coilString, std::string sectionNam
 std::string get_sections_description_conduction(std::string coilString){
     try {
         json result = json::array();
-        OpenMagnetics::CoilWrapper coil(json::parse(coilString));
+        OpenMagnetics::CoilWrapper coil(json::parse(coilString), false);
         for (auto& section : coil.get_sections_description_conduction()) {
             json aux;
             to_json(aux, section);
@@ -1335,7 +1333,7 @@ std::string get_sections_description_conduction(std::string coilString){
 bool are_sections_and_layers_fitting(std::string coilString) {
     try {
         json result = json::array();
-        OpenMagnetics::CoilWrapper coil(json::parse(coilString));
+        OpenMagnetics::CoilWrapper coil(json::parse(coilString), false);
         return coil.are_sections_and_layers_fitting();
     }
     catch (const std::exception &exc) {
@@ -1346,7 +1344,7 @@ bool are_sections_and_layers_fitting(std::string coilString) {
 
 std::string add_margin_to_section_by_index(std::string coilString, int sectionIndex, double top_or_left_margin, double bottom_or_right_margin) {
     try {
-        OpenMagnetics::CoilWrapper coil(json::parse(coilString));
+        OpenMagnetics::CoilWrapper coil(json::parse(coilString), false);
         coil.add_margin_to_section_by_index(sectionIndex, {top_or_left_margin, bottom_or_right_margin});
 
         json result;
