@@ -19,10 +19,12 @@
 #include "CoreLosses.h"
 #include "CoreTemperature.h"
 #include "Utils.h"
+#include "CircuitSimulatorInterface.h"
 
 
 using namespace emscripten;
 using json = nlohmann::json;
+using ordered_json = nlohmann::ordered_json;
 
 std::map<std::string, double> get_constants() {
     auto constants = OpenMagnetics::Constants();
@@ -852,7 +854,7 @@ std::string calculate_insulation(std::string inputsString){
 std::string extract_operating_point(std::string fileString, size_t numberWindings, double frequency, double desiredMagnetizingInductance, std::string mapColumnNamesString){
     try {
         std::vector<std::map<std::string, std::string>> mapColumnNames = json::parse(mapColumnNamesString).get<std::vector<std::map<std::string, std::string>>>();
-        auto reader = OpenMagnetics::InputsWrapper::CircuitSimulationReader(fileString);
+        auto reader = OpenMagnetics::CircuitSimulationReader(fileString);
         auto operatingPoint = reader.extract_operating_point(numberWindings, frequency, mapColumnNames);
         operatingPoint = OpenMagnetics::InputsWrapper::process_operating_point(operatingPoint, desiredMagnetizingInductance);
         json result;
@@ -866,7 +868,7 @@ std::string extract_operating_point(std::string fileString, size_t numberWinding
 }
 
 std::string extract_map_column_names(std::string fileString, size_t numberWindings, double frequency){
-    auto reader = OpenMagnetics::InputsWrapper::CircuitSimulationReader(fileString);
+    auto reader = OpenMagnetics::CircuitSimulationReader(fileString);
     auto columnNames = reader.extract_map_column_names(numberWindings, frequency);
 
     json result = json::array();
@@ -881,7 +883,7 @@ std::string extract_map_column_names(std::string fileString, size_t numberWindin
 }
 
 std::string extract_column_names(std::string fileString){
-    auto reader = OpenMagnetics::InputsWrapper::CircuitSimulationReader(fileString);
+    auto reader = OpenMagnetics::CircuitSimulationReader(fileString);
     auto columnNames = reader.extract_column_names();
 
     json result = json::array();
@@ -1415,6 +1417,45 @@ bool check_if_fits(std::string bobbinString, double dimension, bool isHorizontal
     }
 }
 
+std::string export_magnetic_as_subcircuit(std::string magneticString, std::string jsimba) {
+    try {
+        OpenMagnetics::MagneticWrapper magnetic(json::parse(magneticString));
+        ordered_json subcircuit;
+        // std::cout << jsimba << std::endl;
+        if (jsimba != "") {
+            subcircuit = OpenMagnetics::CircuitSimulatorExporter().export_magnetic_as_subcircuit(magnetic, OpenMagnetics::Defaults().measurementFrequency, jsimba);
+        }
+        else {
+            subcircuit = OpenMagnetics::CircuitSimulatorExporter().export_magnetic_as_subcircuit(magnetic);
+        }
+
+        // std::cout << subcircuit.dump(0) << std::endl;
+
+        return subcircuit.dump(2);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+
+void calculate_ac_resistance_coefficients_per_winding(std::string magneticString) {
+    try {
+        OpenMagnetics::MagneticWrapper magnetic(json::parse(magneticString));
+
+        auto coefficientsPerWinding = OpenMagnetics::CircuitSimulatorExporter(OpenMagnetics::CircuitSimulatorExporterModels::LTSPICE).calculate_ac_resistance_coefficients_per_winding(magnetic);
+        for (auto coefficients : coefficientsPerWinding) {
+            for (auto coefficient : coefficients) {
+                std::cout << "coefficient: " << coefficient << std::endl;
+            }
+        }
+
+    }
+    catch (const std::exception &exc) {
+        std::cout << "Exception: " + std::string{exc.what()} << std::endl;
+    }
+}
+
 EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_constants", &get_constants);
     function("calculate_harmonics", &calculate_harmonics);
@@ -1497,6 +1538,8 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("are_sections_and_layers_fitting", &are_sections_and_layers_fitting);
     function("add_margin_to_section_by_index", &add_margin_to_section_by_index);
     function("check_if_fits", &check_if_fits);
+    function("export_magnetic_as_subcircuit", &export_magnetic_as_subcircuit);
+    function("calculate_ac_resistance_coefficients_per_winding", &calculate_ac_resistance_coefficients_per_winding);
     
     register_map<std::string, double>("map<string, double>");
     register_map<std::string, std::string>("map<string, string>");
