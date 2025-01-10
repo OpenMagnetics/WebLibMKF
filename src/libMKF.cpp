@@ -19,6 +19,7 @@
 #include "CoreLosses.h"
 #include "CoreTemperature.h"
 #include "Utils.h"
+#include "Sweeper.h"
 #include "CircuitSimulatorInterface.h"
 
 
@@ -1456,6 +1457,42 @@ void calculate_ac_resistance_coefficients_per_winding(std::string magneticString
     }
 }
 
+
+std::string sweep_impedance_over_frequency(std::string magneticString, double start, double stop, size_t numberElements, std::string title) {
+    try {
+        OpenMagnetics::MagneticWrapper magnetic(json::parse(magneticString));
+
+        auto impedanceOverFrequency = OpenMagnetics::Sweeper::sweep_impedance_over_frequency(magnetic, start, stop, numberElements, title);
+
+        json result;
+        to_json(result, impedanceOverFrequency);
+
+        return result.dump(4);
+
+    }
+    catch (const std::exception &exc) {
+        std::cout << "Exception: " + std::string{exc.what()} << std::endl;
+    }
+}
+
+
+std::string sweep_resistance_over_frequency(std::string magneticString, double start, double stop, size_t numberElements, size_t windingIndex, double temperature, std::string title) {
+    try {
+        OpenMagnetics::MagneticWrapper magnetic(json::parse(magneticString));
+
+        auto impedanceOverFrequency = OpenMagnetics::Sweeper::sweep_resistance_over_frequency(magnetic, start, stop, windingIndex, temperature, numberElements, title);
+
+        json result;
+        to_json(result, impedanceOverFrequency);
+
+        return result.dump(4);
+
+    }
+    catch (const std::exception &exc) {
+        std::cout << "Exception: " + std::string{exc.what()} << std::endl;
+    }
+}
+
 EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_constants", &get_constants);
     function("calculate_harmonics", &calculate_harmonics);
@@ -1540,6 +1577,8 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("check_if_fits", &check_if_fits);
     function("export_magnetic_as_subcircuit", &export_magnetic_as_subcircuit);
     function("calculate_ac_resistance_coefficients_per_winding", &calculate_ac_resistance_coefficients_per_winding);
+    function("sweep_impedance_over_frequency", &sweep_impedance_over_frequency);
+    function("sweep_resistance_over_frequency", &sweep_resistance_over_frequency);
     
     register_map<std::string, double>("map<string, double>");
     register_map<std::string, std::string>("map<string, string>");
