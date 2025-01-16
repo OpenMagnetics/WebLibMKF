@@ -23,6 +23,7 @@ namespace fs = std::filesystem;
 
 std::string calculate_advised_cores(std::string inputsString, std::string weightsString, int maximumNumberResults, bool useOnlyCoresInStock){
     try {
+
         OpenMagnetics::InputsWrapper inputs(json::parse(inputsString));
         std::map<std::string, double> weightsKeysString = json::parse(weightsString);
         std::map<OpenMagnetics::CoreAdviser::CoreAdviserFilters, double> weights;
@@ -86,7 +87,7 @@ std::string calculate_advised_cores(std::string inputsString, std::string weight
         return results.dump(4);
     }
     catch (const std::exception &exc) {
-        return "Exception: " + std::string{exc.what()};
+        return "Exception Mierda 0: " + std::string{exc.what()};
     }
 }
 

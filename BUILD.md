@@ -1,3 +1,9 @@
+cd
+git clone https://github.com/emscripten-core/emsdk.git
+cd emsdk
+./emsdk install latest
+./emsdk activate latest
+
 source ~/emsdk/emsdk_env.sh
 
 emcmake cmake .. -G "Ninja" -DEMBED_MAS_CORES=OFF -DEMBED_MAS_CORE_SHAPES=OFF -DEMBED_MAS_CORE_MATERIALS=ON -DEMBED_MAS_WIRES=OFF -DEMBED_MAS_WIRE_MATERIALS=ON -DEMBED_MAS_BOBBINS=OFF -DEMBED_MAS_INSULATION_MATERIALS=OFF && ninja libInsulationCoordinator
