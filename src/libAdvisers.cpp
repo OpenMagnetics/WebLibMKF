@@ -87,7 +87,11 @@ std::string calculate_advised_cores(std::string inputsString, std::string weight
         return results.dump(4);
     }
     catch (const std::exception &exc) {
-        return "Exception Mierda 0: " + std::string{exc.what()};
+        std::cout << inputsString << std::endl;
+        std::cout << weightsString << std::endl;
+        std::cout << maximumNumberResults << std::endl;
+        std::cout << useOnlyCoresInStock << std::endl;
+        return "Exception: " + std::string{exc.what()};
     }
 }
 

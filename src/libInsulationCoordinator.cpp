@@ -19,7 +19,6 @@ std::string calculate_insulation(std::string inputsString){
     json result;
     try
     {
-
         result["creepageDistance"] = insulationCoordinator.calculate_creepage_distance(inputs, true);
         result["clearance"] = insulationCoordinator.calculate_clearance(inputs);
         result["withstandVoltage"] = insulationCoordinator.calculate_withstand_voltage(inputs);
