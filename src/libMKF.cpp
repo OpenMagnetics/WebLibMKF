@@ -589,12 +589,13 @@ std::string calculate_gapping_from_number_turns_and_inductance(std::string coreD
 std::string calculate_core_losses(std::string coreData,
                                   std::string coilData,
                                   std::string inputsData,    
-                                  std::string modelsData){
+                                  std::string modelsData,    
+                                  int operatingPointIndex){
 
     OpenMagnetics::CoreWrapper core(json::parse(coreData));
     OpenMagnetics::CoilWrapper coil(json::parse(coilData), false);
     OpenMagnetics::InputsWrapper inputs(json::parse(inputsData));
-    auto operatingPoint = inputs.get_operating_point(0);
+    auto operatingPoint = inputs.get_operating_point(operatingPointIndex);
     OpenMagnetics::OperatingPointExcitation excitation = operatingPoint.get_excitations_per_winding()[0];
     double magnetizingInductance = OpenMagnetics::resolve_dimensional_values(inputs.get_design_requirements().get_magnetizing_inductance());
     if (!excitation.get_current()) {
@@ -855,7 +856,7 @@ std::string calculate_insulation(std::string inputsString){
 std::string extract_operating_point(std::string fileString, size_t numberWindings, double frequency, double desiredMagnetizingInductance, std::string mapColumnNamesString){
     try {
         std::vector<std::map<std::string, std::string>> mapColumnNames = json::parse(mapColumnNamesString).get<std::vector<std::map<std::string, std::string>>>();
-        auto reader = OpenMagnetics::CircuitSimulationReader(fileString);
+        auto reader = OpenMagnetics::CircuitSimulationReader(fileString, true);
         auto operatingPoint = reader.extract_operating_point(numberWindings, frequency, mapColumnNames);
         operatingPoint = OpenMagnetics::InputsWrapper::process_operating_point(operatingPoint, desiredMagnetizingInductance);
         json result;
@@ -869,7 +870,7 @@ std::string extract_operating_point(std::string fileString, size_t numberWinding
 }
 
 std::string extract_map_column_names(std::string fileString, size_t numberWindings, double frequency){
-    auto reader = OpenMagnetics::CircuitSimulationReader(fileString);
+    auto reader = OpenMagnetics::CircuitSimulationReader(fileString, true);
     auto columnNames = reader.extract_map_column_names(numberWindings, frequency);
 
     json result = json::array();
@@ -884,7 +885,7 @@ std::string extract_map_column_names(std::string fileString, size_t numberWindin
 }
 
 std::string extract_column_names(std::string fileString){
-    auto reader = OpenMagnetics::CircuitSimulationReader(fileString);
+    auto reader = OpenMagnetics::CircuitSimulationReader(fileString, true);
     auto columnNames = reader.extract_column_names();
 
     json result = json::array();
@@ -1418,21 +1419,61 @@ bool check_if_fits(std::string bobbinString, double dimension, bool isHorizontal
     }
 }
 
-std::string export_magnetic_as_subcircuit(std::string magneticString, std::string jsimba) {
+std::string export_magnetic_as_subcircuit(std::string magneticString, std::string simulatorString, std::string jsimba) {
     try {
         OpenMagnetics::MagneticWrapper magnetic(json::parse(magneticString));
-        ordered_json subcircuit;
-        // std::cout << jsimba << std::endl;
-        if (jsimba != "") {
-            subcircuit = OpenMagnetics::CircuitSimulatorExporter().export_magnetic_as_subcircuit(magnetic, OpenMagnetics::Defaults().measurementFrequency, jsimba);
-        }
-        else {
-            subcircuit = OpenMagnetics::CircuitSimulatorExporter().export_magnetic_as_subcircuit(magnetic);
+
+        OpenMagnetics::CircuitSimulatorExporterModels simulator;
+        OpenMagnetics::from_json(simulatorString, simulator);
+
+        switch(simulator) {
+            case OpenMagnetics::CircuitSimulatorExporterModels::SIMBA:
+                {
+                    ordered_json subcircuit;
+                    if (jsimba != "") {
+                        subcircuit = OpenMagnetics::CircuitSimulatorExporter(simulator).export_magnetic_as_subcircuit(magnetic, OpenMagnetics::Defaults().measurementFrequency, jsimba);
+                    }
+                    else {
+                        subcircuit = OpenMagnetics::CircuitSimulatorExporter(simulator).export_magnetic_as_subcircuit(magnetic);
+                    }
+                    return subcircuit.dump(2);
+                    break;
+                }
+            case OpenMagnetics::CircuitSimulatorExporterModels::LTSPICE:
+                return OpenMagnetics::CircuitSimulatorExporter(simulator).export_magnetic_as_subcircuit(magnetic, OpenMagnetics::Defaults().measurementFrequency);
+                break;
+            case OpenMagnetics::CircuitSimulatorExporterModels::NGSPICE:
+                return OpenMagnetics::CircuitSimulatorExporter(simulator).export_magnetic_as_subcircuit(magnetic, OpenMagnetics::Defaults().measurementFrequency);
+                break;
         }
 
-        // std::cout << subcircuit.dump(0) << std::endl;
 
-        return subcircuit.dump(2);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+
+std::string export_magnetic_as_symbol(std::string magneticString, std::string simulatorString, std::string jsimba) {
+    try {
+        OpenMagnetics::MagneticWrapper magnetic(json::parse(magneticString));
+
+        OpenMagnetics::CircuitSimulatorExporterModels simulator;
+        OpenMagnetics::from_json(simulatorString, simulator);
+
+        switch(simulator) {
+            case OpenMagnetics::CircuitSimulatorExporterModels::SIMBA:
+                break;
+            case OpenMagnetics::CircuitSimulatorExporterModels::LTSPICE:
+                return OpenMagnetics::CircuitSimulatorExporter(simulator).export_magnetic_as_symbol(magnetic);
+                break;
+            case OpenMagnetics::CircuitSimulatorExporterModels::NGSPICE:
+                break;
+        }
+
+        return "";
+
     }
     catch (const std::exception &exc) {
         return "Exception: " + std::string{exc.what()};
@@ -1575,6 +1616,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("add_margin_to_section_by_index", &add_margin_to_section_by_index);
     function("check_if_fits", &check_if_fits);
     function("export_magnetic_as_subcircuit", &export_magnetic_as_subcircuit);
+    function("export_magnetic_as_symbol", &export_magnetic_as_symbol);
     function("calculate_ac_resistance_coefficients_per_winding", &calculate_ac_resistance_coefficients_per_winding);
     function("sweep_impedance_over_frequency", &sweep_impedance_over_frequency);
     function("sweep_resistance_over_frequency", &sweep_resistance_over_frequency);
