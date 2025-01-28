@@ -270,50 +270,51 @@ std::string calculate_advised_magnetics(std::string inputsString, std::string we
     return results.dump(4);
 }
 
-// std::string calculate_advised_magneticsfrom_catalog(std::string inputsString, std::string catalogString, int maximumNumberResults){
-//     OpenMagnetics::InputsWrapper inputs(json::parse(inputsString));
-//     std::map<OpenMagnetics::MagneticAdviser::MagneticAdviserFilters, double> weights;
+std::string calculate_advised_magnetics_from_catalog(std::string inputsString, std::string catalogString, int maximumNumberResults){
+    try {
+        OpenMagnetics::InputsWrapper inputs(json::parse(inputsString));
+        std::map<OpenMagnetics::MagneticAdviser::MagneticAdviserFilters, double> weights;
 
-//     std::vector <OpenMagnetics::MagneticWrapper> catalog;
+        std::vector <OpenMagnetics::MagneticWrapper> catalog;
 
-//     std::string jsonLine;
-//     while (std::getline(catalogString, jsonLine, "\n")) {
-//         json jf = json::parse(jsonLine);
-//         OpenMagnetics::MagneticWrapper magnetic(jf);
-//         catalog.push_back(magnetic);
-//     }
+        for (auto& catalogSubstring : OpenMagnetics::split(catalogString, "\n")) {
+            OpenMagnetics::MagneticWrapper magnetic(json::parse(catalogSubstring));
+            catalog.push_back(magnetic);
+        }
 
+        OpenMagnetics::MagneticAdviser magneticAdviser;
+        auto masMagnetics = magneticAdviser.get_advised_magnetic(inputs, catalog, maximumNumberResults);
 
-//     OpenMagnetics::MagneticAdviser magneticAdviser;
-//     auto masMagnetics = magneticAdviser.get_advised_magnetic(inputs, catalog, 1);
-//     CHECK(masMagnetics.size() > 0);
+        auto scorings = magneticAdviser.get_scorings();
 
-//     auto scorings = magneticAdviser.get_scorings();
+        json results = json();
+        results["data"] = json::array();
+        for (auto& [masMagnetic, scoring] : masMagnetics) {
+            std::string name = masMagnetic.get_magnetic().get_manufacturer_info().value().get_reference().value();
 
-//     json results = json();
-//     results["data"] = json::array();
-//     for (auto& [masMagnetic, scoring] : masMagnetics) {
-//         std::string name = masMagnetic.get_magnetic().get_manufacturer_info().value().get_reference().value();
+            std::cout << "masMagnetic.get_outputs().size()" << std::endl;
+            std::cout << masMagnetic.get_outputs().size() << std::endl;
+            json result;
+            json masJson;
+            to_json(masJson, masMagnetic);
+            result["mas"] = masJson;
+            result["scoring"] = scoring;
+            results["data"].push_back(result);
+        }
 
-//         json result;
-//         json masJson;
-//         to_json(masJson, masMagnetic);
-//         result["mas"] = masJson;
-//         result["weightedTotalScoring"] = scorings[name][OpenMagnetics::MagneticAdviser::MagneticAdviserFilters::COST] + scorings[name][OpenMagnetics::MagneticAdviser::MagneticAdviserFilters::EFFICIENCY] + scorings[name][OpenMagnetics::MagneticAdviser::MagneticAdviserFilters::DIMENSIONS];
-//         result["scoringPerFilter"] = json();
-//         for (auto& filter : magic_enum::enum_names<OpenMagnetics::MagneticAdviser::MagneticAdviserFilters>()) {
-//             std::string filterString(filter);
-//             result["scoringPerFilter"][filterString] = scorings[name][magic_enum::enum_cast<OpenMagnetics::MagneticAdviser::MagneticAdviserFilters>(filterString).value()];
-//         };
-//         results["data"].push_back(result);
-//     }
+        sort(results["data"].begin(), results["data"].end(), [](json& b1, json& b2) {
+            return b1["scoring"] > b2["scoring"];
+        });
 
-//     sort(results["data"].begin(), results["data"].end(), [](json& b1, json& b2) {
-//         return b1["weightedTotalScoring"] > b2["weightedTotalScoring"];
-//     });
-
-//     return results.dump(4);
-// }
+        return results.dump(4);
+    }
+    catch (const std::exception &exc) {
+        // std::cout << inputsString << std::endl;
+        // std::cout << catalogString << std::endl;
+        // std::cout << maximumNumberResults << std::endl;
+        return "Exception: " + std::string{exc.what()};
+    }
+}
 
 std::vector<std::string> get_available_core_filters(){
     std::vector<std::string> filters;
@@ -324,9 +325,62 @@ std::vector<std::string> get_available_core_filters(){
     return filters;
 }
 
+size_t load_core_materials(std::string fileToLoad){
+    if (fileToLoad != "") {
+        OpenMagnetics::load_core_materials(fileToLoad);
+    }
+    else {
+        OpenMagnetics::load_core_materials();
+    }
+
+    return coreMaterialDatabase.size();
+}
+
+size_t load_core_shapes(std::string fileToLoad){
+    if (fileToLoad != "") {
+        OpenMagnetics::load_core_shapes(true, fileToLoad);
+    }
+    else {
+        OpenMagnetics::load_core_shapes();
+    }
+    return coreShapeDatabase.size();
+}
+
+size_t load_wires(std::string fileToLoad){
+    if (fileToLoad != "") {
+        OpenMagnetics::load_wires(fileToLoad);
+    }
+    else {
+        OpenMagnetics::load_wires();
+    }
+    return wireDatabase.size();
+}
+
+void clear_databases(){
+    OpenMagnetics::clear_databases();
+}
+
+std::vector<std::string> get_available_core_manufacturers(){
+    std::vector<std::string> manufacturers;
+    auto materials = OpenMagnetics::get_materials("");
+    for (auto material : materials) {
+        std::string manufacturer = material.get_manufacturer_info().get_name();
+        if (std::find(manufacturers.begin(), manufacturers.end(), manufacturer) == manufacturers.end()) {
+            manufacturers.push_back(manufacturer);
+        }
+    }
+    return manufacturers;
+}
+
+std::vector<std::string> get_available_core_materials(std::string manufacturer){
+    return OpenMagnetics::get_material_names(manufacturer);
+}
 
 void load_cores(bool includeToroids, bool useOnlyCoresInStock){
-    OpenMagnetics::load_cores(includeToroids, useOnlyCoresInStock);
+    auto settings = OpenMagnetics::Settings::GetInstance();
+    settings->set_use_toroidal_cores(includeToroids);
+    settings->set_use_only_cores_in_stock(useOnlyCoresInStock);
+    OpenMagnetics::load_cores();
 }
 
 void clear_loaded_cores(){
@@ -458,6 +512,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("calculate_advised_coil", &calculate_advised_coil);
     function("calculate_advised_wires", &calculate_advised_wires);
     function("calculate_advised_sections", &calculate_advised_sections);
+    function("calculate_advised_magnetics_from_catalog", &calculate_advised_magnetics_from_catalog);
     function("get_solid_insulation_requirements_for_wires", &get_solid_insulation_requirements_for_wires);
     function("get_available_core_filters", &get_available_core_filters);
     function("load_cores", &load_cores);
@@ -466,6 +521,12 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_settings", &get_settings);
     function("set_settings", &set_settings);
     function("reset_settings", &reset_settings);
+    function("load_core_materials", &load_core_materials);
+    function("load_core_shapes", &load_core_shapes);
+    function("load_wires", &load_wires);
+    function("clear_databases", &clear_databases);
+    function("get_available_core_manufacturers", &get_available_core_manufacturers);
+    function("get_available_core_materials", &get_available_core_materials);
     
     register_vector<std::string>("vector<std::string>");
 }

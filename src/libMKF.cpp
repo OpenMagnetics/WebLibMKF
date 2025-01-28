@@ -387,11 +387,12 @@ std::string get_shape_data(std::string shapeName){
     }
 }
 
-std::vector<std::string> get_available_shape_families(){
+std::vector<std::string> get_available_core_shape_families(){
     std::vector<std::string> families;
-    for (auto& family : magic_enum::enum_names<OpenMagnetics::CoreShapeFamily>()) {
-        std::string familyString(family);
-        families.push_back(familyString);
+    for (auto& family : OpenMagnetics::get_shape_families()) {
+        json familyJson;
+        to_json(familyJson, family);
+        families.push_back(familyJson);
     }
     return families;
 }
@@ -408,15 +409,6 @@ std::vector<std::string> get_available_core_manufacturers(){
     return manufacturers;
 }
 
-std::vector<std::string> get_available_core_shape_families(){
-    std::vector<std::string> families;
-    for (auto& family : magic_enum::enum_names<OpenMagnetics::CoreShapeFamily>()) {
-        std::string familyString(family);
-        families.push_back(familyString);
-    }
-    return families;
-}
-
 std::vector<std::string> get_available_core_materials(std::string manufacturer){
     return OpenMagnetics::get_material_names(manufacturer);
 }
@@ -430,23 +422,27 @@ std::vector<std::string> get_available_wires(){
 }
 
 std::vector<std::string> get_unique_wire_diameters(std::string wireStandardString){
-    OpenMagnetics::WireStandard wireStandard(json::parse(wireStandardString));
+    try {
+        OpenMagnetics::WireStandard wireStandard(json::parse(wireStandardString));
 
-    auto wires = OpenMagnetics::get_wires(OpenMagnetics::WireType::ROUND, wireStandard);
+        auto wires = OpenMagnetics::get_wires(OpenMagnetics::WireType::ROUND, wireStandard);
 
-    std::vector<std::string> uniqueStandardName;
-    for (auto wire : wires) {
-        if (!wire.get_standard_name()) {
-            continue;
+        std::vector<std::string> uniqueStandardName;
+        for (auto wire : wires) {
+            if (!wire.get_standard_name()) {
+                continue;
+            }
+            auto standardName = wire.get_standard_name().value();
+            if (std::find(uniqueStandardName.begin(), uniqueStandardName.end(), standardName) == uniqueStandardName.end()) {
+                uniqueStandardName.push_back(standardName);
+            }
         }
-        auto standardName = wire.get_standard_name().value();
-        if (std::find(uniqueStandardName.begin(), uniqueStandardName.end(), standardName) == uniqueStandardName.end()) {
-            uniqueStandardName.push_back(standardName);
-        }
+
+        return uniqueStandardName;
     }
-
-
-    return uniqueStandardName;
+    catch (const std::exception &exc) {
+        return {"Exception: " + std::string{exc.what()}};
+    }
 }
 
 std::vector<std::string> get_available_wire_types(){
@@ -506,7 +502,6 @@ double calculate_inductance_from_number_turns_and_gapping(std::string coreData,
                                                           std::string modelsData){
     OpenMagnetics::CoreWrapper core(json::parse(coreData));
     OpenMagnetics::CoilWrapper coil(json::parse(coilData), false);
-    OpenMagnetics::OperatingPoint operatingPoint(json::parse(operatingPointData));
 
     std::map<std::string, std::string> models = json::parse(modelsData).get<std::map<std::string, std::string>>();
 
@@ -518,7 +513,14 @@ double calculate_inductance_from_number_turns_and_gapping(std::string coreData,
     }
 
     OpenMagnetics::MagnetizingInductance magnetizingInductanceObj(reluctanceModelName);
-    double magnetizingInductance = magnetizingInductanceObj.calculate_inductance_from_number_turns_and_gapping(core, coil, &operatingPoint).get_magnetizing_inductance().get_nominal().value();
+    double magnetizingInductance;
+    if (operatingPointData != "") {
+        OpenMagnetics::OperatingPoint operatingPoint(json::parse(operatingPointData));
+        magnetizingInductance = magnetizingInductanceObj.calculate_inductance_from_number_turns_and_gapping(core, coil, &operatingPoint).get_magnetizing_inductance().get_nominal().value();
+    }
+    else {
+        magnetizingInductance = magnetizingInductanceObj.calculate_inductance_from_number_turns_and_gapping(core, coil).get_magnetizing_inductance().get_nominal().value();
+    }
 
     return magnetizingInductance;
 }
@@ -912,6 +914,12 @@ double calculate_dc_resistance_per_meter(std::string wireString, double temperat
     OpenMagnetics::WireWrapper wire(json::parse(wireString));
     auto dcResistancePerMeter = OpenMagnetics::WindingOhmicLosses::calculate_dc_resistance_per_meter(wire, temperature);
     return dcResistancePerMeter;
+}
+
+std::vector<double> calculate_dc_resistance_per_winding(std::string coilString, double temperature){
+    OpenMagnetics::CoilWrapper coil(json::parse(coilString), false);
+    auto dcResistancePerWinding = OpenMagnetics::WindingOhmicLosses::calculate_dc_resistance_per_winding(coil, temperature);
+    return dcResistancePerWinding;
 }
 
 double calculate_dc_losses_per_meter(std::string wireString, std::string currentString, double temperature){
@@ -1533,6 +1541,58 @@ std::string sweep_resistance_over_frequency(std::string magneticString, double s
     }
 }
 
+size_t load_core_materials(std::string fileToLoad){
+    if (fileToLoad != "") {
+        OpenMagnetics::load_core_materials(fileToLoad);
+    }
+    else {
+        OpenMagnetics::load_core_materials();
+    }
+
+    return coreMaterialDatabase.size();
+}
+
+size_t load_core_shapes(std::string fileToLoad){
+    if (fileToLoad != "") {
+        OpenMagnetics::load_core_shapes(true, fileToLoad);
+    }
+    else {
+        OpenMagnetics::load_core_shapes();
+    }
+    return coreShapeDatabase.size();
+}
+
+size_t load_wires(std::string fileToLoad){
+    if (fileToLoad != "") {
+        OpenMagnetics::load_wires(fileToLoad);
+    }
+    else {
+        OpenMagnetics::load_wires();
+    }
+    return wireDatabase.size();
+}
+
+void clear_databases(){
+    OpenMagnetics::clear_databases();
+}
+
+bool is_core_material_database_empty(){
+    return coreMaterialDatabase.size() == 0;
+}
+
+bool is_core_shape_database_empty(){
+    return coreShapeDatabase.size() == 0;
+}
+
+bool is_wire_database_empty(){
+    return wireDatabase.size() == 0;
+}
+
+std::vector<double> get_maximum_dimensions(std::string magneticString){
+    OpenMagnetics::MagneticWrapper magnetic(json::parse(magneticString));
+    return magnetic.get_maximum_dimensions();
+}
+
 EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_constants", &get_constants);
     function("calculate_harmonics", &calculate_harmonics);
@@ -1561,7 +1621,6 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_core_temperature_dependant_parameters", &get_core_temperature_dependant_parameters);
     function("calculate_shape_data", &calculate_shape_data);
     function("get_shape_data", &get_shape_data);
-    function("get_available_shape_families", &get_available_shape_families);
     function("get_available_core_materials", &get_available_core_materials);
     function("get_available_core_manufacturers", &get_available_core_manufacturers);
     function("get_available_core_shape_families", &get_available_core_shape_families);
@@ -1594,6 +1653,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("extract_column_names", &extract_column_names);
     function("calculate_number_turns", &calculate_number_turns);
     function("calculate_dc_resistance_per_meter", &calculate_dc_resistance_per_meter);
+    function("calculate_dc_resistance_per_winding", &calculate_dc_resistance_per_winding);
     function("calculate_dc_losses_per_meter", &calculate_dc_losses_per_meter);
     function("calculate_skin_ac_losses_per_meter", &calculate_skin_ac_losses_per_meter);
     function("calculate_skin_ac_factor", &calculate_skin_ac_factor);
@@ -1620,6 +1680,14 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("calculate_ac_resistance_coefficients_per_winding", &calculate_ac_resistance_coefficients_per_winding);
     function("sweep_impedance_over_frequency", &sweep_impedance_over_frequency);
     function("sweep_resistance_over_frequency", &sweep_resistance_over_frequency);
+    function("load_core_materials", &load_core_materials);
+    function("load_core_shapes", &load_core_shapes);
+    function("load_wires", &load_wires);
+    function("clear_databases", &clear_databases);
+    function("is_core_material_database_empty", &is_core_material_database_empty);
+    function("is_core_shape_database_empty", &is_core_shape_database_empty);
+    function("is_wire_database_empty", &is_wire_database_empty);
+    function("get_maximum_dimensions", &get_maximum_dimensions);
     
     register_map<std::string, double>("map<string, double>");
     register_map<std::string, std::string>("map<string, string>");
