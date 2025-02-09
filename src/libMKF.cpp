@@ -36,55 +36,123 @@ std::map<std::string, double> get_constants() {
     return constantsMap;
 }
 
+std::string standardize_signal_descriptor(std::string SignalDescriptorString, double frequency) {
+    try {
+        
+        OpenMagnetics::SignalDescriptor signalDescriptor(json::parse(SignalDescriptorString));
+
+        auto standardSignalDescriptor = OpenMagnetics::InputsWrapper::standardize_waveform(signalDescriptor, frequency);
+        if (standardSignalDescriptor.get_harmonics()) {
+            auto processed = OpenMagnetics::InputsWrapper::calculate_processed_data(standardSignalDescriptor.get_harmonics().value(), standardSignalDescriptor.get_waveform().value(), true);
+            standardSignalDescriptor.set_processed(processed);
+        }
+        else {
+            auto processed = OpenMagnetics::InputsWrapper::calculate_processed_data(standardSignalDescriptor.get_waveform().value(), frequency, true);
+            standardSignalDescriptor.set_processed(processed);
+        }
+
+        json result;
+        to_json(result, standardSignalDescriptor);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::vector<size_t> get_main_harmonic_indexes(std::string harmonicsString, double windingLossesHarmonicAmplitudeThreshold, size_t mainHarmonicIndex) {
+    try {
+        OpenMagnetics::Harmonics harmonics;
+        OpenMagnetics::from_json(json::parse(harmonicsString), harmonics);
+
+        auto mainHarmonicIndexes = OpenMagnetics::get_main_harmonic_indexes(harmonics, windingLossesHarmonicAmplitudeThreshold, mainHarmonicIndex);
+
+        return mainHarmonicIndexes;
+    }
+    catch (const std::exception &exc) {
+        std::cout << std::string{exc.what()} << std::endl;
+        return {0};
+    }
+}
+
+std::vector<size_t> get_excitation_harmonic_indexes(std::string excitationString, double windingLossesHarmonicAmplitudeThreshold) {
+    try {
+        OpenMagnetics::OperatingPointExcitation excitation(json::parse(excitationString));
+
+        auto mainHarmonicIndexes = OpenMagnetics::get_excitation_harmonic_indexes(excitation, windingLossesHarmonicAmplitudeThreshold);
+
+        return mainHarmonicIndexes;
+    }
+    catch (const std::exception &exc) {
+        std::cout << std::string{exc.what()} << std::endl;
+        return {0};
+    }
+}
+
 std::string calculate_harmonics(std::string waveformString, double frequency) {
-    OpenMagnetics::Waveform waveform;
-    OpenMagnetics::from_json(json::parse(waveformString), waveform);
+    try {
+        OpenMagnetics::Waveform waveform;
+        OpenMagnetics::from_json(json::parse(waveformString), waveform);
 
-    auto sampledCurrentWaveform = OpenMagnetics::InputsWrapper::calculate_sampled_waveform(waveform, frequency);
-    auto harmonics = OpenMagnetics::InputsWrapper::calculate_harmonics_data(sampledCurrentWaveform, frequency);
+        auto sampledCurrentWaveform = OpenMagnetics::InputsWrapper::calculate_sampled_waveform(waveform, frequency);
+        auto harmonics = OpenMagnetics::InputsWrapper::calculate_harmonics_data(sampledCurrentWaveform, frequency);
 
-    json result;
-    to_json(result, harmonics);
-    return result.dump(4);
+        json result;
+        to_json(result, harmonics);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
 }
 
 std::string calculate_processed(std::string harmonicsString, std::string waveformString) {
-    OpenMagnetics::Waveform waveform;
-    OpenMagnetics::Harmonics harmonics;
-    OpenMagnetics::from_json(json::parse(waveformString), waveform);
-    OpenMagnetics::from_json(json::parse(harmonicsString), harmonics);
+    try {
+        OpenMagnetics::Waveform waveform;
+        OpenMagnetics::Harmonics harmonics;
+        OpenMagnetics::from_json(json::parse(waveformString), waveform);
+        OpenMagnetics::from_json(json::parse(harmonicsString), harmonics);
 
-    auto processed = OpenMagnetics::InputsWrapper::calculate_processed_data(harmonics, waveform, true);
+        auto processed = OpenMagnetics::InputsWrapper::calculate_processed_data(harmonics, waveform, true);
 
-    json result;
-    to_json(result, processed);
-    return result.dump(4);
+        json result;
+        to_json(result, processed);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
 }
 
 std::string calculate_shape_data(std::string shapeString){
-    OpenMagnetics::CoreShape shape(json::parse(shapeString));
-    OpenMagnetics::CoreWrapper core;
-    OpenMagnetics::CoreFunctionalDescription coreFunctionalDescription;
-    coreFunctionalDescription.set_shape(shape);
-    coreFunctionalDescription.set_material("Dummy");
-    coreFunctionalDescription.set_number_stacks(1);
-    if (shape.get_magnetic_circuit() == OpenMagnetics::MagneticCircuit::OPEN) {
-        coreFunctionalDescription.set_type(OpenMagnetics::CoreType::TWO_PIECE_SET);
-    }
-    else {
-        if (shape.get_family() == OpenMagnetics::CoreShapeFamily::T) {
-            coreFunctionalDescription.set_type(OpenMagnetics::CoreType::TOROIDAL);
+    try {
+        OpenMagnetics::CoreShape shape(json::parse(shapeString));
+        OpenMagnetics::CoreWrapper core;
+        OpenMagnetics::CoreFunctionalDescription coreFunctionalDescription;
+        coreFunctionalDescription.set_shape(shape);
+        coreFunctionalDescription.set_material("Dummy");
+        coreFunctionalDescription.set_number_stacks(1);
+        if (shape.get_magnetic_circuit() == OpenMagnetics::MagneticCircuit::OPEN) {
+            coreFunctionalDescription.set_type(OpenMagnetics::CoreType::TWO_PIECE_SET);
         }
         else {
-            coreFunctionalDescription.set_type(OpenMagnetics::CoreType::CLOSED_SHAPE);
+            if (shape.get_family() == OpenMagnetics::CoreShapeFamily::T) {
+                coreFunctionalDescription.set_type(OpenMagnetics::CoreType::TOROIDAL);
+            }
+            else {
+                coreFunctionalDescription.set_type(OpenMagnetics::CoreType::CLOSED_SHAPE);
+            }
         }
-    }
-    core.set_functional_description(coreFunctionalDescription);
-    core.process_data();
+        core.set_functional_description(coreFunctionalDescription);
+        core.process_data();
 
-    json result;
-    to_json(result, core);
-    return result.dump(4);
+        json result;
+        to_json(result, core);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
 }
 
 std::string calculate_core_data(std::string coreDataString, bool includeMaterialData){
@@ -1106,10 +1174,10 @@ std::string wind(std::string coilString, size_t repetitions, std::string proport
         return result.dump(4);
     }
     catch (const std::exception &exc) {
-        // std::cout << coilString << std::endl;
-        // std::cout << repetitions << std::endl;
-        // std::cout << proportionPerWindingString << std::endl;
-        // std::cout << patternString << std::endl;
+        std::cout << coilString << std::endl;
+        std::cout << repetitions << std::endl;
+        std::cout << proportionPerWindingString << std::endl;
+        std::cout << patternString << std::endl;
         return "Exception: " + std::string{exc.what()};
     }
 }
@@ -1595,7 +1663,10 @@ std::vector<double> get_maximum_dimensions(std::string magneticString){
 
 EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_constants", &get_constants);
+    function("standardize_signal_descriptor", &standardize_signal_descriptor);
     function("calculate_harmonics", &calculate_harmonics);
+    function("get_main_harmonic_indexes", &get_main_harmonic_indexes);
+    function("get_excitation_harmonic_indexes", &get_excitation_harmonic_indexes);
     function("calculate_processed", &calculate_processed);
     function("calculate_core_data", &calculate_core_data);
     function("calculate_bobbin_data", &calculate_bobbin_data);
@@ -1695,4 +1766,5 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     register_vector<std::string>("vector<std::string>");
     register_vector<int>("vector<int>");
     register_vector<double>("vector<double>");
+    register_vector<size_t>("vector<size_t>");
 }
