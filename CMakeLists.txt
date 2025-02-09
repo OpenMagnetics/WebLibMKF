@@ -57,7 +57,6 @@ find_program(NAMES libgtest-dev REQUIRED)
 
 add_executable(libMKF src/libMKF.cpp)
 add_executable(libInsulationCoordinator src/libInsulationCoordinator.cpp)
-add_executable(libAdvisers src/libAdvisers.cpp)
 add_executable(libCrossReferencers src/libCrossReferencers.cpp)
 
 include_directories("${CMAKE_BINARY_DIR}/_deps/json-src/include/nlohmann/")
@@ -74,7 +73,6 @@ message(STATUS ${MAS_DIRECTORY})
 
 target_link_libraries(libMKF MKF)
 target_link_libraries(libInsulationCoordinator MKF)
-target_link_libraries(libAdvisers MKF)
 target_link_libraries(libCrossReferencers MKF)
 
 
@@ -87,10 +85,8 @@ else(JS_ONLY)
     set(CMAKE_EXECUTABLE_SUFFIX ".wasm.js")
     set_target_properties(libMKF PROPERTIES LINK_FLAGS "-O3 -s WASM=1 -s MAXIMUM_MEMORY=4gb -sSTACK_SIZE=67108864 -s INITIAL_MEMORY=134217728 -s ALLOW_MEMORY_GROWTH -s EXPORT_ES6=1 -std=c++23 -s EXCEPTION_CATCHING_ALLOWED=[..] -fwasm-exceptions -l embind --bind --use-preload-cache")
     set_target_properties(libInsulationCoordinator PROPERTIES LINK_FLAGS "-O3 -s WASM=1 -s MAXIMUM_MEMORY=4gb -sSTACK_SIZE=67108864 -s INITIAL_MEMORY=134217728 -s ALLOW_MEMORY_GROWTH -s EXPORT_ES6=1 -std=c++23 -s EXCEPTION_CATCHING_ALLOWED=[..] -fwasm-exceptions -l embind --bind --use-preload-cache")
-    set_target_properties(libAdvisers PROPERTIES LINK_FLAGS "-O3 -s WASM=1 -s MAXIMUM_MEMORY=4gb -sSTACK_SIZE=67108864 -s INITIAL_MEMORY=134217728 -s ALLOW_MEMORY_GROWTH -s EXPORT_ES6=1 -std=c++23 -s EXCEPTION_CATCHING_ALLOWED=[..] -fwasm-exceptions -l embind --bind --use-preload-cache")
     set_target_properties(libCrossReferencers PROPERTIES LINK_FLAGS "-O3 -s WASM=1 -s MAXIMUM_MEMORY=4gb -sSTACK_SIZE=67108864 -s INITIAL_MEMORY=134217728 -s ALLOW_MEMORY_GROWTH -s EXPORT_ES6=1 -std=c++23 -s EXCEPTION_CATCHING_ALLOWED=[..] -fwasm-exceptions -l embind --bind --use-preload-cache")
 
     # set_target_properties(libMKF PROPERTIES LINK_FLAGS "-s WASM=1 -s MAXIMUM_MEMORY=4gb -sSTACK_SIZE=67108864 -s INITIAL_MEMORY=134217728 -s ALLOW_MEMORY_GROWTH -s EXPORT_ES6=1 -std=c++23 -g3 -s ASSERTIONS=2 -s SAFE_HEAP=1 -s STACK_OVERFLOW_CHECK=2 -s DEMANGLE_SUPPORT=1 -s EXCEPTION_CATCHING_ALLOWED=[..] -fwasm-exceptions --source-map-base http://localhost:5173/ -l embind --bind --use-preload-cache")
-    # set_target_properties(libAdvisers PROPERTIES LINK_FLAGS "-s WASM=1 -s MAXIMUM_MEMORY=4gb -sSTACK_SIZE=67108864 -s INITIAL_MEMORY=134217728 -s ALLOW_MEMORY_GROWTH -s EXPORT_ES6=1 -std=c++23 -g3 -s ASSERTIONS=2 -s SAFE_HEAP=1 -s STACK_OVERFLOW_CHECK=2 -s DEMANGLE_SUPPORT=1 -s EXCEPTION_CATCHING_ALLOWED=[..] -fwasm-exceptions --source-map-base http://localhost:5173/ -l embind --bind --use-preload-cache")
     # set_target_properties(libCrossReferencers PROPERTIES LINK_FLAGS "-s WASM=1 -s MAXIMUM_MEMORY=4gb -sSTACK_SIZE=67108864 -s INITIAL_MEMORY=134217728 -s ALLOW_MEMORY_GROWTH -s EXPORT_ES6=1 -std=c++23 -g3 -s ASSERTIONS=2 -s SAFE_HEAP=1 -s STACK_OVERFLOW_CHECK=2 -s DEMANGLE_SUPPORT=1 -s EXCEPTION_CATCHING_ALLOWED=[..] -fwasm-exceptions --source-map-base http://localhost:5173/ -l embind --bind --use-preload-cache")
 endif(JS_ONLY)
