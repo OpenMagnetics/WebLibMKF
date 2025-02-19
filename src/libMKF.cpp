@@ -675,10 +675,14 @@ std::string calculate_core_losses(std::string coreData,
 
     OpenMagnetics::CoreWrapper core(json::parse(coreData));
     OpenMagnetics::CoilWrapper coil(json::parse(coilData), false);
-    OpenMagnetics::InputsWrapper inputs(json::parse(inputsData));
+
+    OpenMagnetics::MagnetizingInductance magnetizingInductanceModel;
+    double magnetizingInductance = magnetizingInductanceModel.calculate_inductance_from_number_turns_and_gapping(core, coil).get_magnetizing_inductance().get_nominal().value();
+
+    OpenMagnetics::InputsWrapper inputs(json::parse(inputsData), true, magnetizingInductance);
     auto operatingPoint = inputs.get_operating_point(operatingPointIndex);
     OpenMagnetics::OperatingPointExcitation excitation = operatingPoint.get_excitations_per_winding()[0];
-    double magnetizingInductance = OpenMagnetics::resolve_dimensional_values(inputs.get_design_requirements().get_magnetizing_inductance());
+    // double magnetizingInductance = OpenMagnetics::resolve_dimensional_values(inputs.get_design_requirements().get_magnetizing_inductance());
     if (!excitation.get_current()) {
         auto magnetizingCurrent = OpenMagnetics::InputsWrapper::calculate_magnetizing_current(excitation, magnetizingInductance, true, 0.0);
         excitation.set_current(magnetizingCurrent);
@@ -728,7 +732,7 @@ std::string calculate_core_losses(std::string coreData,
 
     double frequency = OpenMagnetics::InputsWrapper::get_switching_frequency(excitation);
     double magneticFluxDensityAcPeakToPeak = OpenMagnetics::InputsWrapper::get_magnetic_flux_density_peak_to_peak(excitation, frequency);
-    result["magneticFluxDensityAcPeak"] = magneticFluxDensityAcPeakToPeak;
+    result["magneticFluxDensityAcPeak"] = magneticFluxDensityAcPeakToPeak / 2;
     result["voltageRms"] = operatingPoint.get_mutable_excitations_per_winding()[0].get_voltage().value().get_processed().value().get_rms().value();
     result["currentRms"] = operatingPoint.get_mutable_excitations_per_winding()[0].get_current().value().get_processed().value().get_rms().value();
     result["apparentPower"] = operatingPoint.get_mutable_excitations_per_winding()[0].get_voltage().value().get_processed().value().get_rms().value() * operatingPoint.get_mutable_excitations_per_winding()[0].get_current().value().get_processed().value().get_rms().value();
@@ -1590,11 +1594,11 @@ void calculate_ac_resistance_coefficients_per_winding(std::string magneticString
 }
 
 
-std::string sweep_impedance_over_frequency(std::string magneticString, double start, double stop, size_t numberElements, std::string title) {
+std::string sweep_impedance_over_frequency(std::string magneticString, double start, double stop, size_t numberElements, std::string mode, std::string title) {
     try {
         OpenMagnetics::MagneticWrapper magnetic(json::parse(magneticString));
 
-        auto impedanceOverFrequency = OpenMagnetics::Sweeper::sweep_impedance_over_frequency(magnetic, start, stop, numberElements, title);
+        auto impedanceOverFrequency = OpenMagnetics::Sweeper::sweep_impedance_over_frequency(magnetic, start, stop, numberElements, mode, title);
 
         json result;
         to_json(result, impedanceOverFrequency);
@@ -1608,10 +1612,10 @@ std::string sweep_impedance_over_frequency(std::string magneticString, double st
 }
 
 
-std::string sweep_winding_resistance_over_frequency(std::string magneticString, double start, double stop, size_t numberElements, size_t windingIndex, double temperature, std::string title) {
+std::string sweep_winding_resistance_over_frequency(std::string magneticString, double start, double stop, size_t numberElements, size_t windingIndex, double temperature, std::string mode, std::string title) {
     try {
         OpenMagnetics::MagneticWrapper magnetic(json::parse(magneticString));
-        auto resistanceOverFrequency = OpenMagnetics::Sweeper::sweep_winding_resistance_over_frequency(magnetic, start, stop, numberElements, windingIndex, temperature, title);
+        auto resistanceOverFrequency = OpenMagnetics::Sweeper::sweep_winding_resistance_over_frequency(magnetic, start, stop, numberElements, windingIndex, temperature, mode, title);
 
         json result;
         to_json(result, resistanceOverFrequency);
@@ -1624,10 +1628,10 @@ std::string sweep_winding_resistance_over_frequency(std::string magneticString, 
     }
 }
 
-std::string sweep_resistance_over_frequency(std::string magneticString, double start, double stop, size_t numberElements, double temperature, std::string title) {
+std::string sweep_resistance_over_frequency(std::string magneticString, double start, double stop, size_t numberElements, double temperature, std::string mode, std::string title) {
     try {
         OpenMagnetics::MagneticWrapper magnetic(json::parse(magneticString));
-        auto resistanceOverFrequency = OpenMagnetics::Sweeper::sweep_resistance_over_frequency(magnetic, start, stop, numberElements, temperature, title);
+        auto resistanceOverFrequency = OpenMagnetics::Sweeper::sweep_resistance_over_frequency(magnetic, start, stop, numberElements, temperature, mode, title);
 
         json result;
         to_json(result, resistanceOverFrequency);
@@ -1641,11 +1645,11 @@ std::string sweep_resistance_over_frequency(std::string magneticString, double s
 }
 
 
-std::string sweep_core_losses_over_frequency(std::string magneticString, std::string operatingPointString, double start, double stop, size_t numberElements, double temperature, std::string title) {
+std::string sweep_core_losses_over_frequency(std::string magneticString, std::string operatingPointString, double start, double stop, size_t numberElements, double temperature, std::string mode, std::string title) {
     try {
         OpenMagnetics::MagneticWrapper magnetic(json::parse(magneticString));
         OpenMagnetics::OperatingPoint operatingPoint(json::parse(operatingPointString));
-        auto resistanceOverFrequency = OpenMagnetics::Sweeper::sweep_core_losses_over_frequency(magnetic, operatingPoint, start, stop, numberElements, temperature, title);
+        auto resistanceOverFrequency = OpenMagnetics::Sweeper::sweep_core_losses_over_frequency(magnetic, operatingPoint, start, stop, numberElements, temperature, mode, title);
 
         json result;
         to_json(result, resistanceOverFrequency);
@@ -1658,14 +1662,14 @@ std::string sweep_core_losses_over_frequency(std::string magneticString, std::st
     }
 }
 
-std::string sweep_winding_losses_over_frequency(std::string magneticString, std::string operatingPointString, double start, double stop, size_t numberElements, double temperature, std::string title) {
+std::string sweep_winding_losses_over_frequency(std::string magneticString, std::string operatingPointString, double start, double stop, size_t numberElements, double temperature, std::string mode, std::string title) {
     try {
         OpenMagnetics::MagneticWrapper magnetic(json::parse(magneticString));
         OpenMagnetics::OperatingPoint operatingPoint(json::parse(operatingPointString));
-        auto resistanceOverFrequency = OpenMagnetics::Sweeper::sweep_winding_losses_over_frequency(magnetic, operatingPoint, start, stop, numberElements, temperature, title);
+        auto sweep = OpenMagnetics::Sweeper::sweep_winding_losses_over_frequency(magnetic, operatingPoint, start, stop, numberElements, temperature, mode, title);
 
         json result;
-        to_json(result, resistanceOverFrequency);
+        to_json(result, sweep);
 
         return result.dump(4);
 
