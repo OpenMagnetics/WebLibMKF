@@ -41,10 +41,9 @@ std::map<std::string, double> get_constants() {
     return constantsMap;
 }
 
-std::string standardize_signal_descriptor(std::string SignalDescriptorString, double frequency) {
+std::string standardize_signal_descriptor(std::string signalDescriptorString, double frequency) {
     try {
-        
-        OpenMagnetics::SignalDescriptor signalDescriptor(json::parse(SignalDescriptorString));
+        OpenMagnetics::SignalDescriptor signalDescriptor(json::parse(signalDescriptorString));
 
         auto standardSignalDescriptor = OpenMagnetics::InputsWrapper::standardize_waveform(signalDescriptor, frequency);
         if (standardSignalDescriptor.get_harmonics()) {
@@ -131,6 +130,8 @@ std::string calculate_processed(std::string harmonicsString, std::string wavefor
         return result.dump(4);
     }
     catch (const std::exception &exc) {
+        std::cout << harmonicsString << std::endl;
+        std::cout << waveformString << std::endl;
         return "Exception: " + std::string{exc.what()};
     }
 }
@@ -915,6 +916,14 @@ std::string scale_waveform_time_to_frequency(std::string waveformString, double 
     return result.dump(4);
 }
 
+std::string scale_excitation_time_to_frequency(std::string excitationString, double newFrequency) {
+    OpenMagnetics::OperatingPointExcitation excitation(json::parse(excitationString));
+    OpenMagnetics::InputsWrapper::scale_time_to_frequency(excitation, newFrequency, false, true);
+    json result;
+    to_json(result, excitation);
+    return result.dump(4);
+}
+
 std::string calculate_insulation(std::string inputsString){
     auto standard = OpenMagnetics::InsulationCoordinator();
     OpenMagnetics::InputsWrapper inputs(json::parse(inputsString), false);
@@ -1607,7 +1616,7 @@ std::string sweep_impedance_over_frequency(std::string magneticString, double st
 
     }
     catch (const std::exception &exc) {
-        std::cout << "Exception: " + std::string{exc.what()} << std::endl;
+        return "Exception: " + std::string{exc.what()};
     }
 }
 
@@ -1624,7 +1633,7 @@ std::string sweep_winding_resistance_over_frequency(std::string magneticString, 
 
     }
     catch (const std::exception &exc) {
-        std::cout << "Exception: " + std::string{exc.what()} << std::endl;
+        return "Exception: " + std::string{exc.what()};
     }
 }
 
@@ -1640,7 +1649,7 @@ std::string sweep_resistance_over_frequency(std::string magneticString, double s
 
     }
     catch (const std::exception &exc) {
-        std::cout << "Exception: " + std::string{exc.what()} << std::endl;
+        return "Exception: " + std::string{exc.what()};
     }
 }
 
@@ -1658,7 +1667,7 @@ std::string sweep_core_losses_over_frequency(std::string magneticString, std::st
 
     }
     catch (const std::exception &exc) {
-        std::cout << "Exception: " + std::string{exc.what()} << std::endl;
+        return "Exception: " + std::string{exc.what()};
     }
 }
 
@@ -1675,7 +1684,7 @@ std::string sweep_winding_losses_over_frequency(std::string magneticString, std:
 
     }
     catch (const std::exception &exc) {
-        std::cout << "Exception: " + std::string{exc.what()} << std::endl;
+        return "Exception: " + std::string{exc.what()};
     }
 }
 
@@ -1997,9 +2006,6 @@ std::string calculate_advised_magnetics_from_catalog(std::string inputsString, s
         results["data"] = json::array();
         for (auto& [masMagnetic, scoring] : masMagnetics) {
             std::string name = masMagnetic.get_magnetic().get_manufacturer_info().value().get_reference().value();
-
-            std::cout << "masMagnetic.get_outputs().size()" << std::endl;
-            std::cout << masMagnetic.get_outputs().size() << std::endl;
             json result;
             json masJson;
             to_json(masJson, masMagnetic);
@@ -2015,9 +2021,9 @@ std::string calculate_advised_magnetics_from_catalog(std::string inputsString, s
         return results.dump(4);
     }
     catch (const std::exception &exc) {
-        // std::cout << inputsString << std::endl;
-        // std::cout << catalogString << std::endl;
-        // std::cout << maximumNumberResults << std::endl;
+        std::cout << inputsString << std::endl;
+        std::cout << catalogString << std::endl;
+        std::cout << maximumNumberResults << std::endl;
         return "Exception: " + std::string{exc.what()};
     }
 }
@@ -2207,6 +2213,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("calculate_basic_processed_data", &calculate_basic_processed_data);
     function("create_waveform", &create_waveform);
     function("scale_waveform_time_to_frequency", &scale_waveform_time_to_frequency);
+    function("scale_excitation_time_to_frequency", &scale_excitation_time_to_frequency);
     function("calculate_insulation", &calculate_insulation);
     function("extract_operating_point", &extract_operating_point);
     function("extract_map_column_names", &extract_map_column_names);
