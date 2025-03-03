@@ -233,6 +233,27 @@ std::string get_wire_data_by_standard_name(std::string standardName){
             if (!coating) {
                 continue;
             }
+            if (!coating->get_grade()) {
+                continue;
+            }
+            // // Hardcoded
+            if (coating->get_grade().value() == 1) {
+                json result;
+                to_json(result, wire);
+                return result.dump(4);
+            }
+        }
+    }
+
+    for (auto wire : wires) {
+        if (!wire.get_standard_name()) {
+            continue;
+        }
+        if (wire.get_standard_name().value() == standardName) {
+            auto coating = wire.resolve_coating();
+            if (!coating) {
+                continue;
+            }
             // if (!coating->get_grade()) {
             //     continue;
             // }
@@ -580,29 +601,35 @@ double calculate_inductance_from_number_turns_and_gapping(std::string coreData,
                                                           std::string coilData,
                                                           std::string operatingPointData,
                                                           std::string modelsData){
-    OpenMagnetics::CoreWrapper core(json::parse(coreData));
-    OpenMagnetics::CoilWrapper coil(json::parse(coilData), false);
+    try {
+        OpenMagnetics::CoreWrapper core(json::parse(coreData));
+        OpenMagnetics::CoilWrapper coil(json::parse(coilData), false);
 
-    std::map<std::string, std::string> models = json::parse(modelsData).get<std::map<std::string, std::string>>();
+        std::map<std::string, std::string> models = json::parse(modelsData).get<std::map<std::string, std::string>>();
 
-    auto reluctanceModelName = OpenMagnetics::Defaults().reluctanceModelDefault;
-    if (models.find("reluctance") != models.end()) {
-        std::string modelNameStringUpper = models["reluctance"];
-        std::transform(modelNameStringUpper.begin(), modelNameStringUpper.end(), modelNameStringUpper.begin(), ::toupper);
-        reluctanceModelName = magic_enum::enum_cast<OpenMagnetics::ReluctanceModels>(modelNameStringUpper).value();
+        auto reluctanceModelName = OpenMagnetics::Defaults().reluctanceModelDefault;
+        if (models.find("reluctance") != models.end()) {
+            std::string modelNameStringUpper = models["reluctance"];
+            std::transform(modelNameStringUpper.begin(), modelNameStringUpper.end(), modelNameStringUpper.begin(), ::toupper);
+            reluctanceModelName = magic_enum::enum_cast<OpenMagnetics::ReluctanceModels>(modelNameStringUpper).value();
+        }
+
+        OpenMagnetics::MagnetizingInductance magnetizingInductanceObj(reluctanceModelName);
+        double magnetizingInductance;
+        if (operatingPointData != "") {
+            OpenMagnetics::OperatingPoint operatingPoint(json::parse(operatingPointData));
+            magnetizingInductance = magnetizingInductanceObj.calculate_inductance_from_number_turns_and_gapping(core, coil, &operatingPoint).get_magnetizing_inductance().get_nominal().value();
+        }
+        else {
+            magnetizingInductance = magnetizingInductanceObj.calculate_inductance_from_number_turns_and_gapping(core, coil).get_magnetizing_inductance().get_nominal().value();
+        }
+
+        return magnetizingInductance;
     }
-
-    OpenMagnetics::MagnetizingInductance magnetizingInductanceObj(reluctanceModelName);
-    double magnetizingInductance;
-    if (operatingPointData != "") {
-        OpenMagnetics::OperatingPoint operatingPoint(json::parse(operatingPointData));
-        magnetizingInductance = magnetizingInductanceObj.calculate_inductance_from_number_turns_and_gapping(core, coil, &operatingPoint).get_magnetizing_inductance().get_nominal().value();
+    catch (const std::exception &exc) {
+        std::cout << "Exception: " + std::string{exc.what()} << std::endl;
+        return -1;
     }
-    else {
-        magnetizingInductance = magnetizingInductanceObj.calculate_inductance_from_number_turns_and_gapping(core, coil).get_magnetizing_inductance().get_nominal().value();
-    }
-
-    return magnetizingInductance;
 }
 
 
@@ -673,76 +700,82 @@ std::string calculate_core_losses(std::string coreData,
                                   std::string inputsData,    
                                   std::string modelsData,    
                                   int operatingPointIndex){
+ 
+    try {
 
-    OpenMagnetics::CoreWrapper core(json::parse(coreData));
-    OpenMagnetics::CoilWrapper coil(json::parse(coilData), false);
+        OpenMagnetics::CoreWrapper core(json::parse(coreData));
+        OpenMagnetics::CoilWrapper coil(json::parse(coilData), false);
 
-    OpenMagnetics::MagnetizingInductance magnetizingInductanceModel;
-    double magnetizingInductance = magnetizingInductanceModel.calculate_inductance_from_number_turns_and_gapping(core, coil).get_magnetizing_inductance().get_nominal().value();
+        OpenMagnetics::MagnetizingInductance magnetizingInductanceModel;
+        double magnetizingInductance = magnetizingInductanceModel.calculate_inductance_from_number_turns_and_gapping(core, coil).get_magnetizing_inductance().get_nominal().value();
 
-    OpenMagnetics::InputsWrapper inputs(json::parse(inputsData), true, magnetizingInductance);
-    auto operatingPoint = inputs.get_operating_point(operatingPointIndex);
-    OpenMagnetics::OperatingPointExcitation excitation = operatingPoint.get_excitations_per_winding()[0];
-    // double magnetizingInductance = OpenMagnetics::resolve_dimensional_values(inputs.get_design_requirements().get_magnetizing_inductance());
-    if (!excitation.get_current()) {
-        auto magnetizingCurrent = OpenMagnetics::InputsWrapper::calculate_magnetizing_current(excitation, magnetizingInductance, true, 0.0);
-        excitation.set_current(magnetizingCurrent);
-        operatingPoint.get_mutable_excitations_per_winding()[0] = excitation;
+        OpenMagnetics::InputsWrapper inputs(json::parse(inputsData), true, magnetizingInductance);
+        auto operatingPoint = inputs.get_operating_point(operatingPointIndex);
+        OpenMagnetics::OperatingPointExcitation excitation = operatingPoint.get_excitations_per_winding()[0];
+        // double magnetizingInductance = OpenMagnetics::resolve_dimensional_values(inputs.get_design_requirements().get_magnetizing_inductance());
+        if (!excitation.get_current()) {
+            auto magnetizingCurrent = OpenMagnetics::InputsWrapper::calculate_magnetizing_current(excitation, magnetizingInductance, true, 0.0);
+            excitation.set_current(magnetizingCurrent);
+            operatingPoint.get_mutable_excitations_per_winding()[0] = excitation;
+        }
+
+        auto defaults = OpenMagnetics::Defaults();
+
+        std::map<std::string, std::string> models = json::parse(modelsData).get<std::map<std::string, std::string>>();
+
+        auto reluctanceModelName = defaults.reluctanceModelDefault;
+        if (models.find("reluctance") != models.end()) {
+            std::string modelNameStringUpper = models["reluctance"];
+            std::transform(modelNameStringUpper.begin(), modelNameStringUpper.end(), modelNameStringUpper.begin(), ::toupper);
+            reluctanceModelName = magic_enum::enum_cast<OpenMagnetics::ReluctanceModels>(modelNameStringUpper).value();
+        }
+        auto coreLossesModelName = defaults.coreLossesModelDefault;
+        if (models.find("coreLosses") != models.end()) {
+            std::string modelNameStringUpper = models["coreLosses"];
+            std::transform(modelNameStringUpper.begin(), modelNameStringUpper.end(), modelNameStringUpper.begin(), ::toupper);
+            coreLossesModelName = magic_enum::enum_cast<OpenMagnetics::CoreLossesModels>(modelNameStringUpper).value();
+        }
+        auto coreTemperatureModelName = defaults.coreTemperatureModelDefault;
+        if (models.find("coreTemperature") != models.end()) {
+            std::string modelNameStringUpper = models["coreTemperature"];
+            std::transform(modelNameStringUpper.begin(), modelNameStringUpper.end(), modelNameStringUpper.begin(), ::toupper);
+            coreTemperatureModelName = magic_enum::enum_cast<OpenMagnetics::CoreTemperatureModels>(modelNameStringUpper).value();
+        }
+
+        OpenMagnetics::MagneticWrapper magnetic;
+        magnetic.set_core(core);
+        magnetic.set_coil(coil);
+
+        OpenMagnetics::MagneticSimulator magneticSimulator;
+        magneticSimulator.set_core_losses_model_name(coreLossesModelName);
+        magneticSimulator.set_core_temperature_model_name(coreTemperatureModelName);
+        magneticSimulator.set_reluctance_model_name(reluctanceModelName);
+        auto coreLossesOutput = magneticSimulator.calculate_core_losses(operatingPoint, magnetic);
+        json result;
+        to_json(result, coreLossesOutput);
+
+        OpenMagnetics::MagnetizingInductance magnetizingInductanceObj(reluctanceModelName);
+        auto magneticFluxDensity = magnetizingInductanceObj.calculate_inductance_and_magnetic_flux_density(core, coil, &operatingPoint).second;
+        excitation.set_magnetic_flux_density(magneticFluxDensity);
+
+        result["magneticFluxDensityPeak"] = magneticFluxDensity.get_processed().value().get_peak().value();
+
+        double frequency = OpenMagnetics::InputsWrapper::get_switching_frequency(excitation);
+        double magneticFluxDensityAcPeakToPeak = OpenMagnetics::InputsWrapper::get_magnetic_flux_density_peak_to_peak(excitation, frequency);
+        result["magneticFluxDensityAcPeak"] = magneticFluxDensityAcPeakToPeak / 2;
+        result["voltageRms"] = operatingPoint.get_mutable_excitations_per_winding()[0].get_voltage().value().get_processed().value().get_rms().value();
+        result["currentRms"] = operatingPoint.get_mutable_excitations_per_winding()[0].get_current().value().get_processed().value().get_rms().value();
+        result["apparentPower"] = operatingPoint.get_mutable_excitations_per_winding()[0].get_voltage().value().get_processed().value().get_rms().value() * operatingPoint.get_mutable_excitations_per_winding()[0].get_current().value().get_processed().value().get_rms().value();
+        if (coreLossesOutput.get_temperature()) {
+            result["maximumCoreTemperature"] = coreLossesOutput.get_temperature().value();
+            result["maximumCoreTemperatureRise"] = coreLossesOutput.get_temperature().value() - operatingPoint.get_conditions().get_ambient_temperature();
+        }
+
+        return result.dump(4);
     }
-
-    auto defaults = OpenMagnetics::Defaults();
-
-    std::map<std::string, std::string> models = json::parse(modelsData).get<std::map<std::string, std::string>>();
-
-    auto reluctanceModelName = defaults.reluctanceModelDefault;
-    if (models.find("reluctance") != models.end()) {
-        std::string modelNameStringUpper = models["reluctance"];
-        std::transform(modelNameStringUpper.begin(), modelNameStringUpper.end(), modelNameStringUpper.begin(), ::toupper);
-        reluctanceModelName = magic_enum::enum_cast<OpenMagnetics::ReluctanceModels>(modelNameStringUpper).value();
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
     }
-    auto coreLossesModelName = defaults.coreLossesModelDefault;
-    if (models.find("coreLosses") != models.end()) {
-        std::string modelNameStringUpper = models["coreLosses"];
-        std::transform(modelNameStringUpper.begin(), modelNameStringUpper.end(), modelNameStringUpper.begin(), ::toupper);
-        coreLossesModelName = magic_enum::enum_cast<OpenMagnetics::CoreLossesModels>(modelNameStringUpper).value();
-    }
-    auto coreTemperatureModelName = defaults.coreTemperatureModelDefault;
-    if (models.find("coreTemperature") != models.end()) {
-        std::string modelNameStringUpper = models["coreTemperature"];
-        std::transform(modelNameStringUpper.begin(), modelNameStringUpper.end(), modelNameStringUpper.begin(), ::toupper);
-        coreTemperatureModelName = magic_enum::enum_cast<OpenMagnetics::CoreTemperatureModels>(modelNameStringUpper).value();
-    }
-
-    OpenMagnetics::MagneticWrapper magnetic;
-    magnetic.set_core(core);
-    magnetic.set_coil(coil);
-
-    OpenMagnetics::MagneticSimulator magneticSimulator;
-    magneticSimulator.set_core_losses_model_name(coreLossesModelName);
-    magneticSimulator.set_core_temperature_model_name(coreTemperatureModelName);
-    magneticSimulator.set_reluctance_model_name(reluctanceModelName);
-    auto coreLossesOutput = magneticSimulator.calculate_core_losses(operatingPoint, magnetic);
-    json result;
-    to_json(result, coreLossesOutput);
-
-    OpenMagnetics::MagnetizingInductance magnetizingInductanceObj(reluctanceModelName);
-    auto magneticFluxDensity = magnetizingInductanceObj.calculate_inductance_and_magnetic_flux_density(core, coil, &operatingPoint).second;
-    excitation.set_magnetic_flux_density(magneticFluxDensity);
-
-    result["magneticFluxDensityPeak"] = magneticFluxDensity.get_processed().value().get_peak().value();
-
-    double frequency = OpenMagnetics::InputsWrapper::get_switching_frequency(excitation);
-    double magneticFluxDensityAcPeakToPeak = OpenMagnetics::InputsWrapper::get_magnetic_flux_density_peak_to_peak(excitation, frequency);
-    result["magneticFluxDensityAcPeak"] = magneticFluxDensityAcPeakToPeak / 2;
-    result["voltageRms"] = operatingPoint.get_mutable_excitations_per_winding()[0].get_voltage().value().get_processed().value().get_rms().value();
-    result["currentRms"] = operatingPoint.get_mutable_excitations_per_winding()[0].get_current().value().get_processed().value().get_rms().value();
-    result["apparentPower"] = operatingPoint.get_mutable_excitations_per_winding()[0].get_voltage().value().get_processed().value().get_rms().value() * operatingPoint.get_mutable_excitations_per_winding()[0].get_current().value().get_processed().value().get_rms().value();
-    if (coreLossesOutput.get_temperature()) {
-        result["maximumCoreTemperature"] = coreLossesOutput.get_temperature().value();
-        result["maximumCoreTemperatureRise"] = coreLossesOutput.get_temperature().value() - operatingPoint.get_conditions().get_ambient_temperature();
-    }
-
-    return result.dump(4);
 }
 
 std::string get_core_losses_model_information(std::string material){
@@ -1750,6 +1783,15 @@ std::string calculate_advised_cores(std::string inputsString, std::string weight
         weights[OpenMagnetics::CoreAdviser::CoreAdviserFilters::AREA_PRODUCT] = 1;
         weights[OpenMagnetics::CoreAdviser::CoreAdviserFilters::ENERGY_STORED] = 1;
 
+        bool filterMode = bool(inputs.get_design_requirements().get_minimum_impedance());
+        auto settings = OpenMagnetics::Settings::GetInstance();
+
+        if (filterMode) {
+            settings->set_use_toroidal_cores(true);
+            settings->set_use_only_cores_in_stock(false);
+            settings->set_use_concentric_cores(false);
+        }
+
         double externalSum = 0;
         for (auto const& pair : weightsKeysString) {
             externalSum += pair.second;
@@ -1758,9 +1800,10 @@ std::string calculate_advised_cores(std::string inputsString, std::string weight
         for (auto const& pair : weightsKeysString) {
             weights[magic_enum::enum_cast<OpenMagnetics::CoreAdviser::CoreAdviserFilters>(pair.first).value()] = pair.second / externalSum;
         }
-
-        auto settings = OpenMagnetics::Settings::GetInstance();
-        settings->set_use_only_cores_in_stock(useOnlyCoresInStock);
+        if (filterMode) {
+            weights[OpenMagnetics::CoreAdviser::CoreAdviserFilters::MINIMUM_IMPEDANCE] = weights[OpenMagnetics::CoreAdviser::CoreAdviserFilters::EFFICIENCY];
+            weights[OpenMagnetics::CoreAdviser::CoreAdviserFilters::EFFICIENCY] = 0;
+        }
 
         OpenMagnetics::CoreAdviser coreAdviser;
         auto masMagnetics = coreAdviser.get_advised_core(inputs, weights, maximumNumberResults);
