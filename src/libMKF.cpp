@@ -21,6 +21,7 @@
 #include "Reluctance.h"
 #include "LeakageInductance.h"
 #include "MagnetizingInductance.h"
+#include "Topology.h"
 #include "CoreLosses.h"
 #include "CoreTemperature.h"
 #include "Utils.h"
@@ -2058,6 +2059,38 @@ std::string calculate_leakage_inductance(std::string magneticString, double freq
     return result.dump(4);
 }
 
+std::string calculate_flyback_inputs(std::string flybackInputsString){
+    try {
+        json flybackInputsJson = json::parse(flybackInputsString);
+
+        OpenMagnetics::Flyback flybackInputs(flybackInputsJson);
+        auto inputs = flybackInputs.process();
+
+        json result;
+        to_json(result, inputs);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string calculate_advanced_flyback_inputs(std::string flybackInputsString){
+    try {
+        json flybackInputsJson = json::parse(flybackInputsString);
+
+        OpenMagnetics::AdvancedFlyback flybackInputs(flybackInputsJson);
+        auto inputs = flybackInputs.process();
+
+        json result;
+        to_json(result, inputs);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
 std::string get_settings() {
     try {
         auto settings = OpenMagnetics::Settings::GetInstance();
@@ -2269,6 +2302,8 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("load_cores", &load_cores);
     function("clear_loaded_cores", &clear_loaded_cores);
     function("calculate_leakage_inductance", &calculate_leakage_inductance);
+    function("calculate_flyback_inputs", &calculate_flyback_inputs);
+    function("calculate_advanced_flyback_inputs", &calculate_advanced_flyback_inputs);
     function("get_settings", &get_settings);
     function("set_settings", &set_settings);
     function("reset_settings", &reset_settings);
