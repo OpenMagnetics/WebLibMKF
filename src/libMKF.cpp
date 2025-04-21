@@ -519,6 +519,57 @@ std::vector<std::string> get_available_core_shapes(){
     return OpenMagnetics::get_shape_names();
 }
 
+std::vector<std::string> get_available_core_shapes_by_manufacturer(std::string manufacturer){
+    return OpenMagnetics::get_core_shapes_names(manufacturer);
+}
+
+std::vector<std::string> get_available_core_shapes_by_family(std::string familyString){
+    try {
+        OpenMagnetics::CoreShapeFamily family;
+        from_json(familyString, family);
+         
+        return OpenMagnetics::get_shape_names(family);
+    }
+    catch (const std::exception &exc) {
+        return {"Exception: " + std::string{exc.what()}};
+    }
+}
+
+std::vector<std::string> get_shape_family_dimensions(std::string familyString, std::string familySubtype) {
+    try {
+        OpenMagnetics::CoreShapeFamily family;
+        from_json(familyString, family);
+
+        std::vector<std::string> dimensions;
+        if (familySubtype != "") {
+            dimensions = OpenMagnetics::get_shape_family_dimensions(family, familySubtype);
+        }
+        else {
+            dimensions = OpenMagnetics::get_shape_family_dimensions(family);
+        }
+         
+        return dimensions;
+    }
+    catch (const std::exception &exc) {
+        return {"Exception: " + std::string{exc.what()}};
+    }
+}
+
+std::vector<std::string> get_shape_family_subtypes(std::string familyString) {
+    try {
+        OpenMagnetics::CoreShapeFamily family;
+        from_json(familyString, family);
+
+        std::vector<std::string> familySubtypes;
+        familySubtypes = OpenMagnetics::get_shape_family_subtypes(family);
+
+        return familySubtypes;
+    }
+    catch (const std::exception &exc) {
+        return {"Exception: " + std::string{exc.what()}};
+    }
+}
+
 std::vector<std::string> get_available_wires(){
     return OpenMagnetics::get_wire_names();
 }
@@ -628,6 +679,10 @@ double calculate_inductance_from_number_turns_and_gapping(std::string coreData,
         return magnetizingInductance;
     }
     catch (const std::exception &exc) {
+        std::cout << coreData << std::endl;
+        std::cout << coilData << std::endl;
+        std::cout << operatingPointData << std::endl;
+        std::cout << modelsData << std::endl;
         std::cout << "Exception: " + std::string{exc.what()} << std::endl;
         return -1;
     }
@@ -2267,6 +2322,10 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_available_core_manufacturers", &get_available_core_manufacturers);
     function("get_available_core_shape_families", &get_available_core_shape_families);
     function("get_available_core_shapes", &get_available_core_shapes);
+    function("get_available_core_shapes_by_manufacturer", &get_available_core_shapes_by_manufacturer);
+    function("get_available_core_shapes_by_family", &get_available_core_shapes_by_family);
+    function("get_shape_family_dimensions", &get_shape_family_dimensions);
+    function("get_shape_family_subtypes", &get_shape_family_subtypes);
     function("get_available_wires", &get_available_wires);
     function("get_unique_wire_diameters", &get_unique_wire_diameters);
     function("get_available_wire_types", &get_available_wire_types);
