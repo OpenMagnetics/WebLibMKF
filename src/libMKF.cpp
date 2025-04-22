@@ -627,17 +627,22 @@ std::vector<std::string> get_available_wire_standards(){
 }
 
 std::string calculate_gap_reluctance(std::string coreGapData, std::string modelNameString){
-    std::string modelNameStringUpper = modelNameString;
-    std::transform(modelNameStringUpper.begin(), modelNameStringUpper.end(), modelNameStringUpper.begin(), ::toupper);
-    auto modelName = magic_enum::enum_cast<OpenMagnetics::ReluctanceModels>(modelNameStringUpper);
+    try {
+        std::string modelNameStringUpper = modelNameString;
+        std::transform(modelNameStringUpper.begin(), modelNameStringUpper.end(), modelNameStringUpper.begin(), ::toupper);
+        auto modelName = magic_enum::enum_cast<OpenMagnetics::ReluctanceModels>(modelNameStringUpper);
 
-    auto reluctanceModel = OpenMagnetics::ReluctanceModel::factory(modelName.value());
-    OpenMagnetics::CoreGap coreGap(json::parse(coreGapData));
+        auto reluctanceModel = OpenMagnetics::ReluctanceModel::factory(modelName.value());
+        OpenMagnetics::CoreGap coreGap(json::parse(coreGapData));
 
-    auto coreGapResult = reluctanceModel->get_gap_reluctance(coreGap);
-    json result;
-    to_json(result, coreGapResult);
-    return result.dump(4);
+        auto coreGapResult = reluctanceModel->get_gap_reluctance(coreGap);
+        json result;
+        to_json(result, coreGapResult);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
 }
 
 std::string get_gap_reluctance_model_information(){

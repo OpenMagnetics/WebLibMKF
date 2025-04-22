@@ -49,7 +49,7 @@ std::vector<std::string> get_available_core_shapes(){
 }
 
 std::vector<std::string> get_available_core_shapes_by_manufacturer(std::string manufacturer){
-    return OpenMagnetics::get_shape_names(manufacturer);
+    return OpenMagnetics::get_core_shapes_names(manufacturer);
 }
 
 std::string calculate_cross_referenced_core(std::string coreString, int numberTurns, std::string inputsString, int maximumNumberResults, std::string onlyManufacturer, bool useToroidalCores, bool useTwoPieceSetCores, bool useOnlyCoresInStock, bool keepMaterialConstant){
