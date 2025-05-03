@@ -2194,6 +2194,55 @@ std::string calculate_advanced_flyback_inputs(std::string flybackInputsString){
     }
 }
 
+std::vector<size_t> get_only_temperature_dependent_indexes(std::string permeabilityPointsString) {
+    try {
+        std::vector<std::string> permeabilityPointsStringVector = json::parse(permeabilityPointsString);
+        std::vector<OpenMagnetics::PermeabilityPoint> permeabilityPoints;
+        for (auto pointString : permeabilityPointsStringVector) {
+            OpenMagnetics::PermeabilityPoint point(json::parse(pointString));
+            permeabilityPoints.push_back(point);
+        }
+        return OpenMagnetics::InitialPermeability::get_only_temperature_dependent_indexes(permeabilityPoints);
+    }
+    catch (const std::exception &exc) {
+        std::cout << std::string{exc.what()} << std::endl;
+        return {0};
+    }
+}
+
+std::vector<size_t> get_only_frequency_dependent_indexes(std::string permeabilityPointsString) {
+    try {
+        std::vector<std::string> permeabilityPointsStringVector = json::parse(permeabilityPointsString);
+        std::vector<OpenMagnetics::PermeabilityPoint> permeabilityPoints;
+        for (auto pointString : permeabilityPointsStringVector) {
+            OpenMagnetics::PermeabilityPoint point(json::parse(pointString));
+            permeabilityPoints.push_back(point);
+        }
+        return OpenMagnetics::InitialPermeability::get_only_frequency_dependent_indexes(permeabilityPoints);
+    }
+    catch (const std::exception &exc) {
+        std::cout << std::string{exc.what()} << std::endl;
+        return {0};
+    }
+}
+
+std::vector<size_t> get_only_magnetic_field_dc_bias_dependent_indexes(std::string permeabilityPointsString) {
+    try {
+        std::vector<std::string> permeabilityPointsStringVector = json::parse(permeabilityPointsString);
+        std::vector<OpenMagnetics::PermeabilityPoint> permeabilityPoints;
+        for (auto pointString : permeabilityPointsStringVector) {
+            OpenMagnetics::PermeabilityPoint point(json::parse(pointString));
+            permeabilityPoints.push_back(point);
+        }
+        return OpenMagnetics::InitialPermeability::get_only_magnetic_field_dc_bias_dependent_indexes(permeabilityPoints);
+    }
+    catch (const std::exception &exc) {
+        std::cout << std::string{exc.what()} << std::endl;
+        return {0};
+    }
+}
+
+
 std::string get_settings() {
     try {
         auto settings = OpenMagnetics::Settings::GetInstance();
@@ -2411,6 +2460,9 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("calculate_leakage_inductance", &calculate_leakage_inductance);
     function("calculate_flyback_inputs", &calculate_flyback_inputs);
     function("calculate_advanced_flyback_inputs", &calculate_advanced_flyback_inputs);
+    function("get_only_temperature_dependent_indexes", &get_only_temperature_dependent_indexes);
+    function("get_only_frequency_dependent_indexes", &get_only_frequency_dependent_indexes);
+    function("get_only_magnetic_field_dc_bias_dependent_indexes", &get_only_magnetic_field_dc_bias_dependent_indexes);
     function("get_settings", &get_settings);
     function("set_settings", &set_settings);
     function("reset_settings", &reset_settings);
