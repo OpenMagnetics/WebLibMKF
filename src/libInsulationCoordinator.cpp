@@ -4,17 +4,18 @@
 
 #include <emscripten/emscripten.h>
 #include <emscripten/bind.h>
-#include "Insulation.h"
+#include "constructive_models/Insulation.h"
 #include <MAS.hpp>
-#include "InputsWrapper.h"
+#include "processors/Inputs.h"
 
 
+using namespace MAS;
 using namespace emscripten;
 using json = nlohmann::json;
 
 std::string calculate_insulation(std::string inputsString){
     auto insulationCoordinator = OpenMagnetics::InsulationCoordinator();
-    OpenMagnetics::InputsWrapper inputs(json::parse(inputsString), false);
+    OpenMagnetics::Inputs inputs(json::parse(inputsString), false);
 
     json result;
     try
@@ -39,7 +40,6 @@ std::string calculate_insulation(std::string inputsString){
     }
     return result.dump(4);
 }
-
 
 
 EMSCRIPTEN_BINDINGS(my_bindings) {

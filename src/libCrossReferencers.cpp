@@ -5,12 +5,12 @@
 #include <emscripten/emscripten.h>
 #include <emscripten/bind.h>
 #include <MAS.hpp>
-#include "Utils.h"
-#include "CoreWrapper.h"
-#include "InputsWrapper.h"
-#include "CoreCrossReferencer.h"
-#include "CoreMaterialCrossReferencer.h"
-#include "Settings.h"
+#include "support/Utils.h"
+#include "constructive_models/Core.h"
+#include "processors/Inputs.h"
+#include "advisers/CoreCrossReferencer.h"
+#include "advisers/CoreMaterialCrossReferencer.h"
+#include "support/Settings.h"
 
 
 using namespace emscripten;
@@ -37,7 +37,7 @@ std::vector<std::string> get_available_core_manufacturers(){
 
 std::vector<std::string> get_available_core_shape_families(){
     std::vector<std::string> families;
-    for (auto& family : magic_enum::enum_names<OpenMagnetics::CoreShapeFamily>()) {
+    for (auto& family : magic_enum::enum_names<MAS::CoreShapeFamily>()) {
         std::string familyString(family);
         families.push_back(familyString);
     }
@@ -53,8 +53,8 @@ std::vector<std::string> get_available_core_shapes_by_manufacturer(std::string m
 }
 
 std::string calculate_cross_referenced_core(std::string coreString, int numberTurns, std::string inputsString, int maximumNumberResults, std::string onlyManufacturer, bool useToroidalCores, bool useTwoPieceSetCores, bool useOnlyCoresInStock, bool keepMaterialConstant){
-    OpenMagnetics::CoreWrapper referenceCore(json::parse(coreString));
-    OpenMagnetics::InputsWrapper inputs(json::parse(inputsString));
+    OpenMagnetics::Core referenceCore(json::parse(coreString));
+    OpenMagnetics::Inputs inputs(json::parse(inputsString));
 
     OpenMagnetics::CoreCrossReferencer coreCrossReferencer;
     if (onlyManufacturer != "") {
@@ -65,7 +65,6 @@ std::string calculate_cross_referenced_core(std::string coreString, int numberTu
         coreCrossReferencer.set_limit(100);
     }
 
-    auto settings = OpenMagnetics::Settings::GetInstance();
     if (useToroidalCores != settings->get_use_toroidal_cores() || useTwoPieceSetCores != settings->get_use_concentric_cores() || useOnlyCoresInStock != settings->get_use_only_cores_in_stock()) {
         OpenMagnetics::clear_databases();
         settings->set_use_toroidal_cores(true);
@@ -87,7 +86,7 @@ std::string calculate_cross_referenced_core(std::string coreString, int numberTu
         std::string name = core.get_name().value();
 
         json coreJson;
-        OpenMagnetics::to_json(coreJson, core);
+        MAS::to_json(coreJson, core);
         results["cores"].push_back(coreJson);
         results["scorings"].push_back(scoring);
 
@@ -119,7 +118,6 @@ std::string calculate_cross_referenced_core_material(std::string materialName, d
     if (onlyManufacturer != "") {
         coreMaterialCrossReferencer.use_only_manufacturer(onlyManufacturer);
     }
-    auto settings = OpenMagnetics::Settings::GetInstance();
     if (useOnlyCoresInStock != settings->get_use_only_cores_in_stock()) {
         OpenMagnetics::clear_databases();
         settings->set_use_only_cores_in_stock(useOnlyCoresInStock);
@@ -141,7 +139,7 @@ std::string calculate_cross_referenced_core_material(std::string materialName, d
         std::string name = coreMaterial.get_name();
 
         json coreMaterialJson;
-        OpenMagnetics::to_json(coreMaterialJson, coreMaterial);
+        MAS::to_json(coreMaterialJson, coreMaterial);
         results["coreMaterials"].push_back(coreMaterialJson);
         results["scorings"].push_back(scoring);
 
@@ -167,14 +165,14 @@ std::string calculate_cross_referenced_core_material(std::string materialName, d
 }
 
 std::string calculate_core_data(std::string coreDataString, bool includeMaterialData){
-    OpenMagnetics::CoreWrapper core(json::parse(coreDataString), includeMaterialData);
+    OpenMagnetics::Core core(json::parse(coreDataString), includeMaterialData);
     json result;
     to_json(result, core);
     return result.dump(4);
 }
 
 std::string get_core_temperature_dependant_parameters(std::string coreData, double temperature){
-    OpenMagnetics::CoreWrapper core(json::parse(coreData));
+    OpenMagnetics::Core core(json::parse(coreData));
     json result;
 
     result["magneticFluxDensitySaturation"] = core.get_magnetic_flux_density_saturation(temperature, false);
@@ -188,15 +186,15 @@ std::string get_core_temperature_dependant_parameters(std::string coreData, doub
 }
 
 std::string get_core_material_temperature_dependant_parameters(std::string coreMaterialString, double temperature){
-    OpenMagnetics::CoreMaterial coreMaterial(json::parse(coreMaterialString));
+    MAS::CoreMaterial coreMaterial(json::parse(coreMaterialString));
     json result;
 
-    result["magneticFluxDensitySaturation"] = OpenMagnetics::CoreWrapper::get_magnetic_flux_density_saturation(coreMaterial, temperature, false);
-    result["magneticFieldStrengthSaturation"] = OpenMagnetics::CoreWrapper::get_magnetic_field_strength_saturation(coreMaterial, temperature);
-    result["initialPermeability"] = OpenMagnetics::CoreWrapper::get_initial_permeability(coreMaterial, temperature);
-    result["resistivity"] = OpenMagnetics::CoreWrapper::get_resistivity(coreMaterial, temperature);
-    result["remanence"] = OpenMagnetics::CoreWrapper::get_remanence(coreMaterial, temperature);
-    result["coerciveForce"] = OpenMagnetics::CoreWrapper::get_coercive_force(coreMaterial, temperature);
+    result["magneticFluxDensitySaturation"] = OpenMagnetics::Core::get_magnetic_flux_density_saturation(coreMaterial, temperature, false);
+    result["magneticFieldStrengthSaturation"] = OpenMagnetics::Core::get_magnetic_field_strength_saturation(coreMaterial, temperature);
+    result["initialPermeability"] = OpenMagnetics::Core::get_initial_permeability(coreMaterial, temperature);
+    result["resistivity"] = OpenMagnetics::Core::get_resistivity(coreMaterial, temperature);
+    result["remanence"] = OpenMagnetics::Core::get_remanence(coreMaterial, temperature);
+    result["coerciveForce"] = OpenMagnetics::Core::get_coercive_force(coreMaterial, temperature);
 
     return result.dump(4);
 }

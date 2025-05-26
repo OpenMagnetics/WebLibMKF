@@ -5,54 +5,92 @@
 #include <emscripten/emscripten.h>
 #include <emscripten/bind.h>
 #include "Constants.h"
-#include "Insulation.h"
+#include "constructive_models/Insulation.h"
 #include "Defaults.h"
 #include <MAS.hpp>
-#include "NumberTurns.h"
-#include "MagneticSimulator.h"
-#include "WindingOhmicLosses.h"
-#include "WindingSkinEffectLosses.h"
-#include "WireAdviser.h"
-#include "CoilAdviser.h"
-#include "CoreAdviser.h"
-#include "MagneticAdviser.h"
-#include "InputsWrapper.h"
-#include "CoreWrapper.h"
-#include "Reluctance.h"
-#include "LeakageInductance.h"
-#include "MagnetizingInductance.h"
-#include "Topology.h"
-#include "CoreLosses.h"
-#include "CoreTemperature.h"
-#include "Utils.h"
-#include "Sweeper.h"
-#include "CircuitSimulatorInterface.h"
+#include "constructive_models/Coil.h"
+#include "constructive_models/NumberTurns.h"
+#include "constructive_models/CorePiece.h"
+#include "processors/MagneticSimulator.h"
+#include "physical_models/WindingOhmicLosses.h"
+#include "physical_models/WindingSkinEffectLosses.h"
+#include "advisers/WireAdviser.h"
+#include "advisers/CoilAdviser.h"
+#include "advisers/CoreAdviser.h"
+#include "advisers/MagneticAdviser.h"
+#include "processors/Inputs.h"
+#include "constructive_models/Core.h"
+#include "physical_models/Reluctance.h"
+#include "physical_models/LeakageInductance.h"
+#include "physical_models/MagnetizingInductance.h"
+#include "converter_models/Topology.h"
+#include "physical_models/CoreLosses.h"
+#include "physical_models/CoreTemperature.h"
+#include "support/Utils.h"
+#include "processors/Sweeper.h"
+#include "processors/CircuitSimulatorInterface.h"
 
 
+using namespace MAS;
 using namespace emscripten;
 using json = nlohmann::json;
 using ordered_json = nlohmann::ordered_json;
 
 std::map<std::string, double> get_constants() {
-    auto constants = OpenMagnetics::Constants();
     std::map<std::string, double> constantsMap;
     constantsMap["residualGap"] = constants.residualGap;
     constantsMap["minimumNonResidualGap"] = constants.minimumNonResidualGap;
     constantsMap["vacuumPermeability"] = constants.vacuumPermeability;
+    constantsMap["vacuumPermittivity"] = constants.vacuumPermittivity;
+    constantsMap["quasiStaticFrequencyLimit"] = constants.quasiStaticFrequencyLimit;
+    constantsMap["spacerProtudingPercentage"] = constants.spacerProtudingPercentage;
+    constantsMap["coilPainterScale"] = constants.coilPainterScale;
+    constantsMap["numberPointsSampledWaveforms"] = constants.numberPointsSampledWaveforms;
+    constantsMap["minimumDistributedFringingFactor"] = constants.minimumDistributedFringingFactor;
+    constantsMap["maximumDistributedFringingFactor"] = constants.maximumDistributedFringingFactor;
+    constantsMap["initialGapLengthForSearching"] = constants.initialGapLengthForSearching;
+    constantsMap["roshenMagneticFieldStrengthStep"] = constants.roshenMagneticFieldStrengthStep;
+    constantsMap["foilToSectionMargin"] = constants.foilToSectionMargin;
+    constantsMap["planarToSectionMargin"] = constants.planarToSectionMargin;
     return constantsMap;
+}
+
+std::map<std::string, double> get_defaults() {
+    std::map<std::string, double> defaultsMap;
+    defaultsMap["maximumProportionMagneticFluxDensitySaturation"] = defaults.maximumProportionMagneticFluxDensitySaturation;
+    defaultsMap["coreAdviserFrequencyReference"] = defaults.coreAdviserFrequencyReference;
+    defaultsMap["coreAdviserMagneticFluxDensityReference"] = defaults.coreAdviserMagneticFluxDensityReference;
+    defaultsMap["coreAdviserThresholdValidity"] = defaults.coreAdviserThresholdValidity;
+    defaultsMap["coreAdviserMaximumCoreTemperature"] = defaults.coreAdviserMaximumCoreTemperature;
+    defaultsMap["coreAdviserMaximumPercentagePowerCoreLosses"] = defaults.coreAdviserMaximumPercentagePowerCoreLosses;
+    defaultsMap["coreAdviserMaximumMagneticsAfterFiltering"] = defaults.coreAdviserMaximumMagneticsAfterFiltering;
+    defaultsMap["coreAdviserMaximumNumberStacks"] = defaults.coreAdviserMaximumNumberStacks;
+    defaultsMap["maximumCurrentDensity"] = defaults.maximumCurrentDensity;
+    defaultsMap["maximumEffectiveCurrentDensity"] = defaults.maximumEffectiveCurrentDensity;
+    defaultsMap["maximumNumberParallels"] = defaults.maximumNumberParallels;
+    defaultsMap["magneticFluxDensitySaturation"] = defaults.magneticFluxDensitySaturation;
+    defaultsMap["magnetizingInductanceThresholdValidity"] = defaults.magnetizingInductanceThresholdValidity;
+    defaultsMap["harmonicAmplitudeThreshold"] = defaults.harmonicAmplitudeThreshold;
+    defaultsMap["ambientTemperature"] = defaults.ambientTemperature;
+    defaultsMap["measurementFrequency"] = defaults.measurementFrequency;
+    defaultsMap["magneticFieldMirroringDimension"] = defaults.magneticFieldMirroringDimension;
+    defaultsMap["maximumCoilPattern"] = defaults.maximumCoilPattern;
+    defaultsMap["overlappingFactorSurroundingTurns"] = defaults.overlappingFactorSurroundingTurns;
+
+    return defaultsMap;
 }
 
 std::string standardize_signal_descriptor(std::string signalDescriptorString, double frequency) {
     try {
-        OpenMagnetics::SignalDescriptor signalDescriptor(json::parse(signalDescriptorString));
+        SignalDescriptor signalDescriptor(json::parse(signalDescriptorString));
 
-        auto standardSignalDescriptor = OpenMagnetics::InputsWrapper::standardize_waveform(signalDescriptor, frequency);
+        auto standardSignalDescriptor = OpenMagnetics::Inputs::standardize_waveform(signalDescriptor, frequency);
         if (standardSignalDescriptor.get_harmonics()) {
-            auto processed = OpenMagnetics::InputsWrapper::calculate_processed_data(standardSignalDescriptor.get_harmonics().value(), standardSignalDescriptor.get_waveform().value(), true);
+            auto processed = OpenMagnetics::Inputs::calculate_processed_data(standardSignalDescriptor.get_harmonics().value(), standardSignalDescriptor.get_waveform().value(), true);
             standardSignalDescriptor.set_processed(processed);
         }
         else {
-            auto processed = OpenMagnetics::InputsWrapper::calculate_processed_data(standardSignalDescriptor.get_waveform().value(), frequency, true);
+            auto processed = OpenMagnetics::Inputs::calculate_processed_data(standardSignalDescriptor.get_waveform().value(), frequency, true);
             standardSignalDescriptor.set_processed(processed);
         }
 
@@ -67,8 +105,8 @@ std::string standardize_signal_descriptor(std::string signalDescriptorString, do
 
 std::vector<size_t> get_main_harmonic_indexes(std::string harmonicsString, double windingLossesHarmonicAmplitudeThreshold, int mainHarmonicIndex) {
     try {
-        OpenMagnetics::Harmonics harmonics;
-        OpenMagnetics::from_json(json::parse(harmonicsString), harmonics);
+        Harmonics harmonics;
+        from_json(json::parse(harmonicsString), harmonics);
 
         std::vector<size_t> mainHarmonicIndexes;
         if (mainHarmonicIndex == -1) {
@@ -88,7 +126,7 @@ std::vector<size_t> get_main_harmonic_indexes(std::string harmonicsString, doubl
 
 std::vector<size_t> get_excitation_harmonic_indexes(std::string excitationString, double windingLossesHarmonicAmplitudeThreshold) {
     try {
-        OpenMagnetics::OperatingPointExcitation excitation(json::parse(excitationString));
+        OperatingPointExcitation excitation(json::parse(excitationString));
 
         auto mainHarmonicIndexes = OpenMagnetics::get_excitation_harmonic_indexes(excitation, windingLossesHarmonicAmplitudeThreshold);
 
@@ -102,11 +140,11 @@ std::vector<size_t> get_excitation_harmonic_indexes(std::string excitationString
 
 std::string calculate_harmonics(std::string waveformString, double frequency) {
     try {
-        OpenMagnetics::Waveform waveform;
-        OpenMagnetics::from_json(json::parse(waveformString), waveform);
+        Waveform waveform;
+        from_json(json::parse(waveformString), waveform);
 
-        auto sampledCurrentWaveform = OpenMagnetics::InputsWrapper::calculate_sampled_waveform(waveform, frequency);
-        auto harmonics = OpenMagnetics::InputsWrapper::calculate_harmonics_data(sampledCurrentWaveform, frequency);
+        auto sampledCurrentWaveform = OpenMagnetics::Inputs::calculate_sampled_waveform(waveform, frequency);
+        auto harmonics = OpenMagnetics::Inputs::calculate_harmonics_data(sampledCurrentWaveform, frequency);
 
         json result;
         to_json(result, harmonics);
@@ -119,12 +157,12 @@ std::string calculate_harmonics(std::string waveformString, double frequency) {
 
 std::string calculate_processed(std::string harmonicsString, std::string waveformString) {
     try {
-        OpenMagnetics::Waveform waveform;
-        OpenMagnetics::Harmonics harmonics;
-        OpenMagnetics::from_json(json::parse(waveformString), waveform);
-        OpenMagnetics::from_json(json::parse(harmonicsString), harmonics);
+        Waveform waveform;
+        Harmonics harmonics;
+        from_json(json::parse(waveformString), waveform);
+        from_json(json::parse(harmonicsString), harmonics);
 
-        auto processed = OpenMagnetics::InputsWrapper::calculate_processed_data(harmonics, waveform, true);
+        auto processed = OpenMagnetics::Inputs::calculate_processed_data(harmonics, waveform, true);
 
         json result;
         to_json(result, processed);
@@ -139,21 +177,21 @@ std::string calculate_processed(std::string harmonicsString, std::string wavefor
 
 std::string calculate_shape_data(std::string shapeString){
     try {
-        OpenMagnetics::CoreShape shape(json::parse(shapeString));
-        OpenMagnetics::CoreWrapper core;
-        OpenMagnetics::CoreFunctionalDescription coreFunctionalDescription;
+        CoreShape shape(json::parse(shapeString));
+        OpenMagnetics::Core core;
+        CoreFunctionalDescription coreFunctionalDescription;
         coreFunctionalDescription.set_shape(shape);
         coreFunctionalDescription.set_material("Dummy");
         coreFunctionalDescription.set_number_stacks(1);
-        if (shape.get_magnetic_circuit() == OpenMagnetics::MagneticCircuit::OPEN) {
-            coreFunctionalDescription.set_type(OpenMagnetics::CoreType::TWO_PIECE_SET);
+        if (shape.get_magnetic_circuit() == MagneticCircuit::OPEN) {
+            coreFunctionalDescription.set_type(CoreType::TWO_PIECE_SET);
         }
         else {
-            if (shape.get_family() == OpenMagnetics::CoreShapeFamily::T) {
-                coreFunctionalDescription.set_type(OpenMagnetics::CoreType::TOROIDAL);
+            if (shape.get_family() == CoreShapeFamily::T) {
+                coreFunctionalDescription.set_type(CoreType::TOROIDAL);
             }
             else {
-                coreFunctionalDescription.set_type(OpenMagnetics::CoreType::CLOSED_SHAPE);
+                coreFunctionalDescription.set_type(CoreType::CLOSED_SHAPE);
             }
         }
         core.set_functional_description(coreFunctionalDescription);
@@ -170,7 +208,7 @@ std::string calculate_shape_data(std::string shapeString){
 
 std::string calculate_core_data(std::string coreDataString, bool includeMaterialData){
     try {
-        OpenMagnetics::CoreWrapper core(json::parse(coreDataString), includeMaterialData, true);
+        OpenMagnetics::Core core(json::parse(coreDataString), includeMaterialData, true);
 
         json result;
         to_json(result, core);
@@ -183,19 +221,19 @@ std::string calculate_core_data(std::string coreDataString, bool includeMaterial
 
 std::string calculate_bobbin_data(std::string magneticString){
     try {
-        OpenMagnetics::MagneticWrapper magnetic(json::parse(magneticString));
+        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
 
         auto optionalBobbin = magnetic.get_coil().get_bobbin();
-        OpenMagnetics::BobbinWrapper bobbin;
+        OpenMagnetics::Bobbin bobbin;
 
         if (std::holds_alternative<std::string>(optionalBobbin)) {
             auto bobbinString = std::get<std::string>(optionalBobbin);
             if (bobbinString == "Dummy") {
-                bobbin = OpenMagnetics::BobbinWrapper::create_quick_bobbin(magnetic.get_mutable_core());
+                bobbin = OpenMagnetics::Bobbin::create_quick_bobbin(magnetic.get_mutable_core());
             }
         }
         else {
-            bobbin = OpenMagnetics::BobbinWrapper(std::get<std::string>(optionalBobbin));
+            bobbin = OpenMagnetics::Bobbin(std::get<std::string>(optionalBobbin));
             bobbin.process_data();
         }
 
@@ -210,7 +248,7 @@ std::string calculate_bobbin_data(std::string magneticString){
 
 std::string get_wire_data(std::string coilFunctionalDescriptionDataString){
     OpenMagnetics::CoilFunctionalDescription coilFunctionalDescription(json::parse(coilFunctionalDescriptionDataString));
-    auto wire = OpenMagnetics::CoilWrapper::resolve_wire(coilFunctionalDescription);
+    auto wire = OpenMagnetics::Coil::resolve_wire(coilFunctionalDescription);
     json result;
     to_json(result, wire);
     return result.dump(4);
@@ -273,49 +311,49 @@ std::string get_wire_data_by_standard_name(std::string standardName){
 }
 
 double get_wire_outer_width_rectangular(double conductingWidth, int grade, std::string wireStandardString){
-    OpenMagnetics::WireStandard wireStandard;
-    OpenMagnetics::from_json(wireStandardString, wireStandard);
-    return OpenMagnetics::WireWrapper::get_outer_width_rectangular(conductingWidth, grade, wireStandard);
+    WireStandard wireStandard;
+    from_json(wireStandardString, wireStandard);
+    return OpenMagnetics::Wire::get_outer_width_rectangular(conductingWidth, grade, wireStandard);
 }
 
 double get_wire_outer_height_rectangular(double conductingHeight, int grade, std::string wireStandardString){
-    OpenMagnetics::WireStandard wireStandard;
-    OpenMagnetics::from_json(wireStandardString, wireStandard);
-    return OpenMagnetics::WireWrapper::get_outer_height_rectangular(conductingHeight, grade, wireStandard);
+    WireStandard wireStandard;
+    from_json(wireStandardString, wireStandard);
+    return OpenMagnetics::Wire::get_outer_height_rectangular(conductingHeight, grade, wireStandard);
 }
 
 double get_wire_outer_diameter_bare_litz(double conductingDiameter, int numberConductors, int grade, std::string wireStandardString) {
-    OpenMagnetics::WireStandard wireStandard;
-    OpenMagnetics::from_json(wireStandardString, wireStandard);
-    return OpenMagnetics::WireWrapper::get_outer_diameter_bare_litz(conductingDiameter, numberConductors, grade, wireStandard);
+    WireStandard wireStandard;
+    from_json(wireStandardString, wireStandard);
+    return OpenMagnetics::Wire::get_outer_diameter_bare_litz(conductingDiameter, numberConductors, grade, wireStandard);
 }
 
 double get_wire_outer_diameter_served_litz(double conductingDiameter, int numberConductors, int grade, int numberLayers, std::string wireStandardString) {
-    OpenMagnetics::WireStandard wireStandard;
-    OpenMagnetics::from_json(wireStandardString, wireStandard);
-    return OpenMagnetics::WireWrapper::get_outer_diameter_served_litz(conductingDiameter, numberConductors, grade, numberLayers, wireStandard);
+    WireStandard wireStandard;
+    from_json(wireStandardString, wireStandard);
+    return OpenMagnetics::Wire::get_outer_diameter_served_litz(conductingDiameter, numberConductors, grade, numberLayers, wireStandard);
 }
 
 double get_wire_outer_diameter_insulated_litz(double conductingDiameter, int numberConductors, int numberLayers, double thicknessLayers, int grade, std::string wireStandardString) {
-    OpenMagnetics::WireStandard wireStandard;
-    OpenMagnetics::from_json(wireStandardString, wireStandard);
-    return OpenMagnetics::WireWrapper::get_outer_diameter_insulated_litz(conductingDiameter, numberConductors, numberLayers, thicknessLayers, grade, wireStandard);
+    WireStandard wireStandard;
+    from_json(wireStandardString, wireStandard);
+    return OpenMagnetics::Wire::get_outer_diameter_insulated_litz(conductingDiameter, numberConductors, numberLayers, thicknessLayers, grade, wireStandard);
 }
 
 double get_wire_outer_diameter_enamelled_round(double conductingDiameter, int grade, std::string wireStandardString) {
-    OpenMagnetics::WireStandard wireStandard;
-    OpenMagnetics::from_json(wireStandardString, wireStandard);
-    return OpenMagnetics::WireWrapper::get_outer_diameter_round(conductingDiameter, grade, wireStandard);
+    WireStandard wireStandard;
+    from_json(wireStandardString, wireStandard);
+    return OpenMagnetics::Wire::get_outer_diameter_round(conductingDiameter, grade, wireStandard);
 }
 
 double get_wire_outer_diameter_insulated_round(double conductingDiameter, int numberLayers, double thicknessLayers, std::string wireStandardString) {
-    OpenMagnetics::WireStandard wireStandard;
-    OpenMagnetics::from_json(wireStandardString, wireStandard);
-    return OpenMagnetics::WireWrapper::get_outer_diameter_round(conductingDiameter, numberLayers, thicknessLayers, wireStandard);
+    WireStandard wireStandard;
+    from_json(wireStandardString, wireStandard);
+    return OpenMagnetics::Wire::get_outer_diameter_round(conductingDiameter, numberLayers, thicknessLayers, wireStandard);
 }
 
 std::vector<double> get_outer_dimensions(std::string wireString) {
-    OpenMagnetics::WireWrapper wire(json::parse(wireString));
+    OpenMagnetics::Wire wire(json::parse(wireString));
     return {wire.get_maximum_outer_width(), wire.get_maximum_outer_height()};
 }
 
@@ -331,7 +369,7 @@ std::string get_strand_by_standard_name(std::string standardName){
             continue;
         }
         // We are looking for enamelled wires for strands
-        if (coating->get_type() != OpenMagnetics::InsulationWireCoatingType::ENAMELLED) {
+        if (coating->get_type() != InsulationWireCoatingType::ENAMELLED) {
             continue;
         }
 
@@ -368,11 +406,11 @@ double get_wire_conducting_diameter_by_standard_name(std::string standardName){
 
 std::string get_equivalent_wire(std::string oldWireString, std::string newWireTypeString, double effectivefrequency){
     try {
-        OpenMagnetics::WireWrapper oldWire(json::parse(oldWireString));
-        OpenMagnetics::WireType newWireType;
+        OpenMagnetics::Wire oldWire(json::parse(oldWireString));
+        WireType newWireType;
         from_json(json::parse(newWireTypeString), newWireType);
 
-        auto newWire = OpenMagnetics::WireWrapper::get_equivalent_wire(oldWire, newWireType, effectivefrequency);
+        auto newWire = OpenMagnetics::Wire::get_equivalent_wire(oldWire, newWireType, effectivefrequency);
 
         json result;
         to_json(result, newWire);
@@ -387,7 +425,7 @@ std::string get_equivalent_wire(std::string oldWireString, std::string newWireTy
 
 std::string get_coating_label(std::string wireString){
     try {
-        OpenMagnetics::WireWrapper wire(json::parse(wireString));
+        OpenMagnetics::Wire wire(json::parse(wireString));
         auto coatingLabel = wire.encode_coating_label();
         return coatingLabel;
     }
@@ -407,7 +445,7 @@ std::string get_coating_label(std::string wireString){
 
 std::string get_wire_coating_by_label(std::string label){
     auto wires = OpenMagnetics::get_wires();
-    OpenMagnetics::InsulationWireCoating insulationWireCoating;
+    InsulationWireCoating insulationWireCoating;
     for (auto wire : wires) {
         auto coatingLabel = wire.encode_coating_label();
         if (coatingLabel == label) {
@@ -415,7 +453,7 @@ std::string get_wire_coating_by_label(std::string label){
                 insulationWireCoating = wire.resolve_coating().value();
             }
             else {
-                insulationWireCoating.set_type(OpenMagnetics::InsulationWireCoatingType::BARE);
+                insulationWireCoating.set_type(InsulationWireCoatingType::BARE);
             }
             break;
         }
@@ -426,7 +464,7 @@ std::string get_wire_coating_by_label(std::string label){
 }
 
 std::vector<std::string> get_coating_labels_by_type(std::string wireTypeString){
-    OpenMagnetics::WireType wireType(json::parse(wireTypeString));
+    WireType wireType(json::parse(wireTypeString));
 
     auto wires = OpenMagnetics::get_wires(wireType);
 
@@ -444,7 +482,7 @@ std::vector<std::string> get_coating_labels_by_type(std::string wireTypeString){
 std::string load_core_data(std::string coresString){
     json result = json::array();
     for (auto& coreJson : json::parse(coresString)) {
-        OpenMagnetics::CoreWrapper core(coreJson, false);
+        OpenMagnetics::Core core(coreJson, false);
         json aux;
         to_json(aux, core);
         result.push_back(aux);
@@ -461,7 +499,7 @@ std::string get_material_data(std::string materialName){
 }
 
 std::string get_core_temperature_dependant_parameters(std::string coreData, double temperature){
-    OpenMagnetics::CoreWrapper core(json::parse(coreData));
+    OpenMagnetics::Core core(json::parse(coreData));
     json result;
 
     result["magneticFluxDensitySaturation"] = core.get_magnetic_flux_density_saturation(temperature, false);
@@ -525,7 +563,7 @@ std::vector<std::string> get_available_core_shapes_by_manufacturer(std::string m
 
 std::vector<std::string> get_available_core_shapes_by_family(std::string familyString){
     try {
-        OpenMagnetics::CoreShapeFamily family;
+        CoreShapeFamily family;
         from_json(familyString, family);
          
         return OpenMagnetics::get_shape_names(family);
@@ -537,7 +575,7 @@ std::vector<std::string> get_available_core_shapes_by_family(std::string familyS
 
 std::vector<std::string> get_shape_family_dimensions(std::string familyString, std::string familySubtype) {
     try {
-        OpenMagnetics::CoreShapeFamily family;
+        CoreShapeFamily family;
         from_json(familyString, family);
 
         std::vector<std::string> dimensions;
@@ -557,7 +595,7 @@ std::vector<std::string> get_shape_family_dimensions(std::string familyString, s
 
 std::vector<std::string> get_shape_family_subtypes(std::string familyString) {
     try {
-        OpenMagnetics::CoreShapeFamily family;
+        CoreShapeFamily family;
         from_json(familyString, family);
 
         std::vector<std::string> familySubtypes;
@@ -576,9 +614,9 @@ std::vector<std::string> get_available_wires(){
 
 std::vector<std::string> get_unique_wire_diameters(std::string wireStandardString){
     try {
-        OpenMagnetics::WireStandard wireStandard(json::parse(wireStandardString));
+        WireStandard wireStandard(json::parse(wireStandardString));
 
-        auto wires = OpenMagnetics::get_wires(OpenMagnetics::WireType::ROUND, wireStandard);
+        auto wires = OpenMagnetics::get_wires(WireType::ROUND, wireStandard);
 
         std::vector<std::string> uniqueStandardName;
         for (auto wire : wires) {
@@ -601,13 +639,13 @@ std::vector<std::string> get_unique_wire_diameters(std::string wireStandardStrin
 std::vector<std::string> get_available_wire_types(){
     std::vector<std::string> wireTypes;
 
-    for (auto [value, name] : magic_enum::enum_entries<OpenMagnetics::WireType>()) {
+    for (auto [value, name] : magic_enum::enum_entries<WireType>()) {
         json wireTypeString;
-        if (value == OpenMagnetics::WireType::PLANAR) {
+        if (value == WireType::PLANAR) {
             // TODO Add support for planar
             continue;
         }
-        OpenMagnetics::to_json(wireTypeString, value);
+        to_json(wireTypeString, value);
         wireTypes.push_back(wireTypeString);
     }
 
@@ -617,9 +655,9 @@ std::vector<std::string> get_available_wire_types(){
 std::vector<std::string> get_available_wire_standards(){
     std::vector<std::string> wireStandards;
 
-    for (auto [value, name] : magic_enum::enum_entries<OpenMagnetics::WireStandard>()) {
+    for (auto [value, name] : magic_enum::enum_entries<WireStandard>()) {
         json wireStandardString;
-        OpenMagnetics::to_json(wireStandardString, value);
+        to_json(wireStandardString, value);
         wireStandards.push_back(wireStandardString);
     }
 
@@ -633,7 +671,7 @@ std::string calculate_gap_reluctance(std::string coreGapData, std::string modelN
         auto modelName = magic_enum::enum_cast<OpenMagnetics::ReluctanceModels>(modelNameStringUpper);
 
         auto reluctanceModel = OpenMagnetics::ReluctanceModel::factory(modelName.value());
-        OpenMagnetics::CoreGap coreGap(json::parse(coreGapData));
+        CoreGap coreGap(json::parse(coreGapData));
 
         auto coreGapResult = reluctanceModel->get_gap_reluctance(coreGap);
         json result;
@@ -659,8 +697,8 @@ double calculate_inductance_from_number_turns_and_gapping(std::string coreData,
                                                           std::string operatingPointData,
                                                           std::string modelsData){
     try {
-        OpenMagnetics::CoreWrapper core(json::parse(coreData));
-        OpenMagnetics::CoilWrapper coil(json::parse(coilData), false);
+        OpenMagnetics::Core core(json::parse(coreData));
+        OpenMagnetics::Coil coil(json::parse(coilData), false);
 
         std::map<std::string, std::string> models = json::parse(modelsData).get<std::map<std::string, std::string>>();
 
@@ -674,7 +712,7 @@ double calculate_inductance_from_number_turns_and_gapping(std::string coreData,
         OpenMagnetics::MagnetizingInductance magnetizingInductanceObj(reluctanceModelName);
         double magnetizingInductance;
         if (operatingPointData != "") {
-            OpenMagnetics::OperatingPoint operatingPoint(json::parse(operatingPointData));
+            OperatingPoint operatingPoint(json::parse(operatingPointData));
             magnetizingInductance = magnetizingInductanceObj.calculate_inductance_from_number_turns_and_gapping(core, coil, &operatingPoint).get_magnetizing_inductance().get_nominal().value();
         }
         else {
@@ -697,8 +735,8 @@ double calculate_inductance_from_number_turns_and_gapping(std::string coreData,
 double calculate_number_turns_from_gapping_and_inductance(std::string coreData,
                                                           std::string inputsData,    
                                                           std::string modelsData){
-    OpenMagnetics::CoreWrapper core(json::parse(coreData));
-    OpenMagnetics::InputsWrapper inputs(json::parse(inputsData));
+    OpenMagnetics::Core core(json::parse(coreData));
+    OpenMagnetics::Inputs inputs(json::parse(inputsData));
 
     std::map<std::string, std::string> models = json::parse(modelsData).get<std::map<std::string, std::string>>();
     
@@ -722,9 +760,9 @@ std::string calculate_gapping_from_number_turns_and_inductance(std::string coreD
                                                                std::string gappingTypeString,
                                                                int decimals,
                                                                std::string modelsData){
-    OpenMagnetics::CoreWrapper core(json::parse(coreData));
-    OpenMagnetics::CoilWrapper coil(json::parse(coilData), false);
-    OpenMagnetics::InputsWrapper inputs(json::parse(inputsData));
+    OpenMagnetics::Core core(json::parse(coreData));
+    OpenMagnetics::Coil coil(json::parse(coilData), false);
+    OpenMagnetics::Inputs inputs(json::parse(inputsData));
 
     std::map<std::string, std::string> models = json::parse(modelsData).get<std::map<std::string, std::string>>();
     OpenMagnetics::GappingType gappingType = magic_enum::enum_cast<OpenMagnetics::GappingType>(gappingTypeString).value();
@@ -737,7 +775,7 @@ std::string calculate_gapping_from_number_turns_and_inductance(std::string coreD
     }
 
     OpenMagnetics::MagnetizingInductance magnetizingInductanceObj(reluctanceModelName);
-    std::vector<OpenMagnetics::CoreGap> gapping = magnetizingInductanceObj.calculate_gapping_from_number_turns_and_inductance(core,
+    std::vector<CoreGap> gapping = magnetizingInductanceObj.calculate_gapping_from_number_turns_and_inductance(core,
                                                                                                        coil,
                                                                                                        &inputs,
                                                                                                        gappingType,
@@ -764,18 +802,18 @@ std::string calculate_core_losses(std::string coreData,
  
     try {
 
-        OpenMagnetics::CoreWrapper core(json::parse(coreData));
-        OpenMagnetics::CoilWrapper coil(json::parse(coilData), false);
+        OpenMagnetics::Core core(json::parse(coreData));
+        OpenMagnetics::Coil coil(json::parse(coilData), false);
 
         OpenMagnetics::MagnetizingInductance magnetizingInductanceModel;
         double magnetizingInductance = magnetizingInductanceModel.calculate_inductance_from_number_turns_and_gapping(core, coil).get_magnetizing_inductance().get_nominal().value();
 
-        OpenMagnetics::InputsWrapper inputs(json::parse(inputsData), true, magnetizingInductance);
+        OpenMagnetics::Inputs inputs(json::parse(inputsData), true, magnetizingInductance);
         auto operatingPoint = inputs.get_operating_point(operatingPointIndex);
-        OpenMagnetics::OperatingPointExcitation excitation = operatingPoint.get_excitations_per_winding()[0];
+        OperatingPointExcitation excitation = operatingPoint.get_excitations_per_winding()[0];
         // double magnetizingInductance = OpenMagnetics::resolve_dimensional_values(inputs.get_design_requirements().get_magnetizing_inductance());
         if (!excitation.get_current()) {
-            auto magnetizingCurrent = OpenMagnetics::InputsWrapper::calculate_magnetizing_current(excitation, magnetizingInductance, true, 0.0);
+            auto magnetizingCurrent = OpenMagnetics::Inputs::calculate_magnetizing_current(excitation, magnetizingInductance, true, 0.0);
             excitation.set_current(magnetizingCurrent);
             operatingPoint.get_mutable_excitations_per_winding()[0] = excitation;
         }
@@ -803,7 +841,7 @@ std::string calculate_core_losses(std::string coreData,
             coreTemperatureModelName = magic_enum::enum_cast<OpenMagnetics::CoreTemperatureModels>(modelNameStringUpper).value();
         }
 
-        OpenMagnetics::MagneticWrapper magnetic;
+        OpenMagnetics::Magnetic magnetic;
         magnetic.set_core(core);
         magnetic.set_coil(coil);
 
@@ -821,8 +859,8 @@ std::string calculate_core_losses(std::string coreData,
 
         result["magneticFluxDensityPeak"] = magneticFluxDensity.get_processed().value().get_peak().value();
 
-        double frequency = OpenMagnetics::InputsWrapper::get_switching_frequency(excitation);
-        double magneticFluxDensityAcPeakToPeak = OpenMagnetics::InputsWrapper::get_magnetic_flux_density_peak_to_peak(excitation, frequency);
+        double frequency = OpenMagnetics::Inputs::get_switching_frequency(excitation);
+        double magneticFluxDensityAcPeakToPeak = OpenMagnetics::Inputs::get_magnetic_flux_density_peak_to_peak(excitation, frequency);
         result["magneticFluxDensityAcPeak"] = magneticFluxDensityAcPeakToPeak / 2;
         result["voltageRms"] = operatingPoint.get_mutable_excitations_per_winding()[0].get_voltage().value().get_processed().value().get_rms().value();
         result["currentRms"] = operatingPoint.get_mutable_excitations_per_winding()[0].get_current().value().get_processed().value().get_rms().value();
@@ -859,9 +897,9 @@ std::string get_core_temperature_model_information(){
 }
 
 std::string calculate_induced_voltage(std::string excitationString, double magnetizingInductance){
-    OpenMagnetics::OperatingPointExcitation excitation(json::parse(excitationString));
+    OperatingPointExcitation excitation(json::parse(excitationString));
 
-    auto voltage = OpenMagnetics::InputsWrapper::calculate_induced_voltage(excitation, magnetizingInductance);
+    auto voltage = OpenMagnetics::Inputs::calculate_induced_voltage(excitation, magnetizingInductance);
 
     json result;
     to_json(result, voltage);
@@ -869,9 +907,9 @@ std::string calculate_induced_voltage(std::string excitationString, double magne
 }
 
 std::string calculate_induced_current(std::string excitationString, double magnetizingInductance){
-    OpenMagnetics::OperatingPointExcitation excitation(json::parse(excitationString));
+    OperatingPointExcitation excitation(json::parse(excitationString));
 
-    auto current = OpenMagnetics::InputsWrapper::calculate_magnetizing_current(excitation, magnetizingInductance, true, 0.0);
+    auto current = OpenMagnetics::Inputs::calculate_magnetizing_current(excitation, magnetizingInductance, true, 0.0);
 
     if (excitation.get_voltage()) {
         if (excitation.get_voltage().value().get_processed()) {
@@ -889,22 +927,22 @@ std::string calculate_induced_current(std::string excitationString, double magne
 }
 
 std::string calculate_reflected_secondary(std::string primaryExcitationString, double turnRatio){
-    OpenMagnetics::OperatingPointExcitation primaryExcitation(json::parse(primaryExcitationString));
+    OperatingPointExcitation primaryExcitation(json::parse(primaryExcitationString));
 
-    OpenMagnetics::OperatingPointExcitation excitationOfThisWinding(primaryExcitation);
-    auto currentSignalDescriptorProcessed = OpenMagnetics::InputsWrapper::calculate_basic_processed_data(primaryExcitation.get_current().value().get_waveform().value());
-    auto voltageSignalDescriptorProcessed = OpenMagnetics::InputsWrapper::calculate_basic_processed_data(primaryExcitation.get_voltage().value().get_waveform().value());
+    OperatingPointExcitation excitationOfThisWinding(primaryExcitation);
+    auto currentSignalDescriptorProcessed = OpenMagnetics::Inputs::calculate_basic_processed_data(primaryExcitation.get_current().value().get_waveform().value());
+    auto voltageSignalDescriptorProcessed = OpenMagnetics::Inputs::calculate_basic_processed_data(primaryExcitation.get_voltage().value().get_waveform().value());
 
-    auto voltageSignalDescriptor = OpenMagnetics::InputsWrapper::reflect_waveform(primaryExcitation.get_voltage().value(), 1.0 / turnRatio, voltageSignalDescriptorProcessed.get_label());
-    auto currentSignalDescriptor = OpenMagnetics::InputsWrapper::reflect_waveform(primaryExcitation.get_current().value(), turnRatio, currentSignalDescriptorProcessed.get_label());
+    auto voltageSignalDescriptor = OpenMagnetics::Inputs::reflect_waveform(primaryExcitation.get_voltage().value(), 1.0 / turnRatio, voltageSignalDescriptorProcessed.get_label());
+    auto currentSignalDescriptor = OpenMagnetics::Inputs::reflect_waveform(primaryExcitation.get_current().value(), turnRatio, currentSignalDescriptorProcessed.get_label());
 
-    auto voltageSampledWaveform = OpenMagnetics::InputsWrapper::calculate_sampled_waveform(voltageSignalDescriptor.get_waveform().value(), excitationOfThisWinding.get_frequency());
-    voltageSignalDescriptor.set_harmonics(OpenMagnetics::InputsWrapper::calculate_harmonics_data(voltageSampledWaveform, excitationOfThisWinding.get_frequency()));
-    voltageSignalDescriptor.set_processed(OpenMagnetics::InputsWrapper::calculate_processed_data(voltageSignalDescriptor, voltageSampledWaveform, true));
+    auto voltageSampledWaveform = OpenMagnetics::Inputs::calculate_sampled_waveform(voltageSignalDescriptor.get_waveform().value(), excitationOfThisWinding.get_frequency());
+    voltageSignalDescriptor.set_harmonics(OpenMagnetics::Inputs::calculate_harmonics_data(voltageSampledWaveform, excitationOfThisWinding.get_frequency()));
+    voltageSignalDescriptor.set_processed(OpenMagnetics::Inputs::calculate_processed_data(voltageSignalDescriptor, voltageSampledWaveform, true));
 
-    auto currentSampledWaveform = OpenMagnetics::InputsWrapper::calculate_sampled_waveform(currentSignalDescriptor.get_waveform().value(), excitationOfThisWinding.get_frequency());
-    currentSignalDescriptor.set_harmonics(OpenMagnetics::InputsWrapper::calculate_harmonics_data(currentSampledWaveform, excitationOfThisWinding.get_frequency()));
-    currentSignalDescriptor.set_processed(OpenMagnetics::InputsWrapper::calculate_processed_data(currentSignalDescriptor, currentSampledWaveform, true));
+    auto currentSampledWaveform = OpenMagnetics::Inputs::calculate_sampled_waveform(currentSignalDescriptor.get_waveform().value(), excitationOfThisWinding.get_frequency());
+    currentSignalDescriptor.set_harmonics(OpenMagnetics::Inputs::calculate_harmonics_data(currentSampledWaveform, excitationOfThisWinding.get_frequency()));
+    currentSignalDescriptor.set_processed(OpenMagnetics::Inputs::calculate_processed_data(currentSignalDescriptor, currentSampledWaveform, true));
 
     excitationOfThisWinding.set_voltage(voltageSignalDescriptor);
     excitationOfThisWinding.set_current(currentSignalDescriptor);
@@ -915,19 +953,19 @@ std::string calculate_reflected_secondary(std::string primaryExcitationString, d
 }
 
 std::string calculate_reflected_primary(std::string secondaryExcitationString, double turnRatio){
-    OpenMagnetics::OperatingPointExcitation secondaryExcitation(json::parse(secondaryExcitationString));
+    OperatingPointExcitation secondaryExcitation(json::parse(secondaryExcitationString));
 
-    OpenMagnetics::OperatingPointExcitation excitationOfThisWinding(secondaryExcitation);
-    auto voltageSignalDescriptor = OpenMagnetics::InputsWrapper::reflect_waveform(secondaryExcitation.get_voltage().value(), turnRatio);
-    auto currentSignalDescriptor = OpenMagnetics::InputsWrapper::reflect_waveform(secondaryExcitation.get_current().value(), 1.0 / turnRatio);
+    OperatingPointExcitation excitationOfThisWinding(secondaryExcitation);
+    auto voltageSignalDescriptor = OpenMagnetics::Inputs::reflect_waveform(secondaryExcitation.get_voltage().value(), turnRatio);
+    auto currentSignalDescriptor = OpenMagnetics::Inputs::reflect_waveform(secondaryExcitation.get_current().value(), 1.0 / turnRatio);
 
-    auto voltageSampledWaveform = OpenMagnetics::InputsWrapper::calculate_sampled_waveform(voltageSignalDescriptor.get_waveform().value(), excitationOfThisWinding.get_frequency());
-    voltageSignalDescriptor.set_harmonics(OpenMagnetics::InputsWrapper::calculate_harmonics_data(voltageSampledWaveform, excitationOfThisWinding.get_frequency()));
-    voltageSignalDescriptor.set_processed(OpenMagnetics::InputsWrapper::calculate_processed_data(voltageSignalDescriptor, voltageSampledWaveform, true));
+    auto voltageSampledWaveform = OpenMagnetics::Inputs::calculate_sampled_waveform(voltageSignalDescriptor.get_waveform().value(), excitationOfThisWinding.get_frequency());
+    voltageSignalDescriptor.set_harmonics(OpenMagnetics::Inputs::calculate_harmonics_data(voltageSampledWaveform, excitationOfThisWinding.get_frequency()));
+    voltageSignalDescriptor.set_processed(OpenMagnetics::Inputs::calculate_processed_data(voltageSignalDescriptor, voltageSampledWaveform, true));
 
-    auto currentSampledWaveform = OpenMagnetics::InputsWrapper::calculate_sampled_waveform(currentSignalDescriptor.get_waveform().value(), excitationOfThisWinding.get_frequency());
-    currentSignalDescriptor.set_harmonics(OpenMagnetics::InputsWrapper::calculate_harmonics_data(currentSampledWaveform, excitationOfThisWinding.get_frequency()));
-    currentSignalDescriptor.set_processed(OpenMagnetics::InputsWrapper::calculate_processed_data(currentSignalDescriptor, currentSampledWaveform, true));
+    auto currentSampledWaveform = OpenMagnetics::Inputs::calculate_sampled_waveform(currentSignalDescriptor.get_waveform().value(), excitationOfThisWinding.get_frequency());
+    currentSignalDescriptor.set_harmonics(OpenMagnetics::Inputs::calculate_harmonics_data(currentSampledWaveform, excitationOfThisWinding.get_frequency()));
+    currentSignalDescriptor.set_processed(OpenMagnetics::Inputs::calculate_processed_data(currentSignalDescriptor, currentSampledWaveform, true));
 
     excitationOfThisWinding.set_voltage(voltageSignalDescriptor);
     excitationOfThisWinding.set_current(currentSignalDescriptor);
@@ -938,42 +976,42 @@ std::string calculate_reflected_primary(std::string secondaryExcitationString, d
 }
 
 double calculate_instantaneous_power(std::string excitationString){
-    OpenMagnetics::OperatingPointExcitation excitation(json::parse(excitationString));
+    OperatingPointExcitation excitation(json::parse(excitationString));
 
     if (!excitation.get_current().value().get_processed().value().get_rms().value()) {
         auto current = excitation.get_current().value();
-        auto processed = OpenMagnetics::InputsWrapper::calculate_processed_data(current.get_harmonics().value(), current.get_waveform().value(), true);
+        auto processed = OpenMagnetics::Inputs::calculate_processed_data(current.get_harmonics().value(), current.get_waveform().value(), true);
         current.set_processed(processed);
         excitation.set_current(current);
     }
     if (!excitation.get_voltage().value().get_processed().value().get_rms().value()) {
         auto voltage = excitation.get_voltage().value();
-        auto processed = OpenMagnetics::InputsWrapper::calculate_processed_data(voltage.get_harmonics().value(), voltage.get_waveform().value(), true);
+        auto processed = OpenMagnetics::Inputs::calculate_processed_data(voltage.get_harmonics().value(), voltage.get_waveform().value(), true);
         voltage.set_processed(processed);
         excitation.set_voltage(voltage);
     }
 
-    auto instantaneousPower = OpenMagnetics::InputsWrapper::calculate_instantaneous_power(excitation);
+    auto instantaneousPower = OpenMagnetics::Inputs::calculate_instantaneous_power(excitation);
 
     return instantaneousPower;
 }
 
 double calculate_rms_power(std::string excitationString){
-    OpenMagnetics::OperatingPointExcitation excitation(json::parse(excitationString));
+    OperatingPointExcitation excitation(json::parse(excitationString));
 
     auto voltageSignalDescriptor = excitation.get_voltage().value();
     auto currentSignalDescriptor = excitation.get_current().value();
 
     if (!voltageSignalDescriptor.get_processed() || !voltageSignalDescriptor.get_processed()->get_rms()) {
-        auto voltageSampledWaveform = OpenMagnetics::InputsWrapper::calculate_sampled_waveform(voltageSignalDescriptor.get_waveform().value(), excitation.get_frequency());
-        voltageSignalDescriptor.set_harmonics(OpenMagnetics::InputsWrapper::calculate_harmonics_data(voltageSampledWaveform, excitation.get_frequency()));
-        voltageSignalDescriptor.set_processed(OpenMagnetics::InputsWrapper::calculate_processed_data(voltageSignalDescriptor, voltageSampledWaveform, true));
+        auto voltageSampledWaveform = OpenMagnetics::Inputs::calculate_sampled_waveform(voltageSignalDescriptor.get_waveform().value(), excitation.get_frequency());
+        voltageSignalDescriptor.set_harmonics(OpenMagnetics::Inputs::calculate_harmonics_data(voltageSampledWaveform, excitation.get_frequency()));
+        voltageSignalDescriptor.set_processed(OpenMagnetics::Inputs::calculate_processed_data(voltageSignalDescriptor, voltageSampledWaveform, true));
     }
 
     if (!currentSignalDescriptor.get_processed() || !currentSignalDescriptor.get_processed()->get_rms()) {
-        auto currentSampledWaveform = OpenMagnetics::InputsWrapper::calculate_sampled_waveform(currentSignalDescriptor.get_waveform().value(), excitation.get_frequency());
-        currentSignalDescriptor.set_harmonics(OpenMagnetics::InputsWrapper::calculate_harmonics_data(currentSampledWaveform, excitation.get_frequency()));
-        currentSignalDescriptor.set_processed(OpenMagnetics::InputsWrapper::calculate_processed_data(currentSignalDescriptor, currentSampledWaveform, true));
+        auto currentSampledWaveform = OpenMagnetics::Inputs::calculate_sampled_waveform(currentSignalDescriptor.get_waveform().value(), excitation.get_frequency());
+        currentSignalDescriptor.set_harmonics(OpenMagnetics::Inputs::calculate_harmonics_data(currentSampledWaveform, excitation.get_frequency()));
+        currentSignalDescriptor.set_processed(OpenMagnetics::Inputs::calculate_processed_data(currentSignalDescriptor, currentSampledWaveform, true));
     }
 
     double rmsPower = currentSignalDescriptor.get_processed().value().get_rms().value() * voltageSignalDescriptor.get_processed().value().get_rms().value();
@@ -982,37 +1020,37 @@ double calculate_rms_power(std::string excitationString){
 }
 
 double resolve_dimension_with_tolerance(std::string dimensionWithToleranceString) {
-    OpenMagnetics::DimensionWithTolerance dimensionWithTolerance(json::parse(dimensionWithToleranceString));
+    DimensionWithTolerance dimensionWithTolerance(json::parse(dimensionWithToleranceString));
     return OpenMagnetics::resolve_dimensional_values(dimensionWithTolerance);
 }
 
 std::string calculate_basic_processed_data(std::string waveformString) {
-    OpenMagnetics::Waveform waveform(json::parse(waveformString));
-    auto processed = OpenMagnetics::InputsWrapper::calculate_basic_processed_data(waveform);
+    Waveform waveform(json::parse(waveformString));
+    auto processed = OpenMagnetics::Inputs::calculate_basic_processed_data(waveform);
     json result;
     to_json(result, processed);
     return result.dump(4);
 }
 
 std::string create_waveform(std::string processedString, double frequency) {
-    OpenMagnetics::Processed processed(json::parse(processedString));
-    auto waveform = OpenMagnetics::InputsWrapper::create_waveform(processed, frequency);
+    Processed processed(json::parse(processedString));
+    auto waveform = OpenMagnetics::Inputs::create_waveform(processed, frequency);
     json result;
     to_json(result, waveform);
     return result.dump(4);
 }
 
 std::string scale_waveform_time_to_frequency(std::string waveformString, double newFrequency) {
-    OpenMagnetics::Waveform waveform(json::parse(waveformString));
-    auto scaledWaveform = OpenMagnetics::InputsWrapper::scale_time_to_frequency(waveform, newFrequency);
+    Waveform waveform(json::parse(waveformString));
+    auto scaledWaveform = OpenMagnetics::Inputs::scale_time_to_frequency(waveform, newFrequency);
     json result;
     to_json(result, scaledWaveform);
     return result.dump(4);
 }
 
 std::string scale_excitation_time_to_frequency(std::string excitationString, double newFrequency) {
-    OpenMagnetics::OperatingPointExcitation excitation(json::parse(excitationString));
-    OpenMagnetics::InputsWrapper::scale_time_to_frequency(excitation, newFrequency, false, true);
+    OperatingPointExcitation excitation(json::parse(excitationString));
+    OpenMagnetics::Inputs::scale_time_to_frequency(excitation, newFrequency, false, true);
     json result;
     to_json(result, excitation);
     return result.dump(4);
@@ -1020,7 +1058,7 @@ std::string scale_excitation_time_to_frequency(std::string excitationString, dou
 
 std::string calculate_insulation(std::string inputsString){
     auto standard = OpenMagnetics::InsulationCoordinator();
-    OpenMagnetics::InputsWrapper inputs(json::parse(inputsString), false);
+    OpenMagnetics::Inputs inputs(json::parse(inputsString), false);
 
     json result;
     try {
@@ -1050,7 +1088,7 @@ std::string extract_operating_point(std::string fileString, size_t numberWinding
         std::vector<std::map<std::string, std::string>> mapColumnNames = json::parse(mapColumnNamesString).get<std::vector<std::map<std::string, std::string>>>();
         auto reader = OpenMagnetics::CircuitSimulationReader(fileString, true);
         auto operatingPoint = reader.extract_operating_point(numberWindings, frequency, mapColumnNames);
-        operatingPoint = OpenMagnetics::InputsWrapper::process_operating_point(operatingPoint, desiredMagnetizingInductance);
+        operatingPoint = OpenMagnetics::Inputs::process_operating_point(operatingPoint, desiredMagnetizingInductance);
         json result;
         to_json(result, operatingPoint);
         return result.dump(4);
@@ -1088,7 +1126,7 @@ std::string extract_column_names(std::string fileString){
 }
 
 std::vector<int> calculate_number_turns(int numberTurnsPrimary, std::string designRequirementsString){
-    OpenMagnetics::DesignRequirements designRequirements(json::parse(designRequirementsString));
+    DesignRequirements designRequirements(json::parse(designRequirementsString));
 
     OpenMagnetics::NumberTurns numberTurns(numberTurnsPrimary, designRequirements);
     auto numberTurnsCombination = numberTurns.get_next_number_turns_combination();
@@ -1101,27 +1139,27 @@ std::vector<int> calculate_number_turns(int numberTurnsPrimary, std::string desi
 }
 
 double calculate_dc_resistance_per_meter(std::string wireString, double temperature){
-    OpenMagnetics::WireWrapper wire(json::parse(wireString));
+    OpenMagnetics::Wire wire(json::parse(wireString));
     auto dcResistancePerMeter = OpenMagnetics::WindingOhmicLosses::calculate_dc_resistance_per_meter(wire, temperature);
     return dcResistancePerMeter;
 }
 
 std::vector<double> calculate_dc_resistance_per_winding(std::string coilString, double temperature){
-    OpenMagnetics::CoilWrapper coil(json::parse(coilString), false);
+    OpenMagnetics::Coil coil(json::parse(coilString), false);
     auto dcResistancePerWinding = OpenMagnetics::WindingOhmicLosses::calculate_dc_resistance_per_winding(coil, temperature);
     return dcResistancePerWinding;
 }
 
 double calculate_dc_losses_per_meter(std::string wireString, std::string currentString, double temperature){
-    OpenMagnetics::WireWrapper wire(json::parse(wireString));
-    OpenMagnetics::SignalDescriptor current(json::parse(currentString));
+    OpenMagnetics::Wire wire(json::parse(wireString));
+    SignalDescriptor current(json::parse(currentString));
     auto dcLossesPerMeter = OpenMagnetics::WindingOhmicLosses::calculate_ohmic_losses_per_meter(wire, current, temperature);
     return dcLossesPerMeter;
 }
 
 double calculate_skin_ac_factor(std::string wireString, std::string currentString, double temperature){
-    OpenMagnetics::WireWrapper wire(json::parse(wireString));
-    OpenMagnetics::SignalDescriptor current(json::parse(currentString));
+    OpenMagnetics::Wire wire(json::parse(wireString));
+    SignalDescriptor current(json::parse(currentString));
     auto dcLossesPerMeter = OpenMagnetics::WindingOhmicLosses::calculate_ohmic_losses_per_meter(wire, current, temperature);
     auto [skinLossesPerMeter, _] = OpenMagnetics::WindingSkinEffectLosses::calculate_skin_effect_losses_per_meter(wire, current, temperature);
     auto skinAcFactor = (skinLossesPerMeter + dcLossesPerMeter) / dcLossesPerMeter;
@@ -1129,15 +1167,15 @@ double calculate_skin_ac_factor(std::string wireString, std::string currentStrin
 }
 
 double calculate_skin_ac_losses_per_meter(std::string wireString, std::string currentString, double temperature){
-    OpenMagnetics::WireWrapper wire(json::parse(wireString));
-    OpenMagnetics::SignalDescriptor current(json::parse(currentString));
+    OpenMagnetics::Wire wire(json::parse(wireString));
+    SignalDescriptor current(json::parse(currentString));
     auto [skinLossesPerMeter, _] = OpenMagnetics::WindingSkinEffectLosses::calculate_skin_effect_losses_per_meter(wire, current, temperature);
     return skinLossesPerMeter;
 }
 
 double calculate_skin_ac_resistance_per_meter(std::string wireString, std::string currentString, double temperature){
-    OpenMagnetics::WireWrapper wire(json::parse(wireString));
-    OpenMagnetics::SignalDescriptor current(json::parse(currentString));
+    OpenMagnetics::Wire wire(json::parse(wireString));
+    SignalDescriptor current(json::parse(currentString));
     auto dcLossesPerMeter = OpenMagnetics::WindingOhmicLosses::calculate_ohmic_losses_per_meter(wire, current, temperature);
     auto [skinLossesPerMeter, _] = OpenMagnetics::WindingSkinEffectLosses::calculate_skin_effect_losses_per_meter(wire, current, temperature);
     auto skinAcFactor = (skinLossesPerMeter + dcLossesPerMeter) / dcLossesPerMeter;
@@ -1147,8 +1185,8 @@ double calculate_skin_ac_resistance_per_meter(std::string wireString, std::strin
 }
 
 double calculate_effective_current_density(std::string wireString, std::string currentString, double temperature){
-    OpenMagnetics::WireWrapper wire(json::parse(wireString));
-    OpenMagnetics::SignalDescriptor current(json::parse(currentString));
+    OpenMagnetics::Wire wire(json::parse(wireString));
+    SignalDescriptor current(json::parse(currentString));
     auto effectiveCurrentDensity = wire.calculate_effective_current_density(current, temperature);
 
     return effectiveCurrentDensity;
@@ -1156,7 +1194,7 @@ double calculate_effective_current_density(std::string wireString, std::string c
 
 double calculate_effective_skin_depth(std::string material, std::string currentString, double temperature){
     try {
-        OpenMagnetics::SignalDescriptor current(json::parse(currentString));
+        SignalDescriptor current(json::parse(currentString));
 
         if (!current.get_processed()->get_effective_frequency()) {
             throw std::runtime_error("Current processed is missing field effective frequency");
@@ -1173,7 +1211,7 @@ double calculate_effective_skin_depth(std::string material, std::string currentS
 
 std::vector<std::string> get_available_winding_orientations(){
     std::vector<std::string> orientations;
-    for (auto& [orientation, _] : magic_enum::enum_entries<OpenMagnetics::WindingOrientation>()) {
+    for (auto& [orientation, _] : magic_enum::enum_entries<WindingOrientation>()) {
         json orientationJson;
         to_json(orientationJson, orientation);
         orientations.push_back(orientationJson);
@@ -1183,7 +1221,7 @@ std::vector<std::string> get_available_winding_orientations(){
 
 std::vector<std::string> get_available_coil_alignments(){
     std::vector<std::string> orientations;
-    for (auto& [orientation, _] : magic_enum::enum_entries<OpenMagnetics::CoilAlignment>()) {
+    for (auto& [orientation, _] : magic_enum::enum_entries<CoilAlignment>()) {
         json orientationJson;
         to_json(orientationJson, orientation);
         orientations.push_back(orientationJson);
@@ -1193,7 +1231,7 @@ std::vector<std::string> get_available_coil_alignments(){
 
 bool check_requirement(std::string requirementString, double value){
     try {
-        OpenMagnetics::DimensionWithTolerance requirement(json::parse(requirementString));
+        DimensionWithTolerance requirement(json::parse(requirementString));
         bool result = OpenMagnetics::check_requirement(requirement, value);
         return result;
     }
@@ -1211,13 +1249,13 @@ std::string wind(std::string coilString, size_t repetitions, std::string proport
         std::vector<double> proportionPerWinding = json::parse(proportionPerWindingString);
         std::vector<size_t> pattern = json::parse(patternString);
         auto coilFunctionalDescription = std::vector<OpenMagnetics::CoilFunctionalDescription>(coilJson["functionalDescription"]);
-        OpenMagnetics::CoilWrapper coil;
+        OpenMagnetics::Coil coil;
         coil.set_bobbin(coilJson["bobbin"]);
         coil.set_functional_description(coilFunctionalDescription);
         coil.preload_margins(marginPairs);
 
         if (coilJson["_layersOrientation"].is_object()) {
-            auto layersOrientationPerSection = std::map<std::string, OpenMagnetics::WindingOrientation>(coilJson["_layersOrientation"]);
+            auto layersOrientationPerSection = std::map<std::string, WindingOrientation>(coilJson["_layersOrientation"]);
             for (auto [sectionName, layerOrientation] : layersOrientationPerSection) {
                 coil.set_layers_orientation(layerOrientation, sectionName);
             }
@@ -1226,7 +1264,7 @@ std::string wind(std::string coilString, size_t repetitions, std::string proport
             coil.wind_by_sections(proportionPerWinding, pattern, repetitions);
             if (coil.get_sections_description()) {
                 auto sections = coil.get_sections_description_conduction();
-                auto layersOrientationPerSection = std::vector<OpenMagnetics::WindingOrientation>(coilJson["_layersOrientation"]);
+                auto layersOrientationPerSection = std::vector<WindingOrientation>(coilJson["_layersOrientation"]);
                 for (size_t sectionIndex = 0; sectionIndex < sections.size(); ++sectionIndex) {
                     if (sectionIndex < layersOrientationPerSection.size()) {
                         coil.set_layers_orientation(layersOrientationPerSection[sectionIndex], sections[sectionIndex].get_name());
@@ -1235,12 +1273,12 @@ std::string wind(std::string coilString, size_t repetitions, std::string proport
             }
         }
         else {
-            OpenMagnetics::WindingOrientation layerOrientation(coilJson["_layersOrientation"]);
+            WindingOrientation layerOrientation(coilJson["_layersOrientation"]);
             coil.set_layers_orientation(layerOrientation);
 
         }
         if (coilJson["_turnsAlignment"].is_object()) {
-            auto turnsAlignmentPerSection = std::map<std::string, OpenMagnetics::CoilAlignment>(coilJson["_turnsAlignment"]);
+            auto turnsAlignmentPerSection = std::map<std::string, CoilAlignment>(coilJson["_turnsAlignment"]);
             for (auto [sectionName, turnsAlignment] : turnsAlignmentPerSection) {
                 coil.set_turns_alignment(turnsAlignment, sectionName);
             }
@@ -1249,7 +1287,7 @@ std::string wind(std::string coilString, size_t repetitions, std::string proport
             coil.wind_by_sections(proportionPerWinding, pattern, repetitions);
             if (coil.get_sections_description()) {
                 auto sections = coil.get_sections_description_conduction();
-                auto turnsAlignmentPerSection = std::vector<OpenMagnetics::CoilAlignment>(coilJson["_turnsAlignment"]);
+                auto turnsAlignmentPerSection = std::vector<CoilAlignment>(coilJson["_turnsAlignment"]);
                 for (size_t sectionIndex = 0; sectionIndex < sections.size(); ++sectionIndex) {
                     if (sectionIndex < turnsAlignmentPerSection.size()) {
                         coil.set_turns_alignment(turnsAlignmentPerSection[sectionIndex], sections[sectionIndex].get_name());
@@ -1258,32 +1296,30 @@ std::string wind(std::string coilString, size_t repetitions, std::string proport
             }
         }
         else {
-            OpenMagnetics::CoilAlignment turnsAlignment(coilJson["_turnsAlignment"]);
+            CoilAlignment turnsAlignment(coilJson["_turnsAlignment"]);
             coil.set_turns_alignment(turnsAlignment);
         }
 
-        bool windResult = false;
-
         if (proportionPerWinding.size() == coilFunctionalDescription.size()) {
             if (pattern.size() > 0 && repetitions > 0) {
-                windResult = coil.wind(proportionPerWinding, pattern, repetitions);
+                coil.wind(proportionPerWinding, pattern, repetitions);
             }
             else if (repetitions > 0) {
-                windResult = coil.wind(repetitions);
+                coil.wind(repetitions);
             }
             else {
-                windResult = coil.wind();
+                coil.wind();
             }
         }
         else {
             if (pattern.size() > 0 && repetitions > 0) {
-                windResult = coil.wind(pattern, repetitions);
+                coil.wind(pattern, repetitions);
             }
             else if (repetitions > 0) {
-                windResult = coil.wind(repetitions);
+                coil.wind(repetitions);
             }
             else {
-                windResult = coil.wind();
+                coil.wind();
             }
         }
 
@@ -1311,7 +1347,7 @@ std::string wind_by_sections(std::string coilString, size_t repetitions, std::st
         std::vector<double> proportionPerWinding = json::parse(proportionPerWindingString);
         std::vector<size_t> pattern = json::parse(patternString);
         auto coilFunctionalDescription = std::vector<OpenMagnetics::CoilFunctionalDescription>(coilJson["functionalDescription"]);
-        OpenMagnetics::CoilWrapper coil;
+        OpenMagnetics::Coil coil;
 
         if (coilJson.contains("_interleavingLevel")) {
             coil.set_interleaving_level(coilJson["_interleavingLevel"]);
@@ -1368,8 +1404,8 @@ std::string wind_by_layers(std::string coilString) {
         auto coilJson = json::parse(coilString);
 
         auto coilFunctionalDescription = std::vector<OpenMagnetics::CoilFunctionalDescription>(coilJson["functionalDescription"]);
-        auto coilSectionsDescription = std::vector<OpenMagnetics::Section>(coilJson["sectionsDescription"]);
-        OpenMagnetics::CoilWrapper coil;
+        auto coilSectionsDescription = std::vector<Section>(coilJson["sectionsDescription"]);
+        OpenMagnetics::Coil coil;
 
         if (coilJson.contains("_interleavingLevel")) {
             coil.set_interleaving_level(coilJson["_interleavingLevel"]);
@@ -1406,9 +1442,9 @@ std::string wind_by_turns(std::string coilString) {
         auto coilJson = json::parse(coilString);
 
         auto coilFunctionalDescription = std::vector<OpenMagnetics::CoilFunctionalDescription>(coilJson["functionalDescription"]);
-        auto coilSectionsDescription = std::vector<OpenMagnetics::Section>(coilJson["sectionsDescription"]);
-        auto coilLayersDescription = std::vector<OpenMagnetics::Layer>(coilJson["layersDescription"]);
-        OpenMagnetics::CoilWrapper coil;
+        auto coilSectionsDescription = std::vector<Section>(coilJson["sectionsDescription"]);
+        auto coilLayersDescription = std::vector<Layer>(coilJson["layersDescription"]);
+        OpenMagnetics::Coil coil;
 
         if (coilJson.contains("_interleavingLevel")) {
             coil.set_interleaving_level(coilJson["_interleavingLevel"]);
@@ -1446,10 +1482,10 @@ std::string delimit_and_compact(std::string coilString) {
         auto coilJson = json::parse(coilString);
 
         auto coilFunctionalDescription = std::vector<OpenMagnetics::CoilFunctionalDescription>(coilJson["functionalDescription"]);
-        auto coilSectionsDescription = std::vector<OpenMagnetics::Section>(coilJson["sectionsDescription"]);
-        auto coilLayersDescription = std::vector<OpenMagnetics::Layer>(coilJson["layersDescription"]);
-        auto coilTurnsDescription = std::vector<OpenMagnetics::Turn>(coilJson["turnsDescription"]);
-        OpenMagnetics::CoilWrapper coil;
+        auto coilSectionsDescription = std::vector<Section>(coilJson["sectionsDescription"]);
+        auto coilLayersDescription = std::vector<Layer>(coilJson["layersDescription"]);
+        auto coilTurnsDescription = std::vector<Turn>(coilJson["turnsDescription"]);
+        OpenMagnetics::Coil coil;
 
         if (coilJson.contains("_interleavingLevel")) {
             coil.set_interleaving_level(coilJson["_interleavingLevel"]);
@@ -1485,7 +1521,7 @@ std::string delimit_and_compact(std::string coilString) {
 
 std::string get_layers_by_winding_index(std::string coilString, int windingIndex){
     try {
-        OpenMagnetics::CoilWrapper coil(json::parse(coilString), false);
+        OpenMagnetics::Coil coil(json::parse(coilString), false);
 
         json result = json::array();
         for (auto& layer : coil.get_layers_by_winding_index(windingIndex)) {
@@ -1503,7 +1539,7 @@ std::string get_layers_by_winding_index(std::string coilString, int windingIndex
 std::string get_layers_by_section(std::string coilString, std::string sectionName){
     try {
         json result = json::array();
-        OpenMagnetics::CoilWrapper coil(json::parse(coilString), false);
+        OpenMagnetics::Coil coil(json::parse(coilString), false);
         for (auto& layer : coil.get_layers_by_section(sectionName)) {
             json aux;
             to_json(aux, layer);
@@ -1519,7 +1555,7 @@ std::string get_layers_by_section(std::string coilString, std::string sectionNam
 std::string get_sections_description_conduction(std::string coilString){
     try {
         json result = json::array();
-        OpenMagnetics::CoilWrapper coil(json::parse(coilString), false);
+        OpenMagnetics::Coil coil(json::parse(coilString), false);
         for (auto& section : coil.get_sections_description_conduction()) {
             json aux;
             to_json(aux, section);
@@ -1535,7 +1571,7 @@ std::string get_sections_description_conduction(std::string coilString){
 bool are_sections_and_layers_fitting(std::string coilString) {
     try {
         json result = json::array();
-        OpenMagnetics::CoilWrapper coil(json::parse(coilString), false);
+        OpenMagnetics::Coil coil(json::parse(coilString), false);
         return coil.are_sections_and_layers_fitting();
     }
     catch (const std::exception &exc) {
@@ -1546,7 +1582,7 @@ bool are_sections_and_layers_fitting(std::string coilString) {
 
 std::string add_margin_to_section_by_index(std::string coilString, int sectionIndex, double top_or_left_margin, double bottom_or_right_margin) {
     try {
-        OpenMagnetics::CoilWrapper coil(json::parse(coilString), false);
+        OpenMagnetics::Coil coil(json::parse(coilString), false);
         coil.add_margin_to_section_by_index(sectionIndex, {top_or_left_margin, bottom_or_right_margin});
 
         json result;
@@ -1562,8 +1598,8 @@ std::string simulate(std::string inputsString,
                      std::string magneticString,
                      std::string modelsData){
     try {
-        OpenMagnetics::MagneticWrapper magnetic(json::parse(magneticString));
-        OpenMagnetics::InputsWrapper inputs(json::parse(inputsString));
+        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
+        OpenMagnetics::Inputs inputs(json::parse(inputsString));
 
         auto defaults = OpenMagnetics::Defaults();
 
@@ -1608,7 +1644,7 @@ std::string simulate(std::string inputsString,
 
 bool check_if_fits(std::string bobbinString, double dimension, bool isHorizontalOrRadial) {
     try {
-        OpenMagnetics::BobbinWrapper bobbin(json::parse(bobbinString));
+        OpenMagnetics::Bobbin bobbin(json::parse(bobbinString));
         return bobbin.check_if_fits(dimension, isHorizontalOrRadial);
     }
     catch (const std::exception &exc) {
@@ -1619,10 +1655,10 @@ bool check_if_fits(std::string bobbinString, double dimension, bool isHorizontal
 
 std::string export_magnetic_as_subcircuit(std::string magneticString, std::string simulatorString, std::string jsimba) {
     try {
-        OpenMagnetics::MagneticWrapper magnetic(json::parse(magneticString));
+        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
 
         OpenMagnetics::CircuitSimulatorExporterModels simulator;
-        OpenMagnetics::from_json(simulatorString, simulator);
+        from_json(simulatorString, simulator);
 
         switch(simulator) {
             case OpenMagnetics::CircuitSimulatorExporterModels::SIMBA:
@@ -1655,10 +1691,10 @@ std::string export_magnetic_as_subcircuit(std::string magneticString, std::strin
 
 std::string export_magnetic_as_symbol(std::string magneticString, std::string simulatorString, std::string jsimba) {
     try {
-        OpenMagnetics::MagneticWrapper magnetic(json::parse(magneticString));
+        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
 
         OpenMagnetics::CircuitSimulatorExporterModels simulator;
-        OpenMagnetics::from_json(simulatorString, simulator);
+        from_json(simulatorString, simulator);
 
         switch(simulator) {
             case OpenMagnetics::CircuitSimulatorExporterModels::SIMBA:
@@ -1681,7 +1717,7 @@ std::string export_magnetic_as_symbol(std::string magneticString, std::string si
 
 void calculate_ac_resistance_coefficients_per_winding(std::string magneticString) {
     try {
-        OpenMagnetics::MagneticWrapper magnetic(json::parse(magneticString));
+        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
 
         auto coefficientsPerWinding = OpenMagnetics::CircuitSimulatorExporter(OpenMagnetics::CircuitSimulatorExporterModels::LTSPICE).calculate_ac_resistance_coefficients_per_winding(magnetic);
         for (auto coefficients : coefficientsPerWinding) {
@@ -1699,7 +1735,7 @@ void calculate_ac_resistance_coefficients_per_winding(std::string magneticString
 
 std::string sweep_impedance_over_frequency(std::string magneticString, double start, double stop, size_t numberElements, std::string mode, std::string title) {
     try {
-        OpenMagnetics::MagneticWrapper magnetic(json::parse(magneticString));
+        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
 
         auto impedanceOverFrequency = OpenMagnetics::Sweeper::sweep_impedance_over_frequency(magnetic, start, stop, numberElements, mode, title);
 
@@ -1717,7 +1753,7 @@ std::string sweep_impedance_over_frequency(std::string magneticString, double st
 
 std::string sweep_winding_resistance_over_frequency(std::string magneticString, double start, double stop, size_t numberElements, size_t windingIndex, double temperature, std::string mode, std::string title) {
     try {
-        OpenMagnetics::MagneticWrapper magnetic(json::parse(magneticString));
+        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
         auto resistanceOverFrequency = OpenMagnetics::Sweeper::sweep_winding_resistance_over_frequency(magnetic, start, stop, numberElements, windingIndex, temperature, mode, title);
 
         json result;
@@ -1733,7 +1769,7 @@ std::string sweep_winding_resistance_over_frequency(std::string magneticString, 
 
 std::string sweep_resistance_over_frequency(std::string magneticString, double start, double stop, size_t numberElements, double temperature, std::string mode, std::string title) {
     try {
-        OpenMagnetics::MagneticWrapper magnetic(json::parse(magneticString));
+        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
         auto resistanceOverFrequency = OpenMagnetics::Sweeper::sweep_resistance_over_frequency(magnetic, start, stop, numberElements, temperature, mode, title);
 
         json result;
@@ -1750,8 +1786,8 @@ std::string sweep_resistance_over_frequency(std::string magneticString, double s
 
 std::string sweep_core_losses_over_frequency(std::string magneticString, std::string operatingPointString, double start, double stop, size_t numberElements, double temperature, std::string mode, std::string title) {
     try {
-        OpenMagnetics::MagneticWrapper magnetic(json::parse(magneticString));
-        OpenMagnetics::OperatingPoint operatingPoint(json::parse(operatingPointString));
+        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
+        OperatingPoint operatingPoint(json::parse(operatingPointString));
         auto resistanceOverFrequency = OpenMagnetics::Sweeper::sweep_core_losses_over_frequency(magnetic, operatingPoint, start, stop, numberElements, temperature, mode, title);
 
         json result;
@@ -1767,8 +1803,8 @@ std::string sweep_core_losses_over_frequency(std::string magneticString, std::st
 
 std::string sweep_winding_losses_over_frequency(std::string magneticString, std::string operatingPointString, double start, double stop, size_t numberElements, double temperature, std::string mode, std::string title) {
     try {
-        OpenMagnetics::MagneticWrapper magnetic(json::parse(magneticString));
-        OpenMagnetics::OperatingPoint operatingPoint(json::parse(operatingPointString));
+        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
+        OperatingPoint operatingPoint(json::parse(operatingPointString));
         auto sweep = OpenMagnetics::Sweeper::sweep_winding_losses_over_frequency(magnetic, operatingPoint, start, stop, numberElements, temperature, mode, title);
 
         json result;
@@ -1830,14 +1866,14 @@ bool is_wire_database_empty(){
 }
 
 std::vector<double> get_maximum_dimensions(std::string magneticString){
-    OpenMagnetics::MagneticWrapper magnetic(json::parse(magneticString));
+    OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
     return magnetic.get_maximum_dimensions();
 }
 
 std::string calculate_advised_cores(std::string inputsString, std::string weightsString, int maximumNumberResults, bool useOnlyCoresInStock){
     try {
 
-        OpenMagnetics::InputsWrapper inputs(json::parse(inputsString));
+        OpenMagnetics::Inputs inputs(json::parse(inputsString));
         std::map<std::string, double> weightsKeysString = json::parse(weightsString);
         std::map<OpenMagnetics::CoreAdviser::CoreAdviserFilters, double> weights;
 
@@ -1845,7 +1881,6 @@ std::string calculate_advised_cores(std::string inputsString, std::string weight
         weights[OpenMagnetics::CoreAdviser::CoreAdviserFilters::ENERGY_STORED] = 1;
 
         bool filterMode = bool(inputs.get_design_requirements().get_minimum_impedance());
-        auto settings = OpenMagnetics::Settings::GetInstance();
 
         if (filterMode) {
             settings->set_use_toroidal_cores(true);
@@ -1920,7 +1955,7 @@ std::string calculate_advised_cores(std::string inputsString, std::string weight
 
 std::string calculate_advised_sections(std::string masString, std::string patternString, int repetitions){
     try {
-        OpenMagnetics::MasWrapper mas(json::parse(masString));
+        OpenMagnetics::Mas mas(json::parse(masString));
         json patternJson = json::parse(patternString);
         std::vector<size_t> pattern; 
         for (auto& elem : patternJson) {
@@ -1931,7 +1966,7 @@ std::string calculate_advised_sections(std::string masString, std::string patter
         if (std::holds_alternative<std::string>(bobbin)) {
             auto bobbinString = std::get<std::string>(bobbin);
             if (bobbinString == "Dummy") {
-                mas.get_mutable_magnetic().get_mutable_coil().set_bobbin(OpenMagnetics::BobbinWrapper::create_quick_bobbin(mas.get_mutable_magnetic().get_mutable_core()));
+                mas.get_mutable_magnetic().get_mutable_coil().set_bobbin(OpenMagnetics::Bobbin::create_quick_bobbin(mas.get_mutable_magnetic().get_mutable_core()));
             }
         }
         for (size_t windingIndex = 0; windingIndex < mas.get_magnetic().get_coil().get_functional_description().size(); ++windingIndex) {
@@ -1954,7 +1989,7 @@ std::string calculate_advised_sections(std::string masString, std::string patter
 
 std::string calculate_advised_coil(std::string masString){
     try {
-        OpenMagnetics::MasWrapper mas(json::parse(masString));
+        OpenMagnetics::Mas mas(json::parse(masString));
 
         for (size_t windingIndex = 0; windingIndex < mas.get_magnetic().get_coil().get_functional_description().size(); ++windingIndex) {
             mas.get_mutable_magnetic().get_mutable_coil().get_mutable_functional_description()[windingIndex].set_wire("Dummy");
@@ -1990,8 +2025,8 @@ std::string calculate_advised_wires(std::string coilFunctionalDescriptionString,
     try {
         OpenMagnetics::CoilFunctionalDescription coilFunctionalDescription(json::parse(coilFunctionalDescriptionString));
         OpenMagnetics::WireSolidInsulationRequirements wireSolidInsulationRequirements(json::parse(solidInsulationRequirementsString));
-        OpenMagnetics::Section section(json::parse(sectionString));
-        OpenMagnetics::SignalDescriptor current(json::parse(currentString));
+        Section section(json::parse(sectionString));
+        SignalDescriptor current(json::parse(currentString));
 
         OpenMagnetics::WireAdviser wireAdviser;
         wireAdviser.set_wire_solid_insulation_requirements(wireSolidInsulationRequirements);
@@ -2017,7 +2052,7 @@ std::string calculate_advised_wires(std::string coilFunctionalDescriptionString,
 
 std::string get_solid_insulation_requirements_for_wires(std::string inputsString, std::string patternString, int repetitions) {
     try {
-        OpenMagnetics::InputsWrapper inputs(json::parse(inputsString));
+        OpenMagnetics::Inputs inputs(json::parse(inputsString));
         json patternJson = json::parse(patternString);
         std::vector<size_t> pattern; 
         for (auto& elem : patternJson) {
@@ -2025,7 +2060,7 @@ std::string get_solid_insulation_requirements_for_wires(std::string inputsString
         }
 
         auto results = json::array();
-        auto solidInsulationRequirementsCombinations = OpenMagnetics::CoilAdviser().get_solid_insulation_requirements_for_wires(inputs, pattern, repetitions);
+        auto solidInsulationRequirementsCombinations = OpenMagnetics::InsulationCoordinator().get_solid_insulation_requirements_for_wires(inputs, pattern, repetitions);
         for (auto solidInsulationRequirementsCombination : solidInsulationRequirementsCombinations) {
             auto aux = json::array();
             for (auto solidInsulationRequirementsForWires : solidInsulationRequirementsCombination) {
@@ -2043,7 +2078,7 @@ std::string get_solid_insulation_requirements_for_wires(std::string inputsString
 }
 
 std::string calculate_advised_magnetics(std::string inputsString, std::string weightsString, int maximumNumberResults, bool useOnlyCoresInStock){
-    OpenMagnetics::InputsWrapper inputs(json::parse(inputsString));
+    OpenMagnetics::Inputs inputs(json::parse(inputsString));
     std::map<std::string, double> weightsKeysString = json::parse(weightsString);
     std::map<OpenMagnetics::MagneticAdviser::MagneticAdviserFilters, double> weights;
 
@@ -2056,7 +2091,6 @@ std::string calculate_advised_magnetics(std::string inputsString, std::string we
         weights[magic_enum::enum_cast<OpenMagnetics::MagneticAdviser::MagneticAdviserFilters>(pair.first).value()] = pair.second / externalSum;
     }
 
-    auto settings = OpenMagnetics::Settings::GetInstance();
     settings->set_use_only_cores_in_stock(useOnlyCoresInStock);
 
     OpenMagnetics::MagneticAdviser magneticAdviser;
@@ -2091,13 +2125,13 @@ std::string calculate_advised_magnetics(std::string inputsString, std::string we
 
 std::string calculate_advised_magnetics_from_catalog(std::string inputsString, std::string catalogString, int maximumNumberResults){
     try {
-        OpenMagnetics::InputsWrapper inputs(json::parse(inputsString));
+        OpenMagnetics::Inputs inputs(json::parse(inputsString));
         std::map<OpenMagnetics::MagneticAdviser::MagneticAdviserFilters, double> weights;
 
-        std::vector <OpenMagnetics::MagneticWrapper> catalog;
+        std::vector <OpenMagnetics::Magnetic> catalog;
 
         for (auto& catalogSubstring : OpenMagnetics::split(catalogString, "\n")) {
-            OpenMagnetics::MagneticWrapper magnetic(json::parse(catalogSubstring));
+            OpenMagnetics::Magnetic magnetic(json::parse(catalogSubstring));
             catalog.push_back(magnetic);
         }
 
@@ -2142,7 +2176,6 @@ std::vector<std::string> get_available_core_filters(){
 }
 
 void load_cores(bool includeToroids, bool useOnlyCoresInStock){
-    auto settings = OpenMagnetics::Settings::GetInstance();
     settings->set_use_toroidal_cores(includeToroids);
     settings->set_use_only_cores_in_stock(useOnlyCoresInStock);
     OpenMagnetics::load_cores();
@@ -2153,7 +2186,7 @@ void clear_loaded_cores(){
 }
 
 std::string calculate_leakage_inductance(std::string magneticString, double frequency, size_t sourceIndex){
-    OpenMagnetics::MagneticWrapper magnetic(json::parse(magneticString));
+    OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
 
     auto leakageInductanceOutput = OpenMagnetics::LeakageInductance().calculate_leakage_inductance_all_windings(magnetic, frequency, sourceIndex);
 
@@ -2197,9 +2230,9 @@ std::string calculate_advanced_flyback_inputs(std::string flybackInputsString){
 std::vector<size_t> get_only_temperature_dependent_indexes(std::string permeabilityPointsString) {
     try {
         std::vector<std::string> permeabilityPointsStringVector = json::parse(permeabilityPointsString);
-        std::vector<OpenMagnetics::PermeabilityPoint> permeabilityPoints;
+        std::vector<PermeabilityPoint> permeabilityPoints;
         for (auto pointString : permeabilityPointsStringVector) {
-            OpenMagnetics::PermeabilityPoint point(json::parse(pointString));
+            PermeabilityPoint point(json::parse(pointString));
             permeabilityPoints.push_back(point);
         }
         return OpenMagnetics::InitialPermeability::get_only_temperature_dependent_indexes(permeabilityPoints);
@@ -2213,9 +2246,9 @@ std::vector<size_t> get_only_temperature_dependent_indexes(std::string permeabil
 std::vector<size_t> get_only_frequency_dependent_indexes(std::string permeabilityPointsString) {
     try {
         std::vector<std::string> permeabilityPointsStringVector = json::parse(permeabilityPointsString);
-        std::vector<OpenMagnetics::PermeabilityPoint> permeabilityPoints;
+        std::vector<PermeabilityPoint> permeabilityPoints;
         for (auto pointString : permeabilityPointsStringVector) {
-            OpenMagnetics::PermeabilityPoint point(json::parse(pointString));
+            PermeabilityPoint point(json::parse(pointString));
             permeabilityPoints.push_back(point);
         }
         return OpenMagnetics::InitialPermeability::get_only_frequency_dependent_indexes(permeabilityPoints);
@@ -2229,9 +2262,9 @@ std::vector<size_t> get_only_frequency_dependent_indexes(std::string permeabilit
 std::vector<size_t> get_only_magnetic_field_dc_bias_dependent_indexes(std::string permeabilityPointsString) {
     try {
         std::vector<std::string> permeabilityPointsStringVector = json::parse(permeabilityPointsString);
-        std::vector<OpenMagnetics::PermeabilityPoint> permeabilityPoints;
+        std::vector<PermeabilityPoint> permeabilityPoints;
         for (auto pointString : permeabilityPointsStringVector) {
-            OpenMagnetics::PermeabilityPoint point(json::parse(pointString));
+            PermeabilityPoint point(json::parse(pointString));
             permeabilityPoints.push_back(point);
         }
         return OpenMagnetics::InitialPermeability::get_only_magnetic_field_dc_bias_dependent_indexes(permeabilityPoints);
@@ -2245,7 +2278,6 @@ std::vector<size_t> get_only_magnetic_field_dc_bias_dependent_indexes(std::strin
 
 std::string get_settings() {
     try {
-        auto settings = OpenMagnetics::Settings::GetInstance();
         json settingsJson;
 
         settingsJson["magnetizingInductanceIncludeAirInductance"] = settings->get_magnetizing_inductance_include_air_inductance();
@@ -2294,7 +2326,6 @@ std::string get_settings() {
 }
 
 void set_settings(std::string settingsString) {
-    auto settings = OpenMagnetics::Settings::GetInstance();
     json settingsJson = json::parse(settingsString);
 
     settings->set_magnetizing_inductance_include_air_inductance(settingsJson["magnetizingInductanceIncludeAirInductance"]);
@@ -2337,12 +2368,12 @@ void set_settings(std::string settingsString) {
 
 }
 void reset_settings(std::string settingsString) {
-    auto settings = OpenMagnetics::Settings::GetInstance();
     settings->reset();
 }
 
 EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_constants", &get_constants);
+    function("get_defaults", &get_defaults);
     function("standardize_signal_descriptor", &standardize_signal_descriptor);
     function("calculate_harmonics", &calculate_harmonics);
     function("get_main_harmonic_indexes", &get_main_harmonic_indexes);
