@@ -2080,7 +2080,7 @@ std::string get_solid_insulation_requirements_for_wires(std::string inputsString
 std::string calculate_advised_magnetics(std::string inputsString, std::string weightsString, int maximumNumberResults, bool useOnlyCoresInStock){
     OpenMagnetics::Inputs inputs(json::parse(inputsString));
     std::map<std::string, double> weightsKeysString = json::parse(weightsString);
-    std::map<OpenMagnetics::MagneticAdviser::MagneticAdviserFilters, double> weights;
+    std::map<OpenMagnetics::MagneticFilters, double> weights;
 
     double externalSum = 0;
     for (auto const& pair : weightsKeysString) {
@@ -2088,7 +2088,7 @@ std::string calculate_advised_magnetics(std::string inputsString, std::string we
     }
 
     for (auto const& pair : weightsKeysString) {
-        weights[magic_enum::enum_cast<OpenMagnetics::MagneticAdviser::MagneticAdviserFilters>(pair.first).value()] = pair.second / externalSum;
+        weights[magic_enum::enum_cast<OpenMagnetics::MagneticFilters>(pair.first).value()] = pair.second / externalSum;
     }
 
     settings->set_use_only_cores_in_stock(useOnlyCoresInStock);
@@ -2107,11 +2107,14 @@ std::string calculate_advised_magnetics(std::string inputsString, std::string we
         json masJson;
         to_json(masJson, masMagnetic);
         result["mas"] = masJson;
-        result["weightedTotalScoring"] = scorings[name][OpenMagnetics::MagneticAdviser::MagneticAdviserFilters::COST] + scorings[name][OpenMagnetics::MagneticAdviser::MagneticAdviserFilters::EFFICIENCY] + scorings[name][OpenMagnetics::MagneticAdviser::MagneticAdviserFilters::DIMENSIONS];
+        result["weightedTotalScoring"] = scorings[name][OpenMagnetics::MagneticFilters::COST] + scorings[name][OpenMagnetics::MagneticFilters::LOSSES] + scorings[name][OpenMagnetics::MagneticFilters::DIMENSIONS];
         result["scoringPerFilter"] = json();
-        for (auto& filter : magic_enum::enum_names<OpenMagnetics::MagneticAdviser::MagneticAdviserFilters>()) {
+        for (auto& filter : magic_enum::enum_names<OpenMagnetics::MagneticFilters>()) {
             std::string filterString(filter);
-            result["scoringPerFilter"][filterString] = scorings[name][magic_enum::enum_cast<OpenMagnetics::MagneticAdviser::MagneticAdviserFilters>(filterString).value()];
+            auto filterEnum = magic_enum::enum_cast<OpenMagnetics::MagneticFilters>(filterString).value();
+            if (scorings[name].count(filterEnum)) {
+                result["scoringPerFilter"][filterString] = scorings[name][filterEnum];
+            }
         };
         results["data"].push_back(result);
     }
@@ -2126,7 +2129,7 @@ std::string calculate_advised_magnetics(std::string inputsString, std::string we
 std::string calculate_advised_magnetics_from_catalog(std::string inputsString, std::string catalogString, int maximumNumberResults){
     try {
         OpenMagnetics::Inputs inputs(json::parse(inputsString));
-        std::map<OpenMagnetics::MagneticAdviser::MagneticAdviserFilters, double> weights;
+        std::map<OpenMagnetics::MagneticFilters, double> weights;
 
         std::vector <OpenMagnetics::Magnetic> catalog;
 
