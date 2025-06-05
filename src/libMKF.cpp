@@ -1653,7 +1653,7 @@ bool check_if_fits(std::string bobbinString, double dimension, bool isHorizontal
     }
 }
 
-std::string export_magnetic_as_subcircuit(std::string magneticString, std::string simulatorString, std::string jsimba) {
+std::string export_magnetic_as_subcircuit(std::string magneticString, double temperature, std::string simulatorString, std::string jsimba) {
     try {
         OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
 
@@ -1663,21 +1663,21 @@ std::string export_magnetic_as_subcircuit(std::string magneticString, std::strin
         switch(simulator) {
             case OpenMagnetics::CircuitSimulatorExporterModels::SIMBA:
                 {
-                    ordered_json subcircuit;
+                    std::string subcircuit;
                     if (jsimba != "") {
-                        subcircuit = OpenMagnetics::CircuitSimulatorExporter(simulator).export_magnetic_as_subcircuit(magnetic, OpenMagnetics::Defaults().measurementFrequency, jsimba);
+                        subcircuit = OpenMagnetics::CircuitSimulatorExporter(simulator).export_magnetic_as_subcircuit(magnetic, OpenMagnetics::Defaults().measurementFrequency, temperature, std::nullopt, jsimba);
                     }
                     else {
-                        subcircuit = OpenMagnetics::CircuitSimulatorExporter(simulator).export_magnetic_as_subcircuit(magnetic);
+                        subcircuit = OpenMagnetics::CircuitSimulatorExporter(simulator).export_magnetic_as_subcircuit(magnetic, OpenMagnetics::Defaults().measurementFrequency, temperature);
                     }
-                    return subcircuit.dump(2);
+                    return subcircuit;
                     break;
                 }
             case OpenMagnetics::CircuitSimulatorExporterModels::LTSPICE:
-                return OpenMagnetics::CircuitSimulatorExporter(simulator).export_magnetic_as_subcircuit(magnetic, OpenMagnetics::Defaults().measurementFrequency);
+                return OpenMagnetics::CircuitSimulatorExporter(simulator).export_magnetic_as_subcircuit(magnetic, OpenMagnetics::Defaults().measurementFrequency, temperature);
                 break;
             case OpenMagnetics::CircuitSimulatorExporterModels::NGSPICE:
-                return OpenMagnetics::CircuitSimulatorExporter(simulator).export_magnetic_as_subcircuit(magnetic, OpenMagnetics::Defaults().measurementFrequency);
+                return OpenMagnetics::CircuitSimulatorExporter(simulator).export_magnetic_as_subcircuit(magnetic, OpenMagnetics::Defaults().measurementFrequency, temperature);
                 break;
         }
 
@@ -1715,11 +1715,11 @@ std::string export_magnetic_as_symbol(std::string magneticString, std::string si
 }
 
 
-void calculate_ac_resistance_coefficients_per_winding(std::string magneticString) {
+void calculate_ac_resistance_coefficients_per_winding(std::string magneticString, double temperature) {
     try {
         OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
 
-        auto coefficientsPerWinding = OpenMagnetics::CircuitSimulatorExporter(OpenMagnetics::CircuitSimulatorExporterModels::LTSPICE).calculate_ac_resistance_coefficients_per_winding(magnetic);
+        auto coefficientsPerWinding = OpenMagnetics::CircuitSimulatorExporter(OpenMagnetics::CircuitSimulatorExporterModels::LTSPICE).calculate_ac_resistance_coefficients_per_winding(magnetic, temperature);
         for (auto coefficients : coefficientsPerWinding) {
             for (auto coefficient : coefficients) {
                 std::cout << "coefficient: " << coefficient << std::endl;
@@ -1819,34 +1819,74 @@ std::string sweep_winding_losses_over_frequency(std::string magneticString, std:
 }
 
 size_t load_core_materials(std::string fileToLoad){
-    if (fileToLoad != "") {
-        OpenMagnetics::load_core_materials(fileToLoad);
-    }
-    else {
-        OpenMagnetics::load_core_materials();
-    }
+    try {
+        if (fileToLoad != "") {
+            OpenMagnetics::load_core_materials(fileToLoad);
+        }
+        else {
+            OpenMagnetics::load_core_materials();
+        }
 
-    return coreMaterialDatabase.size();
+        return coreMaterialDatabase.size();
+    }
+    catch (const std::exception &exc) {
+        std::cout << std::string{exc.what()} << std::endl;
+        return -1;
+    }
 }
 
 size_t load_core_shapes(std::string fileToLoad){
-    if (fileToLoad != "") {
-        OpenMagnetics::load_core_shapes(true, fileToLoad);
+    try {
+        if (fileToLoad != "") {
+            OpenMagnetics::load_core_shapes(true, fileToLoad);
+        }
+        else {
+            OpenMagnetics::load_core_shapes();
+        }
+        return coreShapeDatabase.size();
     }
-    else {
-        OpenMagnetics::load_core_shapes();
+    catch (const std::exception &exc) {
+        std::cout << std::string{exc.what()} << std::endl;
+        return -1;
     }
-    return coreShapeDatabase.size();
 }
 
 size_t load_wires(std::string fileToLoad){
-    if (fileToLoad != "") {
-        OpenMagnetics::load_wires(fileToLoad);
+    try {
+        if (fileToLoad != "") {
+            OpenMagnetics::load_wires(fileToLoad);
+        }
+        else {
+            OpenMagnetics::load_wires();
+        }
+        return wireDatabase.size();
     }
-    else {
-        OpenMagnetics::load_wires();
+    catch (const std::exception &exc) {
+        std::cout << std::string{exc.what()} << std::endl;
+        return -1;
     }
-    return wireDatabase.size();
+}
+
+size_t load_cores(std::string fileToLoad, bool includeToroids, bool useOnlyCoresInStock){
+    try {
+        if (fileToLoad != "") {
+            OpenMagnetics::load_wires(fileToLoad);
+        }
+        else {
+            settings->set_use_toroidal_cores(includeToroids);
+            settings->set_use_only_cores_in_stock(useOnlyCoresInStock);
+            OpenMagnetics::load_cores();
+        }
+        return coreDatabase.size();
+    }
+    catch (const std::exception &exc) {
+        std::cout << std::string{exc.what()} << std::endl;
+        return -1;
+    }
+}
+
+void clear_loaded_cores(){
+    OpenMagnetics::clear_loaded_cores();
 }
 
 void clear_databases(){
@@ -2178,16 +2218,6 @@ std::vector<std::string> get_available_core_filters(){
     return filters;
 }
 
-void load_cores(bool includeToroids, bool useOnlyCoresInStock){
-    settings->set_use_toroidal_cores(includeToroids);
-    settings->set_use_only_cores_in_stock(useOnlyCoresInStock);
-    OpenMagnetics::load_cores();
-}
-
-void clear_loaded_cores(){
-    OpenMagnetics::clear_loaded_cores();
-}
-
 std::string calculate_leakage_inductance(std::string magneticString, double frequency, size_t sourceIndex){
     OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
 
@@ -2277,6 +2307,32 @@ std::vector<size_t> get_only_magnetic_field_dc_bias_dependent_indexes(std::strin
         return {0};
     }
 }
+
+std::string create_quick_bobbin(std::string coresString, double thickness){
+    OpenMagnetics::Core core(json::parse(coresString), false, true);
+    auto bobbin = OpenMagnetics::Bobbin::create_quick_bobbin(core, thickness);
+
+    json result;
+    to_json(result, bobbin);
+    return result.dump(4);
+}
+
+
+std::string mas_autocomplete(std::string masString, bool simulate, std::string configurationString) {
+    try {
+        OpenMagnetics::Mas mas(json::parse(masString));
+        json configuration(json::parse(configurationString));
+        auto autocompletedMas = mas_autocomplete(mas, simulate, configuration);
+
+        json result;
+        to_json(result, autocompletedMas);
+        return result;
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
 
 
 std::string get_settings() {
@@ -2497,6 +2553,8 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_only_temperature_dependent_indexes", &get_only_temperature_dependent_indexes);
     function("get_only_frequency_dependent_indexes", &get_only_frequency_dependent_indexes);
     function("get_only_magnetic_field_dc_bias_dependent_indexes", &get_only_magnetic_field_dc_bias_dependent_indexes);
+    function("create_quick_bobbin", &create_quick_bobbin);
+    function("mas_autocomplete", &mas_autocomplete);
     function("get_settings", &get_settings);
     function("set_settings", &set_settings);
     function("reset_settings", &reset_settings);
