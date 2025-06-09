@@ -615,20 +615,34 @@ std::vector<std::string> get_available_wires(){
 std::vector<std::string> get_unique_wire_diameters(std::string wireStandardString){
     try {
         WireStandard wireStandard(json::parse(wireStandardString));
-
-        auto wires = OpenMagnetics::get_wires(WireType::ROUND, wireStandard);
-
         std::vector<std::string> uniqueStandardName;
-        for (auto wire : wires) {
-            if (!wire.get_standard_name()) {
-                continue;
-            }
-            auto standardName = wire.get_standard_name().value();
-            if (std::find(uniqueStandardName.begin(), uniqueStandardName.end(), standardName) == uniqueStandardName.end()) {
-                uniqueStandardName.push_back(standardName);
+
+        {
+            auto wires = OpenMagnetics::get_wires(WireType::ROUND, wireStandard);
+
+            for (auto wire : wires) {
+                if (!wire.get_standard_name()) {
+                    continue;
+                }
+                auto standardName = wire.get_standard_name().value();
+                if (std::find(uniqueStandardName.begin(), uniqueStandardName.end(), standardName) == uniqueStandardName.end()) {
+                    uniqueStandardName.push_back(standardName);
+                }
             }
         }
 
+        {
+            auto wires = OpenMagnetics::get_wires(WireType::LITZ, wireStandard);
+
+            for (auto wire : wires) {
+                auto strand = wire.resolve_strand();
+
+                auto strandStandardName = strand.get_standard_name().value();
+                if (std::find(uniqueStandardName.begin(), uniqueStandardName.end(), strandStandardName) == uniqueStandardName.end()) {
+                    uniqueStandardName.push_back(strandStandardName);
+                }
+            }
+        }
         return uniqueStandardName;
     }
     catch (const std::exception &exc) {
@@ -637,31 +651,60 @@ std::vector<std::string> get_unique_wire_diameters(std::string wireStandardStrin
 }
 
 std::vector<std::string> get_available_wire_types(){
-    std::vector<std::string> wireTypes;
+    // std::vector<std::string> wireTypes;
 
-    for (auto [value, name] : magic_enum::enum_entries<WireType>()) {
-        json wireTypeString;
-        if (value == WireType::PLANAR) {
-            // TODO Add support for planar
-            continue;
+    // for (auto [value, name] : magic_enum::enum_entries<WireType>()) {
+    //     json wireTypeString;
+    //     if (value == WireType::PLANAR) {
+    //         // TODO Add support for planar
+    //         continue;
+    //     }
+    //     to_json(wireTypeString, value);
+    //     wireTypes.push_back(wireTypeString);
+    // }
+    std::vector<MAS::WireType> wireTypes;
+    for (auto [reference, wire] : wireDatabase) {
+        auto wireType = wire.get_type();
+        if (std::find(wireTypes.begin(), wireTypes.end(), wireType) == wireTypes.end()) {
+            wireTypes.push_back(wireType);
         }
-        to_json(wireTypeString, value);
-        wireTypes.push_back(wireTypeString);
+    }
+    std::vector<std::string> wireTypesString;
+    for (auto wireType : wireTypes) {
+        json wireTypeString;        
+        to_json(wireTypeString, wireType);
+        wireTypesString.push_back(wireTypeString);
     }
 
-    return wireTypes;
+    return wireTypesString;
 }
 
 std::vector<std::string> get_available_wire_standards(){
-    std::vector<std::string> wireStandards;
+    // std::vector<std::string> wireStandards;
 
-    for (auto [value, name] : magic_enum::enum_entries<WireStandard>()) {
-        json wireStandardString;
-        to_json(wireStandardString, value);
-        wireStandards.push_back(wireStandardString);
+    // for (auto [value, name] : magic_enum::enum_entries<WireStandard>()) {
+    //     json wireStandardString;
+    //     to_json(wireStandardString, value);
+    //     wireStandards.push_back(wireStandardString);
+    // }
+
+    std::vector<MAS::WireStandard> wireStandards;
+    for (auto [reference, wire] : wireDatabase) {
+        if (!wire.get_standard()) {
+            continue;
+        }
+        auto wireStandard = wire.get_standard().value();
+        if (std::find(wireStandards.begin(), wireStandards.end(), wireStandard) == wireStandards.end()) {
+            wireStandards.push_back(wireStandard);
+        }
     }
-
-    return wireStandards;
+    std::vector<std::string> wireStandardsString;
+    for (auto wireStandard : wireStandards) {
+        json wireStandardString;        
+        to_json(wireStandardString, wireStandard);
+        wireStandardsString.push_back(wireStandardString);
+    }
+    return wireStandardsString;
 }
 
 std::string calculate_gap_reluctance(std::string coreGapData, std::string modelNameString){
@@ -1870,7 +1913,7 @@ size_t load_wires(std::string fileToLoad){
 size_t load_cores(std::string fileToLoad, bool includeToroids, bool useOnlyCoresInStock){
     try {
         if (fileToLoad != "") {
-            OpenMagnetics::load_wires(fileToLoad);
+            OpenMagnetics::load_cores(fileToLoad);
         }
         else {
             settings->set_use_toroidal_cores(includeToroids);
@@ -1912,6 +1955,7 @@ std::vector<double> get_maximum_dimensions(std::string magneticString){
 
 std::string calculate_advised_cores(std::string inputsString, std::string weightsString, int maximumNumberResults, bool useOnlyCoresInStock){
     try {
+        settings->set_coil_delimit_and_compact(true);
 
         OpenMagnetics::Inputs inputs(json::parse(inputsString));
         std::map<std::string, double> weightsKeysString = json::parse(weightsString);
@@ -2029,6 +2073,7 @@ std::string calculate_advised_sections(std::string masString, std::string patter
 
 std::string calculate_advised_coil(std::string masString){
     try {
+        settings->set_coil_delimit_and_compact(true);
         OpenMagnetics::Mas mas(json::parse(masString));
 
         for (size_t windingIndex = 0; windingIndex < mas.get_magnetic().get_coil().get_functional_description().size(); ++windingIndex) {
@@ -2063,6 +2108,7 @@ std::string calculate_advised_wires(std::string coilFunctionalDescriptionString,
                                     uint8_t numberSections,
                                     size_t maximumNumberResults){
     try {
+        settings->set_coil_delimit_and_compact(true);
         OpenMagnetics::CoilFunctionalDescription coilFunctionalDescription(json::parse(coilFunctionalDescriptionString));
         OpenMagnetics::WireSolidInsulationRequirements wireSolidInsulationRequirements(json::parse(solidInsulationRequirementsString));
         Section section(json::parse(sectionString));
@@ -2118,6 +2164,7 @@ std::string get_solid_insulation_requirements_for_wires(std::string inputsString
 }
 
 std::string calculate_advised_magnetics(std::string inputsString, std::string weightsString, int maximumNumberResults, bool useOnlyCoresInStock){
+    settings->set_coil_delimit_and_compact(true);
     OpenMagnetics::Inputs inputs(json::parse(inputsString));
     std::map<std::string, double> weightsKeysString = json::parse(weightsString);
     std::map<OpenMagnetics::MagneticFilters, double> weights;
@@ -2168,6 +2215,7 @@ std::string calculate_advised_magnetics(std::string inputsString, std::string we
 
 std::string calculate_advised_magnetics_from_catalog(std::string inputsString, std::string catalogString, int maximumNumberResults){
     try {
+        settings->set_coil_delimit_and_compact(true);
         OpenMagnetics::Inputs inputs(json::parse(inputsString));
         std::map<OpenMagnetics::MagneticFilters, double> weights;
 
@@ -2333,6 +2381,26 @@ std::string mas_autocomplete(std::string masString, bool simulate, std::string c
     }
 }
 
+std::string calculate_steinmetz_coefficients(std::string dataString, std::string rangesString) {
+    try {
+        json rangesJson = json::parse(rangesString);
+        std::vector<std::pair<double, double>> ranges;
+        for (auto rangeJson : rangesJson) {
+            std::pair<double, double> range{rangeJson[0], rangeJson[1]};
+            ranges.push_back(range);
+        }
+        std::vector<VolumetricLossesPoint> data(json::parse(dataString));
+
+        auto [coefficientsPerRange, errorPerRange] = OpenMagnetics::CoreLossesSteinmetzModel::calculate_steinmetz_coefficients(data, ranges);
+
+        json result;
+        to_json(result, coefficientsPerRange);
+        return result;
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
 
 
 std::string get_settings() {
@@ -2555,6 +2623,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_only_magnetic_field_dc_bias_dependent_indexes", &get_only_magnetic_field_dc_bias_dependent_indexes);
     function("create_quick_bobbin", &create_quick_bobbin);
     function("mas_autocomplete", &mas_autocomplete);
+    function("calculate_steinmetz_coefficients", &calculate_steinmetz_coefficients);
     function("get_settings", &get_settings);
     function("set_settings", &set_settings);
     function("reset_settings", &reset_settings);
