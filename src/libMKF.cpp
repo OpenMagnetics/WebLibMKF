@@ -2402,6 +2402,16 @@ std::string calculate_steinmetz_coefficients(std::string dataString, std::string
     }
 }
 
+std::map<std::string, std::string> get_initial_permeability_equations(std::string permeabilityPointString) {
+    try {
+        MAS::PermeabilityPoint permeabilityPoint(json::parse(permeabilityPointString));
+        return OpenMagnetics::InitialPermeability::get_initial_permeability_equations(permeabilityPoint);
+    }
+    catch (const std::exception &exc) {
+        return {{"Exception: ", std::string{exc.what()}}};
+    }
+}
+
 
 std::string get_settings() {
     try {
@@ -2624,6 +2634,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("create_quick_bobbin", &create_quick_bobbin);
     function("mas_autocomplete", &mas_autocomplete);
     function("calculate_steinmetz_coefficients", &calculate_steinmetz_coefficients);
+    function("get_initial_permeability_equations", &get_initial_permeability_equations);
     function("get_settings", &get_settings);
     function("set_settings", &set_settings);
     function("reset_settings", &reset_settings);
