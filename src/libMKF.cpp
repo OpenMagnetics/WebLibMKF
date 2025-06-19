@@ -1826,6 +1826,53 @@ std::string sweep_resistance_over_frequency(std::string magneticString, double s
     }
 }
 
+std::string sweep_magnetizing_inductance_over_frequency(std::string magneticString, double start, double stop, size_t numberElements, double temperature, std::string mode, std::string title) {
+    try {
+        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
+        auto magnetizingInductanceOverFrequency = OpenMagnetics::Sweeper::sweep_magnetizing_inductance_over_frequency(magnetic, start, stop, numberElements, temperature, mode, title);
+
+        json result;
+        to_json(result, magnetizingInductanceOverFrequency);
+
+        return result.dump(4);
+
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string sweep_magnetizing_inductance_over_temperature(std::string magneticString, double start, double stop, size_t numberElements, double frequency, std::string mode, std::string title) {
+    try {
+        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
+        auto magnetizingInductanceOverTemperature = OpenMagnetics::Sweeper::sweep_magnetizing_inductance_over_temperature(magnetic, start, stop, numberElements, frequency, mode, title);
+
+        json result;
+        to_json(result, magnetizingInductanceOverTemperature);
+
+        return result.dump(4);
+
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string sweep_magnetizing_inductance_over_dc_bias(std::string magneticString, double start, double stop, size_t numberElements, double temperature, std::string mode, std::string title) {
+    try {
+        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
+        auto magnetizingInductanceOverDcBias = OpenMagnetics::Sweeper::sweep_magnetizing_inductance_over_dc_bias(magnetic, start, stop, numberElements, temperature, mode, title);
+
+        json result;
+        to_json(result, magnetizingInductanceOverDcBias);
+
+        return result.dump(4);
+
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
 
 std::string sweep_core_losses_over_frequency(std::string magneticString, std::string operatingPointString, double start, double stop, size_t numberElements, double temperature, std::string mode, std::string title) {
     try {
@@ -2607,6 +2654,9 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("sweep_resistance_over_frequency", &sweep_resistance_over_frequency);
     function("sweep_core_losses_over_frequency", &sweep_core_losses_over_frequency);
     function("sweep_winding_losses_over_frequency", &sweep_winding_losses_over_frequency);
+    function("sweep_magnetizing_inductance_over_frequency", &sweep_magnetizing_inductance_over_frequency);
+    function("sweep_magnetizing_inductance_over_temperature", &sweep_magnetizing_inductance_over_temperature);
+    function("sweep_magnetizing_inductance_over_dc_bias", &sweep_magnetizing_inductance_over_dc_bias);
     function("load_core_materials", &load_core_materials);
     function("load_core_shapes", &load_core_shapes);
     function("load_wires", &load_wires);
