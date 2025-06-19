@@ -20,12 +20,14 @@
 #include "advisers/MagneticAdviser.h"
 #include "processors/Inputs.h"
 #include "constructive_models/Core.h"
-#include "physical_models/Reluctance.h"
-#include "physical_models/LeakageInductance.h"
-#include "physical_models/MagnetizingInductance.h"
-#include "converter_models/Topology.h"
+#include "physical_models/ComplexPermeability.h"
 #include "physical_models/CoreLosses.h"
 #include "physical_models/CoreTemperature.h"
+#include "physical_models/InitialPermeability.h"
+#include "physical_models/LeakageInductance.h"
+#include "physical_models/MagnetizingInductance.h"
+#include "physical_models/Reluctance.h"
+#include "converter_models/Topology.h"
 #include "support/Utils.h"
 #include "processors/Sweeper.h"
 #include "processors/CircuitSimulatorInterface.h"
@@ -2442,7 +2444,7 @@ std::string calculate_steinmetz_coefficients(std::string dataString, std::string
 
         json result;
         to_json(result, coefficientsPerRange);
-        return result;
+        return result.dump(4);
     }
     catch (const std::exception &exc) {
         return "Exception: " + std::string{exc.what()};
@@ -2456,6 +2458,28 @@ std::map<std::string, std::string> get_initial_permeability_equations(std::strin
     }
     catch (const std::exception &exc) {
         return {{"Exception: ", std::string{exc.what()}}};
+    }
+}
+
+
+std::string calculate_complex_permeability(std::string coreMaterialString) {
+    try {
+        MAS::CoreMaterial coreMaterial(json::parse(coreMaterialString));
+
+        ComplexPermeabilityData complexPermeabilityData;
+        if (OpenMagnetics::InitialPermeability::has_frequency_dependency(coreMaterial)) {
+            complexPermeabilityData = OpenMagnetics::ComplexPermeability().calculate_complex_permeability_from_frequency_dependent_initial_permeability(coreMaterial);
+        }
+        else {
+            throw OpenMagnetics::missing_material_data_exception("Missing complex data in material " + coreMaterial.get_name());
+        }
+
+        json result;
+        to_json(result, complexPermeabilityData);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: ", std::string{exc.what()};
     }
 }
 
@@ -2685,6 +2709,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("mas_autocomplete", &mas_autocomplete);
     function("calculate_steinmetz_coefficients", &calculate_steinmetz_coefficients);
     function("get_initial_permeability_equations", &get_initial_permeability_equations);
+    function("calculate_complex_permeability", &calculate_complex_permeability);
     function("get_settings", &get_settings);
     function("set_settings", &set_settings);
     function("reset_settings", &reset_settings);
