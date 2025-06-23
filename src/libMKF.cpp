@@ -2423,7 +2423,7 @@ std::string mas_autocomplete(std::string masString, bool simulate, std::string c
 
         json result;
         to_json(result, autocompletedMas);
-        return result;
+        return result.dump(4);
     }
     catch (const std::exception &exc) {
         return "Exception: " + std::string{exc.what()};
@@ -2461,6 +2461,16 @@ std::map<std::string, std::string> get_initial_permeability_equations(std::strin
     }
 }
 
+std::map<std::string, std::string> get_core_volumetric_losses_equations(std::string coreLossesMethodDataString) {
+    try {
+        MAS::CoreLossesMethodData coreLossesMethodData(json::parse(coreLossesMethodDataString));
+        return OpenMagnetics::CoreLossesProprietaryModel::get_core_volumetric_losses_equations(coreLossesMethodData);
+    }
+    catch (const std::exception &exc) {
+        return {{"Exception: ", std::string{exc.what()}}};
+    }
+}
+
 
 std::string calculate_complex_permeability(std::string coreMaterialString) {
     try {
@@ -2479,9 +2489,11 @@ std::string calculate_complex_permeability(std::string coreMaterialString) {
         return result.dump(4);
     }
     catch (const std::exception &exc) {
-        return "Exception: ", std::string{exc.what()};
+        return "Exception: " + std::string{exc.what()};
     }
 }
+
+
 
 
 std::string get_settings() {
@@ -2494,6 +2506,7 @@ std::string get_settings() {
         settingsJson["coilFillSectionsWithMarginTape"] = settings->get_coil_fill_sections_with_margin_tape();
         settingsJson["coilWindEvenIfNotFit"] = settings->get_coil_wind_even_if_not_fit();
         settingsJson["coilDelimitAndCompact"] = settings->get_coil_delimit_and_compact();
+        settingsJson["coilOnlyOneTurnPerLayerInContiguousRectangular"] = settings->get_coil_only_one_turn_per_layer_in_contiguous_rectangular();
         settingsJson["coilTryRewind"] = settings->get_coil_try_rewind();
         settingsJson["useOnlyCoresInStock"] = settings->get_use_only_cores_in_stock();
         settingsJson["painterNumberPointsX"] = settings->get_painter_number_points_x();
@@ -2542,6 +2555,7 @@ void set_settings(std::string settingsString) {
     settings->set_coil_fill_sections_with_margin_tape(settingsJson["coilFillSectionsWithMarginTape"]);
     settings->set_coil_wind_even_if_not_fit(settingsJson["coilWindEvenIfNotFit"]);
     settings->set_coil_delimit_and_compact(settingsJson["coilDelimitAndCompact"]);
+    settings->set_coil_only_one_turn_per_layer_in_contiguous_rectangular(settingsJson["coilOnlyOneTurnPerLayerInContiguousRectangular"]);
     settings->set_coil_try_rewind(settingsJson["coilTryRewind"]);
     settings->set_use_only_cores_in_stock(settingsJson["useOnlyCoresInStock"]);
     settings->set_painter_number_points_x(settingsJson["painterNumberPointsX"]);
@@ -2709,6 +2723,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("mas_autocomplete", &mas_autocomplete);
     function("calculate_steinmetz_coefficients", &calculate_steinmetz_coefficients);
     function("get_initial_permeability_equations", &get_initial_permeability_equations);
+    function("get_core_volumetric_losses_equations", &get_core_volumetric_losses_equations);
     function("calculate_complex_permeability", &calculate_complex_permeability);
     function("get_settings", &get_settings);
     function("set_settings", &set_settings);
