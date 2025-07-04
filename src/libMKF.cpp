@@ -1796,6 +1796,24 @@ std::string sweep_impedance_over_frequency(std::string magneticString, double st
 }
 
 
+std::string sweep_q_factor_over_frequency(std::string magneticString, double start, double stop, size_t numberElements, std::string mode, std::string title) {
+    try {
+        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
+
+        auto impedanceOverFrequency = OpenMagnetics::Sweeper::sweep_q_factor_over_frequency(magnetic, start, stop, numberElements, mode, title);
+
+        json result;
+        to_json(result, impedanceOverFrequency);
+
+        return result.dump(4);
+
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+
 std::string sweep_winding_resistance_over_frequency(std::string magneticString, double start, double stop, size_t numberElements, size_t windingIndex, double temperature, std::string mode, std::string title) {
     try {
         OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
@@ -2674,6 +2692,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("export_magnetic_as_symbol", &export_magnetic_as_symbol);
     function("calculate_ac_resistance_coefficients_per_winding", &calculate_ac_resistance_coefficients_per_winding);
     function("sweep_impedance_over_frequency", &sweep_impedance_over_frequency);
+    function("sweep_q_factor_over_frequency", &sweep_q_factor_over_frequency);
     function("sweep_winding_resistance_over_frequency", &sweep_winding_resistance_over_frequency);
     function("sweep_resistance_over_frequency", &sweep_resistance_over_frequency);
     function("sweep_core_losses_over_frequency", &sweep_core_losses_over_frequency);
