@@ -2029,9 +2029,6 @@ std::string calculate_advised_cores(std::string inputsString, std::string weight
         std::map<std::string, double> weightsKeysString = json::parse(weightsString);
         std::map<OpenMagnetics::CoreAdviser::CoreAdviserFilters, double> weights;
 
-        weights[OpenMagnetics::CoreAdviser::CoreAdviserFilters::AREA_PRODUCT] = 1;
-        weights[OpenMagnetics::CoreAdviser::CoreAdviserFilters::ENERGY_STORED] = 1;
-
         bool filterMode = bool(inputs.get_design_requirements().get_minimum_impedance());
 
         if (filterMode) {
@@ -2047,10 +2044,6 @@ std::string calculate_advised_cores(std::string inputsString, std::string weight
 
         for (auto const& pair : weightsKeysString) {
             weights[magic_enum::enum_cast<OpenMagnetics::CoreAdviser::CoreAdviserFilters>(pair.first).value()] = pair.second / externalSum;
-        }
-        if (filterMode) {
-            weights[OpenMagnetics::CoreAdviser::CoreAdviserFilters::MINIMUM_IMPEDANCE] = weights[OpenMagnetics::CoreAdviser::CoreAdviserFilters::EFFICIENCY];
-            weights[OpenMagnetics::CoreAdviser::CoreAdviserFilters::EFFICIENCY] = 0;
         }
 
         OpenMagnetics::CoreAdviser coreAdviser;
@@ -2088,8 +2081,6 @@ std::string calculate_advised_cores(std::string inputsString, std::string weight
                 std::string filterString(filter);
                 result["scoringPerFilter"][filterString] = scoring[name][magic_enum::enum_cast<OpenMagnetics::CoreAdviser::CoreAdviserFilters>(filterString).value()];
             };
-            result["scoringPerFilter"].erase(magic_enum::enum_name(OpenMagnetics::CoreAdviser::CoreAdviserFilters::AREA_PRODUCT));
-            result["scoringPerFilter"].erase(magic_enum::enum_name(OpenMagnetics::CoreAdviser::CoreAdviserFilters::ENERGY_STORED));
             results["data"].push_back(result);
         }
         results["log"] = log;
