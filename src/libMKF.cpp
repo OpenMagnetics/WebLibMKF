@@ -28,6 +28,7 @@
 #include "physical_models/MagnetizingInductance.h"
 #include "physical_models/Reluctance.h"
 #include "converter_models/Topology.h"
+#include "support/Painter.h"
 #include "support/Utils.h"
 #include "processors/Sweeper.h"
 #include "processors/CircuitSimulatorInterface.h"
@@ -2512,6 +2513,129 @@ std::string calculate_complex_permeability(std::string coreMaterialString) {
 }
 
 
+std::string plot_core(std::string magneticString) {
+    try {
+        std::filesystem::path emptyFilepath;
+        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
+        OpenMagnetics::Painter painter(emptyFilepath, false, false, false);
+        painter.paint_core(magnetic);
+        painter.paint_bobbin(magnetic);
+        auto result = painter.export_svg();
+        return result;
+    }
+    catch(const std::runtime_error& re)
+    {
+        return re.what();
+    }
+    catch(const std::exception& ex)
+    {
+        return ex.what();
+    }
+    catch(...)
+    {
+        return "Unknown failure occurred. Possible memory corruption";
+    }
+}
+
+std::string plot_sections(std::string magneticString) {
+    try {
+        std::filesystem::path emptyFilepath;
+        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
+        OpenMagnetics::Painter painter(emptyFilepath, false, false, false);
+        painter.paint_core(magnetic);
+        painter.paint_bobbin(magnetic);
+        painter.paint_coil_sections(magnetic);
+        auto result = painter.export_svg();
+        return result;
+    }
+    catch(const std::runtime_error& re)
+    {
+        return re.what();
+    }
+    catch(const std::exception& ex)
+    {
+        return ex.what();
+    }
+    catch(...)
+    {
+        return "Unknown failure occurred. Possible memory corruption";
+    }
+}
+
+std::string plot_layers(std::string magneticString) {
+    try {
+        std::filesystem::path emptyFilepath;
+        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
+        OpenMagnetics::Painter painter(emptyFilepath, false, false, false);
+        painter.paint_core(magnetic);
+        painter.paint_bobbin(magnetic);
+        painter.paint_coil_layers(magnetic);
+        auto result = painter.export_svg();
+        return result;
+    }
+    catch(const std::runtime_error& re)
+    {
+        return re.what();
+    }
+    catch(const std::exception& ex)
+    {
+        return ex.what();
+    }
+    catch(...)
+    {
+        return "Unknown failure occurred. Possible memory corruption";
+    }
+}
+
+std::string plot_turns(std::string magneticString) {
+    try {
+        std::filesystem::path emptyFilepath;
+        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
+        OpenMagnetics::Painter painter(emptyFilepath, false, false, false);
+        painter.paint_core(magnetic);
+        painter.paint_bobbin(magnetic);
+        painter.paint_coil_turns(magnetic);
+        auto result = painter.export_svg();
+        return result;
+    }
+    catch(const std::runtime_error& re)
+    {
+        return re.what();
+    }
+    catch(const std::exception& ex)
+    {
+        return ex.what();
+    }
+    catch(...)
+    {
+        return "Unknown failure occurred. Possible memory corruption";
+    }
+}
+
+std::string plot_wire(std::string wireString) {
+    try {
+        settings->set_painter_simple_litz(false);
+        settings->set_painter_advanced_litz(true);
+        std::filesystem::path emptyFilepath;
+        OpenMagnetics::Wire wire(json::parse(wireString));
+        OpenMagnetics::Painter painter(emptyFilepath, false, false, false);
+        painter.paint_wire(wire);
+        auto result = painter.export_svg();
+        return result;
+    }
+    catch(const std::runtime_error& re)
+    {
+        return re.what();
+    }
+    catch(const std::exception& ex)
+    {
+        return ex.what();
+    }
+    catch(...)
+    {
+        return "Unknown failure occurred. Possible memory corruption";
+    }
+}
 
 
 std::string get_settings() {
@@ -2744,6 +2868,11 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_initial_permeability_equations", &get_initial_permeability_equations);
     function("get_core_volumetric_losses_equations", &get_core_volumetric_losses_equations);
     function("calculate_complex_permeability", &calculate_complex_permeability);
+    function("plot_core", &plot_core);
+    function("plot_sections", &plot_sections);
+    function("plot_layers", &plot_layers);
+    function("plot_turns", &plot_turns);
+    function("plot_wire", &plot_wire);
     function("get_settings", &get_settings);
     function("set_settings", &set_settings);
     function("reset_settings", &reset_settings);
