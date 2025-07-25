@@ -668,6 +668,10 @@ std::vector<std::string> get_available_wire_types(){
     std::vector<MAS::WireType> wireTypes;
     for (auto [reference, wire] : wireDatabase) {
         auto wireType = wire.get_type();
+        if (wireType == WireType::PLANAR) {
+            // TODO Add support for planar
+            continue;
+        }
         if (std::find(wireTypes.begin(), wireTypes.end(), wireType) == wireTypes.end()) {
             wireTypes.push_back(wireType);
         }
@@ -2223,53 +2227,58 @@ std::string get_solid_insulation_requirements_for_wires(std::string inputsString
 }
 
 std::string calculate_advised_magnetics(std::string inputsString, std::string weightsString, int maximumNumberResults, bool useOnlyCoresInStock){
-    settings->set_coil_delimit_and_compact(true);
-    OpenMagnetics::Inputs inputs(json::parse(inputsString));
-    std::map<std::string, double> weightsKeysString = json::parse(weightsString);
-    std::map<OpenMagnetics::MagneticFilters, double> weights;
+    try {
+        settings->set_coil_delimit_and_compact(true);
+        OpenMagnetics::Inputs inputs(json::parse(inputsString));
+        std::map<std::string, double> weightsKeysString = json::parse(weightsString);
+        std::map<OpenMagnetics::MagneticFilters, double> weights;
 
-    double externalSum = 0;
-    for (auto const& pair : weightsKeysString) {
-        externalSum += pair.second;
+        double externalSum = 0;
+        for (auto const& pair : weightsKeysString) {
+            externalSum += pair.second;
+        }
+
+        for (auto const& pair : weightsKeysString) {
+            weights[magic_enum::enum_cast<OpenMagnetics::MagneticFilters>(pair.first).value()] = pair.second / externalSum;
+        }
+
+        settings->set_use_only_cores_in_stock(useOnlyCoresInStock);
+
+        OpenMagnetics::MagneticAdviser magneticAdviser;
+        auto masMagnetics = magneticAdviser.get_advised_magnetic(inputs, weights, maximumNumberResults);
+        // auto log = magneticAdviser.read_log();
+        auto scorings = magneticAdviser.get_scorings();
+
+        json results = json();
+        results["data"] = json::array();
+        for (auto& [masMagnetic, scoring] : masMagnetics) {
+            std::string name = masMagnetic.get_magnetic().get_manufacturer_info().value().get_reference().value();
+
+            json result;
+            json masJson;
+            to_json(masJson, masMagnetic);
+            result["mas"] = masJson;
+            result["weightedTotalScoring"] = scorings[name][OpenMagnetics::MagneticFilters::COST] + scorings[name][OpenMagnetics::MagneticFilters::LOSSES] + scorings[name][OpenMagnetics::MagneticFilters::DIMENSIONS];
+            result["scoringPerFilter"] = json();
+            for (auto& filter : magic_enum::enum_names<OpenMagnetics::MagneticFilters>()) {
+                std::string filterString(filter);
+                auto filterEnum = magic_enum::enum_cast<OpenMagnetics::MagneticFilters>(filterString).value();
+                if (scorings[name].count(filterEnum)) {
+                    result["scoringPerFilter"][filterString] = scorings[name][filterEnum];
+                }
+            };
+            results["data"].push_back(result);
+        }
+
+        sort(results["data"].begin(), results["data"].end(), [](json& b1, json& b2) {
+            return b1["weightedTotalScoring"] > b2["weightedTotalScoring"];
+        });
+
+        return results.dump(4);
     }
-
-    for (auto const& pair : weightsKeysString) {
-        weights[magic_enum::enum_cast<OpenMagnetics::MagneticFilters>(pair.first).value()] = pair.second / externalSum;
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
     }
-
-    settings->set_use_only_cores_in_stock(useOnlyCoresInStock);
-
-    OpenMagnetics::MagneticAdviser magneticAdviser;
-    auto masMagnetics = magneticAdviser.get_advised_magnetic(inputs, weights, maximumNumberResults);
-    // auto log = magneticAdviser.read_log();
-    auto scorings = magneticAdviser.get_scorings();
-
-    json results = json();
-    results["data"] = json::array();
-    for (auto& [masMagnetic, scoring] : masMagnetics) {
-        std::string name = masMagnetic.get_magnetic().get_manufacturer_info().value().get_reference().value();
-
-        json result;
-        json masJson;
-        to_json(masJson, masMagnetic);
-        result["mas"] = masJson;
-        result["weightedTotalScoring"] = scorings[name][OpenMagnetics::MagneticFilters::COST] + scorings[name][OpenMagnetics::MagneticFilters::LOSSES] + scorings[name][OpenMagnetics::MagneticFilters::DIMENSIONS];
-        result["scoringPerFilter"] = json();
-        for (auto& filter : magic_enum::enum_names<OpenMagnetics::MagneticFilters>()) {
-            std::string filterString(filter);
-            auto filterEnum = magic_enum::enum_cast<OpenMagnetics::MagneticFilters>(filterString).value();
-            if (scorings[name].count(filterEnum)) {
-                result["scoringPerFilter"][filterString] = scorings[name][filterEnum];
-            }
-        };
-        results["data"].push_back(result);
-    }
-
-    sort(results["data"].begin(), results["data"].end(), [](json& b1, json& b2) {
-        return b1["weightedTotalScoring"] > b2["weightedTotalScoring"];
-    });
-
-    return results.dump(4);
 }
 
 std::string calculate_advised_magnetics_from_catalog(std::string inputsString, std::string catalogString, int maximumNumberResults){
@@ -2326,13 +2335,18 @@ std::vector<std::string> get_available_core_filters(){
 }
 
 std::string calculate_leakage_inductance(std::string magneticString, double frequency, size_t sourceIndex){
-    OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
+    try {
+        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
 
-    auto leakageInductanceOutput = OpenMagnetics::LeakageInductance().calculate_leakage_inductance_all_windings(magnetic, frequency, sourceIndex);
+        auto leakageInductanceOutput = OpenMagnetics::LeakageInductance().calculate_leakage_inductance_all_windings(magnetic, frequency, sourceIndex);
 
-    json result;
-    to_json(result, leakageInductanceOutput);
-    return result.dump(4);
+        json result;
+        to_json(result, leakageInductanceOutput);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
 }
 
 std::string calculate_flyback_inputs(std::string flybackInputsString){
