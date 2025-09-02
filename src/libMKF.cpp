@@ -292,6 +292,12 @@ std::string get_wire_data_by_standard_name(std::string standardName){
             continue;
         }
         if (wire.get_standard_name().value() == standardName) {
+            if (wire.get_type() == MAS::WireType::PLANAR) {
+                json result;
+                to_json(result, wire);
+                return result.dump(4);
+            }
+
             auto coating = wire.resolve_coating();
             if (!coating) {
                 continue;
@@ -644,6 +650,26 @@ std::vector<std::string> get_unique_wire_diameters(std::string wireStandardStrin
                 if (std::find(uniqueStandardName.begin(), uniqueStandardName.end(), strandStandardName) == uniqueStandardName.end()) {
                     uniqueStandardName.push_back(strandStandardName);
                 }
+            }
+        }
+        return uniqueStandardName;
+    }
+    catch (const std::exception &exc) {
+        return {"Exception: " + std::string{exc.what()}};
+    }
+}
+
+
+std::vector<std::string> get_planar_thicknesses(){
+    try {
+        std::vector<std::string> uniqueStandardName;
+        auto wires = OpenMagnetics::get_wires(WireType::PLANAR);
+
+        for (auto wire : wires) {
+
+            auto standardName = wire.get_standard_name().value();
+            if (std::find(uniqueStandardName.begin(), uniqueStandardName.end(), standardName) == uniqueStandardName.end()) {
+                uniqueStandardName.push_back(standardName);
             }
         }
         return uniqueStandardName;
@@ -1291,30 +1317,19 @@ bool check_requirement(std::string requirementString, double value){
     }
 }
 
-std::string wind(std::string coilString, size_t repetitions, std::string proportionPerWindingString, std::string patternString, std::string marginPairsString) {
-    try {
-        auto coilJson = json::parse(coilString);
-        auto marginPairs = std::vector<std::vector<double>>(json::parse(marginPairsString));
-
-        std::vector<double> proportionPerWinding = json::parse(proportionPerWindingString);
-        std::vector<size_t> pattern = json::parse(patternString);
-        auto coilFunctionalDescription = std::vector<OpenMagnetics::CoilFunctionalDescription>(coilJson["functionalDescription"]);
-        OpenMagnetics::Coil coil;
-        coil.set_bobbin(coilJson["bobbin"]);
-        coil.set_functional_description(coilFunctionalDescription);
-        coil.preload_margins(marginPairs);
-
-        if (coilJson["_layersOrientation"].is_object()) {
-            auto layersOrientationPerSection = std::map<std::string, WindingOrientation>(coilJson["_layersOrientation"]);
+void process_coil_configuration(OpenMagnetics::Coil& coil, json configuration, std::optional<size_t> repetitions = std::nullopt, std::optional<std::vector<double>> proportionPerWinding = std::nullopt, std::optional<std::vector<size_t>> pattern = std::nullopt) {
+    if (repetitions && proportionPerWinding && pattern) {
+        if (configuration["_layersOrientation"].is_object()) {
+            auto layersOrientationPerSection = std::map<std::string, WindingOrientation>(configuration["_layersOrientation"]);
             for (auto [sectionName, layerOrientation] : layersOrientationPerSection) {
                 coil.set_layers_orientation(layerOrientation, sectionName);
             }
         }
-        else if (coilJson["_layersOrientation"].is_array()) {
-            coil.wind_by_sections(proportionPerWinding, pattern, repetitions);
+        else if (configuration["_layersOrientation"].is_array()) {
+            coil.wind_by_sections(proportionPerWinding.value(), pattern.value(), repetitions.value());
             if (coil.get_sections_description()) {
                 auto sections = coil.get_sections_description_conduction();
-                auto layersOrientationPerSection = std::vector<WindingOrientation>(coilJson["_layersOrientation"]);
+                auto layersOrientationPerSection = std::vector<WindingOrientation>(configuration["_layersOrientation"]);
                 for (size_t sectionIndex = 0; sectionIndex < sections.size(); ++sectionIndex) {
                     if (sectionIndex < layersOrientationPerSection.size()) {
                         coil.set_layers_orientation(layersOrientationPerSection[sectionIndex], sections[sectionIndex].get_name());
@@ -1323,21 +1338,21 @@ std::string wind(std::string coilString, size_t repetitions, std::string proport
             }
         }
         else {
-            WindingOrientation layerOrientation(coilJson["_layersOrientation"]);
+            WindingOrientation layerOrientation(configuration["_layersOrientation"]);
             coil.set_layers_orientation(layerOrientation);
 
         }
-        if (coilJson["_turnsAlignment"].is_object()) {
-            auto turnsAlignmentPerSection = std::map<std::string, CoilAlignment>(coilJson["_turnsAlignment"]);
+        if (configuration["_turnsAlignment"].is_object()) {
+            auto turnsAlignmentPerSection = std::map<std::string, CoilAlignment>(configuration["_turnsAlignment"]);
             for (auto [sectionName, turnsAlignment] : turnsAlignmentPerSection) {
                 coil.set_turns_alignment(turnsAlignment, sectionName);
             }
         }
-        else if (coilJson["_turnsAlignment"].is_array()) {
-            coil.wind_by_sections(proportionPerWinding, pattern, repetitions);
+        else if (configuration["_turnsAlignment"].is_array()) {
+            coil.wind_by_sections(proportionPerWinding.value(), pattern.value(), repetitions.value());
             if (coil.get_sections_description()) {
                 auto sections = coil.get_sections_description_conduction();
-                auto turnsAlignmentPerSection = std::vector<CoilAlignment>(coilJson["_turnsAlignment"]);
+                auto turnsAlignmentPerSection = std::vector<CoilAlignment>(configuration["_turnsAlignment"]);
                 for (size_t sectionIndex = 0; sectionIndex < sections.size(); ++sectionIndex) {
                     if (sectionIndex < turnsAlignmentPerSection.size()) {
                         coil.set_turns_alignment(turnsAlignmentPerSection[sectionIndex], sections[sectionIndex].get_name());
@@ -1346,9 +1361,56 @@ std::string wind(std::string coilString, size_t repetitions, std::string proport
             }
         }
         else {
-            CoilAlignment turnsAlignment(coilJson["_turnsAlignment"]);
+            CoilAlignment turnsAlignment(configuration["_turnsAlignment"]);
             coil.set_turns_alignment(turnsAlignment);
         }
+    }
+    else {
+        if (configuration.contains("_layersOrientation")) {
+            coil.set_layers_orientation(configuration["_layersOrientation"]);
+        }
+        if (configuration.contains("_turnsAlignment")) {
+            coil.set_turns_alignment(configuration["_turnsAlignment"]);
+        }
+    }
+
+    if (configuration.contains("_interleavingLevel")) {
+        coil.set_interleaving_level(configuration["_interleavingLevel"]);
+    }
+    if (configuration.contains("_windingOrientation")) {
+        coil.set_winding_orientation(configuration["_windingOrientation"]);
+    }
+    if (configuration.contains("_sectionAlignment")) {
+        coil.set_section_alignment(configuration["_sectionAlignment"]);
+    }
+    if (configuration.contains("_sectionAlignment")) {
+        coil.set_section_alignment(configuration["_sectionAlignment"]);
+    }
+
+    if (configuration.contains("_interlayerInsulationThickness")) {
+        coil.set_interlayer_insulation(configuration["_interlayerInsulationThickness"], std::nullopt, std::nullopt, false);
+    }
+    if (configuration.contains("_intersectionInsulationThickness")) {
+        coil.set_intersection_insulation(configuration["_intersectionInsulationThickness"], 1, std::nullopt, std::nullopt, false);
+    }
+
+}
+
+std::string wind(std::string coilString, size_t repetitions, std::string proportionPerWindingString, std::string patternString, std::string marginPairsString) {
+    try {
+        auto coilJson = json::parse(coilString);
+        auto marginPairs = std::vector<std::vector<double>>(json::parse(marginPairsString));
+        settings->set_coil_wind_even_if_not_fit(true);
+ 
+        std::vector<double> proportionPerWinding = json::parse(proportionPerWindingString);
+        std::vector<size_t> pattern = json::parse(patternString);
+        auto coilFunctionalDescription = std::vector<OpenMagnetics::CoilFunctionalDescription>(coilJson["functionalDescription"]);
+        OpenMagnetics::Coil coil;
+        coil.set_bobbin(coilJson["bobbin"]);
+        coil.set_functional_description(coilFunctionalDescription);
+        coil.preload_margins(marginPairs);
+
+        process_coil_configuration(coil, coilJson, repetitions, proportionPerWinding, pattern);
 
         if (proportionPerWinding.size() == coilFunctionalDescription.size()) {
             if (pattern.size() > 0 && repetitions > 0) {
@@ -1390,6 +1452,33 @@ std::string wind(std::string coilString, size_t repetitions, std::string proport
     }
 }
 
+std::string wind_planar(std::string coilString, std::string stackUpString, double borderToWireDistance, std::string wireToWireDistanceString, std::string insulationThicknessString, double coreToLayerDistance) {
+    try {
+        settings->set_coil_wind_even_if_not_fit(true);
+        auto coilJson = json::parse(coilString);
+        auto coil = OpenMagnetics::Coil(coilJson, false);
+        std::vector<size_t> stackUp = json::parse(stackUpString);
+        std::map<std::pair<size_t, size_t>, double> insulationThickness = json::parse(insulationThicknessString).get<std::map<std::pair<size_t, size_t>, double>>();
+        std::map<size_t, double> wireToWireDistance = json::parse(wireToWireDistanceString).get<std::map<size_t, double>>();
+
+        coil.set_strict(false);
+        coil.wind_planar(stackUp, borderToWireDistance, wireToWireDistance, insulationThickness, coreToLayerDistance);
+
+        if (!coil.get_turns_description()) {
+            throw std::runtime_error("Turns not created");
+        }
+
+        json result;
+        to_json(result, coil);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        std::cout << coilString << std::endl;
+        std::cout << stackUpString << std::endl;
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
 std::string wind_by_sections(std::string coilString, size_t repetitions, std::string proportionPerWindingString, std::string patternString) {
     try {
         auto coilJson = json::parse(coilString);
@@ -1399,21 +1488,7 @@ std::string wind_by_sections(std::string coilString, size_t repetitions, std::st
         auto coilFunctionalDescription = std::vector<OpenMagnetics::CoilFunctionalDescription>(coilJson["functionalDescription"]);
         OpenMagnetics::Coil coil;
 
-        if (coilJson.contains("_interleavingLevel")) {
-            coil.set_interleaving_level(coilJson["_interleavingLevel"]);
-        }
-        if (coilJson.contains("_windingOrientation")) {
-            coil.set_winding_orientation(coilJson["_windingOrientation"]);
-        }
-        if (coilJson.contains("_layersOrientation")) {
-            coil.set_layers_orientation(coilJson["_layersOrientation"]);
-        }
-        if (coilJson.contains("_turnsAlignment")) {
-            coil.set_turns_alignment(coilJson["_turnsAlignment"]);
-        }
-        if (coilJson.contains("_sectionAlignment")) {
-            coil.set_section_alignment(coilJson["_sectionAlignment"]);
-        }
+        process_coil_configuration(coil, coilString, repetitions, proportionPerWinding, pattern);
 
         coil.set_bobbin(coilJson["bobbin"]);
         coil.set_functional_description(coilFunctionalDescription);
@@ -1457,21 +1532,7 @@ std::string wind_by_layers(std::string coilString) {
         auto coilSectionsDescription = std::vector<Section>(coilJson["sectionsDescription"]);
         OpenMagnetics::Coil coil;
 
-        if (coilJson.contains("_interleavingLevel")) {
-            coil.set_interleaving_level(coilJson["_interleavingLevel"]);
-        }
-        if (coilJson.contains("_windingOrientation")) {
-            coil.set_winding_orientation(coilJson["_windingOrientation"]);
-        }
-        if (coilJson.contains("_layersOrientation")) {
-            coil.set_layers_orientation(coilJson["_layersOrientation"]);
-        }
-        if (coilJson.contains("_turnsAlignment")) {
-            coil.set_turns_alignment(coilJson["_turnsAlignment"]);
-        }
-        if (coilJson.contains("_sectionAlignment")) {
-            coil.set_section_alignment(coilJson["_sectionAlignment"]);
-        }
+        process_coil_configuration(coil, coilString);
 
         coil.set_bobbin(coilJson["bobbin"]);
         coil.set_functional_description(coilFunctionalDescription);
@@ -1496,21 +1557,7 @@ std::string wind_by_turns(std::string coilString) {
         auto coilLayersDescription = std::vector<Layer>(coilJson["layersDescription"]);
         OpenMagnetics::Coil coil;
 
-        if (coilJson.contains("_interleavingLevel")) {
-            coil.set_interleaving_level(coilJson["_interleavingLevel"]);
-        }
-        if (coilJson.contains("_windingOrientation")) {
-            coil.set_winding_orientation(coilJson["_windingOrientation"]);
-        }
-        if (coilJson.contains("_layersOrientation")) {
-            coil.set_layers_orientation(coilJson["_layersOrientation"]);
-        }
-        if (coilJson.contains("_turnsAlignment")) {
-            coil.set_turns_alignment(coilJson["_turnsAlignment"]);
-        }
-        if (coilJson.contains("_sectionAlignment")) {
-            coil.set_section_alignment(coilJson["_sectionAlignment"]);
-        }
+        process_coil_configuration(coil, coilString);
 
         coil.set_bobbin(coilJson["bobbin"]);
         coil.set_functional_description(coilFunctionalDescription);
@@ -1537,21 +1584,7 @@ std::string delimit_and_compact(std::string coilString) {
         auto coilTurnsDescription = std::vector<Turn>(coilJson["turnsDescription"]);
         OpenMagnetics::Coil coil;
 
-        if (coilJson.contains("_interleavingLevel")) {
-            coil.set_interleaving_level(coilJson["_interleavingLevel"]);
-        }
-        if (coilJson.contains("_windingOrientation")) {
-            coil.set_winding_orientation(coilJson["_windingOrientation"]);
-        }
-        if (coilJson.contains("_layersOrientation")) {
-            coil.set_layers_orientation(coilJson["_layersOrientation"]);
-        }
-        if (coilJson.contains("_turnsAlignment")) {
-            coil.set_turns_alignment(coilJson["_turnsAlignment"]);
-        }
-        if (coilJson.contains("_sectionAlignment")) {
-            coil.set_section_alignment(coilJson["_sectionAlignment"]);
-        }
+        process_coil_configuration(coil, coilString);
 
         coil.set_bobbin(coilJson["bobbin"]);
         coil.set_functional_description(coilFunctionalDescription);
@@ -2025,11 +2058,13 @@ std::vector<double> get_maximum_dimensions(std::string magneticString){
     return magnetic.get_maximum_dimensions();
 }
 
-std::string calculate_advised_cores(std::string inputsString, std::string weightsString, int maximumNumberResults, bool useOnlyCoresInStock){
+std::string calculate_advised_cores(std::string inputsString, std::string weightsString, int maximumNumberResults, std::string coreModeString){
     try {
         settings->set_coil_delimit_and_compact(true);
 
         OpenMagnetics::Inputs inputs(json::parse(inputsString));
+        OpenMagnetics::CoreAdviser::CoreAdviserModes coreMode;
+        from_json(coreModeString, coreMode);
         std::map<std::string, double> weightsKeysString = json::parse(weightsString);
         std::map<OpenMagnetics::CoreAdviser::CoreAdviserFilters, double> weights;
 
@@ -2051,8 +2086,9 @@ std::string calculate_advised_cores(std::string inputsString, std::string weight
         }
 
         OpenMagnetics::CoreAdviser coreAdviser;
+        coreAdviser.set_mode(coreMode);
         auto masMagnetics = coreAdviser.get_advised_core(inputs, weights, maximumNumberResults);
-        auto log = coreAdviser.read_log();
+        auto log = OpenMagnetics::read_log();
         auto scoring = coreAdviser.get_scorings();
         std::map<std::string, std::map<std::string, double>> filteredScoring;
 
@@ -2095,7 +2131,6 @@ std::string calculate_advised_cores(std::string inputsString, std::string weight
         std::cout << inputsString << std::endl;
         std::cout << weightsString << std::endl;
         std::cout << maximumNumberResults << std::endl;
-        std::cout << useOnlyCoresInStock << std::endl;
         return "Exception: " + std::string{exc.what()};
     }
 }
@@ -2134,7 +2169,7 @@ std::string calculate_advised_sections(std::string masString, std::string patter
     }
 }
 
-std::string calculate_advised_coil(std::string masString){
+std::string calculate_advised_coil(std::string masString, bool usePlanarWires){
     try {
         settings->set_coil_delimit_and_compact(true);
         OpenMagnetics::Mas mas(json::parse(masString));
@@ -2145,6 +2180,7 @@ std::string calculate_advised_coil(std::string masString){
         mas.get_mutable_magnetic().get_mutable_coil().set_turns_description(std::nullopt);
         mas.get_mutable_magnetic().get_mutable_coil().set_layers_description(std::nullopt);
         mas.get_mutable_magnetic().get_mutable_coil().set_sections_description(std::nullopt);
+        mas.get_mutable_magnetic().get_mutable_coil().set_groups_description(std::nullopt);
 
         OpenMagnetics::CoilAdviser coilAdviser;
         auto masMagneticsWithCoil = coilAdviser.get_advised_coil(mas, 1);
@@ -2169,7 +2205,8 @@ std::string calculate_advised_wires(std::string coilFunctionalDescriptionString,
                                     std::string solidInsulationRequirementsString,
                                     double temperature,
                                     uint8_t numberSections,
-                                    size_t maximumNumberResults){
+                                    size_t maximumNumberResults,
+                                    bool usePlanarWires){
     try {
         settings->set_coil_delimit_and_compact(true);
         OpenMagnetics::CoilFunctionalDescription coilFunctionalDescription(json::parse(coilFunctionalDescriptionString));
@@ -2179,11 +2216,18 @@ std::string calculate_advised_wires(std::string coilFunctionalDescriptionString,
 
         OpenMagnetics::WireAdviser wireAdviser;
         wireAdviser.set_wire_solid_insulation_requirements(wireSolidInsulationRequirements);
-        auto coilFunctionalDescriptions = wireAdviser.get_advised_wire(coilFunctionalDescription, section, current, temperature, numberSections, maximumNumberResults);
+        std::vector<std::pair<OpenMagnetics::CoilFunctionalDescription, double>> coilFunctionalDescriptionsWithScoring;
+        
+        if (usePlanarWires) {
+            coilFunctionalDescriptionsWithScoring = wireAdviser.get_advised_planar_wire(coilFunctionalDescription, section, current, temperature, numberSections, maximumNumberResults);
+        }
+        else {
+            coilFunctionalDescriptionsWithScoring = wireAdviser.get_advised_wire(coilFunctionalDescription, section, current, temperature, numberSections, maximumNumberResults);
+        }
 
         json results = json();
         results["data"] = json::array();
-        for (auto& [coilFunctionalDescription, scoring] : coilFunctionalDescriptions) {
+        for (auto& [coilFunctionalDescription, scoring] : coilFunctionalDescriptionsWithScoring) {
             json result;
             json coilFunctionalDescriptionJson;
             to_json(coilFunctionalDescriptionJson, coilFunctionalDescription);
@@ -2226,10 +2270,14 @@ std::string get_solid_insulation_requirements_for_wires(std::string inputsString
     }
 }
 
-std::string calculate_advised_magnetics(std::string inputsString, std::string weightsString, int maximumNumberResults, bool useOnlyCoresInStock){
+std::string calculate_advised_magnetics(std::string inputsString, std::string weightsString, int maximumNumberResults, std::string coreModeString){
     try {
         settings->set_coil_delimit_and_compact(true);
         OpenMagnetics::Inputs inputs(json::parse(inputsString));
+
+        OpenMagnetics::CoreAdviser::CoreAdviserModes coreMode;
+        from_json(coreModeString, coreMode);
+
         std::map<std::string, double> weightsKeysString = json::parse(weightsString);
         std::map<OpenMagnetics::MagneticFilters, double> weights;
 
@@ -2242,9 +2290,8 @@ std::string calculate_advised_magnetics(std::string inputsString, std::string we
             weights[magic_enum::enum_cast<OpenMagnetics::MagneticFilters>(pair.first).value()] = pair.second / externalSum;
         }
 
-        settings->set_use_only_cores_in_stock(useOnlyCoresInStock);
-
         OpenMagnetics::MagneticAdviser magneticAdviser;
+        magneticAdviser.set_core_mode(coreMode);
         auto masMagnetics = magneticAdviser.get_advised_magnetic(inputs, weights, maximumNumberResults);
         // auto log = magneticAdviser.read_log();
         auto scorings = magneticAdviser.get_scorings();
@@ -2438,6 +2485,15 @@ std::string create_quick_bobbin(std::string coresString, double thickness){
     return result.dump(4);
 }
 
+std::string create_quick_bobbin_different_thicknesses(std::string coresString, double wallThickness, double columnThickness){
+    OpenMagnetics::Core core(json::parse(coresString), false, true);
+    auto bobbin = OpenMagnetics::Bobbin::create_quick_bobbin(core, wallThickness, columnThickness);
+
+    json result;
+    to_json(result, bobbin);
+    return result.dump(4);
+}
+
 
 std::string mas_autocomplete(std::string masString, bool simulate, std::string configurationString) {
     try {
@@ -2594,6 +2650,8 @@ std::string plot_layers(std::string magneticString) {
 
 std::string plot_turns(std::string magneticString) {
     try {
+        settings->set_painter_simple_litz(true);
+        settings->set_painter_advanced_litz(false);
         std::filesystem::path emptyFilepath;
         OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
         OpenMagnetics::Painter painter(emptyFilepath, false, false, false);
@@ -2643,6 +2701,78 @@ std::string plot_wire(std::string wireString) {
 }
 
 
+std::string set_interlayer_insulation(std::string coilString, double layerThickness){
+    try {
+        OpenMagnetics::Coil coil(json::parse(coilString), false);
+        coil.set_interlayer_insulation(layerThickness);
+
+        json result;
+        to_json(result, coil);
+        return result.dump(4);
+    }
+    catch(const std::runtime_error& re)
+    {
+        return re.what();
+    }
+    catch(const std::exception& ex)
+    {
+        return ex.what();
+    }
+    catch(...)
+    {
+        return "Unknown failure occurred. Possible memory corruption";
+    }
+}
+
+std::string set_intersection_insulation(std::string coilString, double layerThickness, int numberInsulationLayers){
+    try {
+        OpenMagnetics::Coil coil(json::parse(coilString), false);
+        coil.set_intersection_insulation(layerThickness, numberInsulationLayers);
+
+        json result;
+        to_json(result, coil);
+        return result.dump(4);
+    }
+    catch(const std::runtime_error& re)
+    {
+        return re.what();
+    }
+    catch(const std::exception& ex)
+    {
+        return ex.what();
+    }
+    catch(...)
+    {
+        return "Unknown failure occurred. Possible memory corruption";
+    }
+}
+
+std::string calculate_filling_factor(std::string coilString) {
+    try {
+        OpenMagnetics::Coil coil(json::parse(coilString), false);
+        auto [areaFillingFactor, aux] = coil.calculate_filling_factor();
+        auto [overlappingFillingFactor, contiguousFillingFactor] = aux;
+        json result;
+        result["areaFillingFactor"] = areaFillingFactor;
+        result["overlappingFillingFactor"] = overlappingFillingFactor;
+        result["contiguousFillingFactor"] = contiguousFillingFactor;
+        return result.dump(4);
+    }
+    catch(const std::runtime_error& re)
+    {
+        return re.what();
+    }
+    catch(const std::exception& ex)
+    {
+        return ex.what();
+    }
+    catch(...)
+    {
+        return "Unknown failure occurred. Possible memory corruption";
+    }
+
+}
+
 std::string get_settings() {
     try {
         json settingsJson;
@@ -2655,6 +2785,8 @@ std::string get_settings() {
         settingsJson["coilDelimitAndCompact"] = settings->get_coil_delimit_and_compact();
         settingsJson["coilOnlyOneTurnPerLayerInContiguousRectangular"] = settings->get_coil_only_one_turn_per_layer_in_contiguous_rectangular();
         settingsJson["coilTryRewind"] = settings->get_coil_try_rewind();
+        settingsJson["coilMaximumLayersPlanar"] = settings->get_coil_maximum_layers_planar();
+
         settingsJson["useOnlyCoresInStock"] = settings->get_use_only_cores_in_stock();
         settingsJson["painterNumberPointsX"] = settings->get_painter_number_points_x();
         settingsJson["painterNumberPointsY"] = settings->get_painter_number_points_y();
@@ -2704,6 +2836,8 @@ void set_settings(std::string settingsString) {
     settings->set_coil_delimit_and_compact(settingsJson["coilDelimitAndCompact"]);
     settings->set_coil_only_one_turn_per_layer_in_contiguous_rectangular(settingsJson["coilOnlyOneTurnPerLayerInContiguousRectangular"]);
     settings->set_coil_try_rewind(settingsJson["coilTryRewind"]);
+    settings->set_coil_maximum_layers_planar(settingsJson["coilMaximumLayersPlanar"]);
+
     settings->set_use_only_cores_in_stock(settingsJson["useOnlyCoresInStock"]);
     settings->set_painter_number_points_x(settingsJson["painterNumberPointsX"]);
     settings->set_painter_number_points_y(settingsJson["painterNumberPointsY"]);
@@ -2782,6 +2916,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_shape_family_subtypes", &get_shape_family_subtypes);
     function("get_available_wires", &get_available_wires);
     function("get_unique_wire_diameters", &get_unique_wire_diameters);
+    function("get_planar_thicknesses", &get_planar_thicknesses);
     function("get_available_wire_types", &get_available_wire_types);
     function("get_available_wire_standards", &get_available_wire_standards);
     function("calculate_gap_reluctance", &calculate_gap_reluctance);
@@ -2820,6 +2955,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_available_coil_alignments", &get_available_coil_alignments);
     function("check_requirement", &check_requirement);
     function("wind", &wind);
+    function("wind_planar", &wind_planar);
     function("wind_by_sections", &wind_by_sections);
     function("wind_by_layers", &wind_by_layers);
     function("wind_by_turns", &wind_by_turns);
@@ -2868,6 +3004,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_only_frequency_dependent_indexes", &get_only_frequency_dependent_indexes);
     function("get_only_magnetic_field_dc_bias_dependent_indexes", &get_only_magnetic_field_dc_bias_dependent_indexes);
     function("create_quick_bobbin", &create_quick_bobbin);
+    function("create_quick_bobbin_different_thicknesses", &create_quick_bobbin_different_thicknesses);
     function("mas_autocomplete", &mas_autocomplete);
     function("calculate_steinmetz_coefficients", &calculate_steinmetz_coefficients);
     function("get_initial_permeability_equations", &get_initial_permeability_equations);
@@ -2878,6 +3015,9 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("plot_layers", &plot_layers);
     function("plot_turns", &plot_turns);
     function("plot_wire", &plot_wire);
+    function("set_interlayer_insulation", &set_interlayer_insulation);
+    function("set_intersection_insulation", &set_intersection_insulation);
+    function("calculate_filling_factor", &calculate_filling_factor);
     function("get_settings", &get_settings);
     function("set_settings", &set_settings);
     function("reset_settings", &reset_settings);
