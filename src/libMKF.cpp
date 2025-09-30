@@ -27,7 +27,7 @@
 #include "physical_models/LeakageInductance.h"
 #include "physical_models/MagnetizingInductance.h"
 #include "physical_models/Reluctance.h"
-#include "converter_models/Topology.h"
+#include "converter_models/Flyback.h"
 #include "support/Painter.h"
 #include "support/Utils.h"
 #include "processors/Sweeper.h"
@@ -249,9 +249,9 @@ std::string calculate_bobbin_data(std::string magneticString){
     }
 }
 
-std::string get_wire_data(std::string coilFunctionalDescriptionDataString){
-    OpenMagnetics::CoilFunctionalDescription coilFunctionalDescription(json::parse(coilFunctionalDescriptionDataString));
-    auto wire = OpenMagnetics::Coil::resolve_wire(coilFunctionalDescription);
+std::string get_wire_data(std::string windingDataString){
+    OpenMagnetics::Winding winding(json::parse(windingDataString));
+    auto wire = OpenMagnetics::Coil::resolve_wire(winding);
     json result;
     to_json(result, wire);
     return result.dump(4);
@@ -538,7 +538,7 @@ std::string get_shape_data(std::string shapeName){
 
 std::vector<std::string> get_available_core_shape_families(){
     std::vector<std::string> families;
-    for (auto& family : OpenMagnetics::get_shape_families()) {
+    for (auto& family : OpenMagnetics::get_core_shape_families()) {
         json familyJson;
         to_json(familyJson, family);
         families.push_back(familyJson);
@@ -559,15 +559,15 @@ std::vector<std::string> get_available_core_manufacturers(){
 }
 
 std::vector<std::string> get_available_core_materials(std::string manufacturer){
-    return OpenMagnetics::get_material_names(manufacturer);
+    return OpenMagnetics::get_core_material_names(manufacturer);
 }
 
 std::vector<std::string> get_available_core_shapes(){
-    return OpenMagnetics::get_shape_names();
+    return OpenMagnetics::get_core_shape_names();
 }
 
 std::vector<std::string> get_available_core_shapes_by_manufacturer(std::string manufacturer){
-    return OpenMagnetics::get_core_shapes_names(manufacturer);
+    return OpenMagnetics::get_core_shape_names(manufacturer);
 }
 
 std::vector<std::string> get_available_core_shapes_by_family(std::string familyString){
@@ -575,7 +575,7 @@ std::vector<std::string> get_available_core_shapes_by_family(std::string familyS
         CoreShapeFamily family;
         from_json(familyString, family);
          
-        return OpenMagnetics::get_shape_names(family);
+        return OpenMagnetics::get_core_shape_names(family);
     }
     catch (const std::exception &exc) {
         return {"Exception: " + std::string{exc.what()}};
@@ -1404,15 +1404,15 @@ std::string wind(std::string coilString, size_t repetitions, std::string proport
  
         std::vector<double> proportionPerWinding = json::parse(proportionPerWindingString);
         std::vector<size_t> pattern = json::parse(patternString);
-        auto coilFunctionalDescription = std::vector<OpenMagnetics::CoilFunctionalDescription>(coilJson["functionalDescription"]);
+        auto winding = std::vector<OpenMagnetics::Winding>(coilJson["functionalDescription"]);
         OpenMagnetics::Coil coil;
         coil.set_bobbin(coilJson["bobbin"]);
-        coil.set_functional_description(coilFunctionalDescription);
+        coil.set_functional_description(winding);
         coil.preload_margins(marginPairs);
 
         process_coil_configuration(coil, coilJson, repetitions, proportionPerWinding, pattern);
 
-        if (proportionPerWinding.size() == coilFunctionalDescription.size()) {
+        if (proportionPerWinding.size() == winding.size()) {
             if (pattern.size() > 0 && repetitions > 0) {
                 coil.wind(proportionPerWinding, pattern, repetitions);
             }
@@ -1485,14 +1485,14 @@ std::string wind_by_sections(std::string coilString, size_t repetitions, std::st
 
         std::vector<double> proportionPerWinding = json::parse(proportionPerWindingString);
         std::vector<size_t> pattern = json::parse(patternString);
-        auto coilFunctionalDescription = std::vector<OpenMagnetics::CoilFunctionalDescription>(coilJson["functionalDescription"]);
+        auto winding = std::vector<OpenMagnetics::Winding>(coilJson["functionalDescription"]);
         OpenMagnetics::Coil coil;
 
         process_coil_configuration(coil, coilString, repetitions, proportionPerWinding, pattern);
 
         coil.set_bobbin(coilJson["bobbin"]);
-        coil.set_functional_description(coilFunctionalDescription);
-        if (proportionPerWinding.size() == coilFunctionalDescription.size()) {
+        coil.set_functional_description(winding);
+        if (proportionPerWinding.size() == winding.size()) {
             if (pattern.size() > 0 && repetitions > 0) {
                 coil.wind_by_sections(proportionPerWinding, pattern, repetitions);
             }
@@ -1528,14 +1528,14 @@ std::string wind_by_layers(std::string coilString) {
     try {
         auto coilJson = json::parse(coilString);
 
-        auto coilFunctionalDescription = std::vector<OpenMagnetics::CoilFunctionalDescription>(coilJson["functionalDescription"]);
+        auto winding = std::vector<OpenMagnetics::Winding>(coilJson["functionalDescription"]);
         auto coilSectionsDescription = std::vector<Section>(coilJson["sectionsDescription"]);
         OpenMagnetics::Coil coil;
 
         process_coil_configuration(coil, coilString);
 
         coil.set_bobbin(coilJson["bobbin"]);
-        coil.set_functional_description(coilFunctionalDescription);
+        coil.set_functional_description(winding);
         coil.set_sections_description(coilSectionsDescription);
         coil.wind_by_layers();
 
@@ -1552,7 +1552,7 @@ std::string wind_by_turns(std::string coilString) {
     try {
         auto coilJson = json::parse(coilString);
 
-        auto coilFunctionalDescription = std::vector<OpenMagnetics::CoilFunctionalDescription>(coilJson["functionalDescription"]);
+        auto winding = std::vector<OpenMagnetics::Winding>(coilJson["functionalDescription"]);
         auto coilSectionsDescription = std::vector<Section>(coilJson["sectionsDescription"]);
         auto coilLayersDescription = std::vector<Layer>(coilJson["layersDescription"]);
         OpenMagnetics::Coil coil;
@@ -1560,7 +1560,7 @@ std::string wind_by_turns(std::string coilString) {
         process_coil_configuration(coil, coilString);
 
         coil.set_bobbin(coilJson["bobbin"]);
-        coil.set_functional_description(coilFunctionalDescription);
+        coil.set_functional_description(winding);
         coil.set_sections_description(coilSectionsDescription);
         coil.set_layers_description(coilLayersDescription);
         coil.wind_by_turns();
@@ -1578,7 +1578,7 @@ std::string delimit_and_compact(std::string coilString) {
     try {
         auto coilJson = json::parse(coilString);
 
-        auto coilFunctionalDescription = std::vector<OpenMagnetics::CoilFunctionalDescription>(coilJson["functionalDescription"]);
+        auto winding = std::vector<OpenMagnetics::Winding>(coilJson["functionalDescription"]);
         auto coilSectionsDescription = std::vector<Section>(coilJson["sectionsDescription"]);
         auto coilLayersDescription = std::vector<Layer>(coilJson["layersDescription"]);
         auto coilTurnsDescription = std::vector<Turn>(coilJson["turnsDescription"]);
@@ -1587,7 +1587,7 @@ std::string delimit_and_compact(std::string coilString) {
         process_coil_configuration(coil, coilString);
 
         coil.set_bobbin(coilJson["bobbin"]);
-        coil.set_functional_description(coilFunctionalDescription);
+        coil.set_functional_description(winding);
         coil.set_sections_description(coilSectionsDescription);
         coil.set_layers_description(coilLayersDescription);
         coil.set_turns_description(coilTurnsDescription);
@@ -2199,7 +2199,7 @@ std::string calculate_advised_coil(std::string masString, bool usePlanarWires){
     }
 }
 
-std::string calculate_advised_wires(std::string coilFunctionalDescriptionString,
+std::string calculate_advised_wires(std::string windingString,
                                     std::string sectionString,
                                     std::string currentString,
                                     std::string solidInsulationRequirementsString,
@@ -2209,29 +2209,29 @@ std::string calculate_advised_wires(std::string coilFunctionalDescriptionString,
                                     bool usePlanarWires){
     try {
         settings->set_coil_delimit_and_compact(true);
-        OpenMagnetics::CoilFunctionalDescription coilFunctionalDescription(json::parse(coilFunctionalDescriptionString));
+        OpenMagnetics::Winding winding(json::parse(windingString));
         OpenMagnetics::WireSolidInsulationRequirements wireSolidInsulationRequirements(json::parse(solidInsulationRequirementsString));
         Section section(json::parse(sectionString));
         SignalDescriptor current(json::parse(currentString));
 
         OpenMagnetics::WireAdviser wireAdviser;
         wireAdviser.set_wire_solid_insulation_requirements(wireSolidInsulationRequirements);
-        std::vector<std::pair<OpenMagnetics::CoilFunctionalDescription, double>> coilFunctionalDescriptionsWithScoring;
+        std::vector<std::pair<OpenMagnetics::Winding, double>> windingsWithScoring;
         
         if (usePlanarWires) {
-            coilFunctionalDescriptionsWithScoring = wireAdviser.get_advised_planar_wire(coilFunctionalDescription, section, current, temperature, numberSections, maximumNumberResults);
+            windingsWithScoring = wireAdviser.get_advised_planar_wire(winding, section, current, temperature, numberSections, maximumNumberResults);
         }
         else {
-            coilFunctionalDescriptionsWithScoring = wireAdviser.get_advised_wire(coilFunctionalDescription, section, current, temperature, numberSections, maximumNumberResults);
+            windingsWithScoring = wireAdviser.get_advised_wire(winding, section, current, temperature, numberSections, maximumNumberResults);
         }
 
         json results = json();
         results["data"] = json::array();
-        for (auto& [coilFunctionalDescription, scoring] : coilFunctionalDescriptionsWithScoring) {
+        for (auto& [winding, scoring] : windingsWithScoring) {
             json result;
-            json coilFunctionalDescriptionJson;
-            to_json(coilFunctionalDescriptionJson, coilFunctionalDescription);
-            result["coilFunctionalDescription"] = coilFunctionalDescriptionJson;
+            json windingJson;
+            to_json(windingJson, winding);
+            result["winding"] = windingJson;
             result["scoring"] = scoring;
             results["data"].push_back(result);
         }
