@@ -20,7 +20,7 @@ namespace fs = std::filesystem;
 
 
 std::vector<std::string> get_available_core_materials(std::string manufacturer){
-    return OpenMagnetics::get_material_names(manufacturer);
+    return OpenMagnetics::get_core_material_names(manufacturer);
 }
 
 std::vector<std::string> get_available_core_manufacturers(){
@@ -45,7 +45,7 @@ std::vector<std::string> get_available_core_shape_families(){
 }
 
 std::vector<std::string> get_available_core_shapes(){
-    return OpenMagnetics::get_shape_names();
+    return OpenMagnetics::get_core_shape_names();
 }
 
 std::vector<std::string> get_available_core_shapes_by_manufacturer(std::string manufacturer){

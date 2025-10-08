@@ -28,6 +28,14 @@
 #include "physical_models/MagnetizingInductance.h"
 #include "physical_models/Reluctance.h"
 #include "converter_models/Flyback.h"
+#include "converter_models/IsolatedBuck.h"
+#include "converter_models/IsolatedBuckBoost.h"
+#include "converter_models/Buck.h"
+#include "converter_models/Boost.h"
+#include "converter_models/PushPull.h"
+#include "converter_models/SingleSwitchForward.h"
+#include "converter_models/ActiveClampForward.h"
+#include "converter_models/TwoSwitchForward.h"
 #include "support/Painter.h"
 #include "support/Utils.h"
 #include "processors/Sweeper.h"
@@ -2428,6 +2436,262 @@ std::string calculate_advanced_flyback_inputs(std::string flybackInputsString){
     }
 }
 
+std::string calculate_isolated_buck_inputs(std::string isolatedBuckInputsString){
+    try {
+        json isolatedBuckInputsJson = json::parse(isolatedBuckInputsString);
+
+        OpenMagnetics::IsolatedBuck isolatedBuckInputs(isolatedBuckInputsJson);
+        auto inputs = isolatedBuckInputs.process();
+
+        json result;
+        to_json(result, inputs);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string calculate_advanced_isolated_buck_inputs(std::string isolatedBuckInputsString){
+    try {
+        json isolatedBuckInputsJson = json::parse(isolatedBuckInputsString);
+
+        OpenMagnetics::AdvancedIsolatedBuck isolatedBuckInputs(isolatedBuckInputsJson);
+        auto inputs = isolatedBuckInputs.process();
+
+        json result;
+        to_json(result, inputs);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string calculate_isolated_buck_boost_inputs(std::string isolatedBuckBoostInputsString){
+    try {
+        json isolatedBuckBoostInputsJson = json::parse(isolatedBuckBoostInputsString);
+
+        OpenMagnetics::IsolatedBuckBoost isolatedBuckBoostInputs(isolatedBuckBoostInputsJson);
+        auto inputs = isolatedBuckBoostInputs.process();
+
+        json result;
+        to_json(result, inputs);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string calculate_advanced_isolated_buck_boost_inputs(std::string isolatedBuckBoostInputsString){
+    try {
+        json isolatedBuckBoostInputsJson = json::parse(isolatedBuckBoostInputsString);
+
+        OpenMagnetics::AdvancedIsolatedBuckBoost isolatedBuckBoostInputs(isolatedBuckBoostInputsJson);
+        auto inputs = isolatedBuckBoostInputs.process();
+
+        json result;
+        to_json(result, inputs);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string calculate_buck_inputs(std::string buckInputsString){
+    try {
+        json buckInputsJson = json::parse(buckInputsString);
+
+        OpenMagnetics::Buck buckInputs(buckInputsJson);
+        auto inputs = buckInputs.process();
+
+        json result;
+        to_json(result, inputs);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string calculate_advanced_buck_inputs(std::string buckInputsString){
+    try {
+        json buckInputsJson = json::parse(buckInputsString);
+
+        OpenMagnetics::AdvancedBuck buckInputs(buckInputsJson);
+        auto inputs = buckInputs.process();
+
+        json result;
+        to_json(result, inputs);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string calculate_boost_inputs(std::string boostInputsString){
+    try {
+        json boostInputsJson = json::parse(boostInputsString);
+
+        OpenMagnetics::Boost boostInputs(boostInputsJson);
+        auto inputs = boostInputs.process();
+
+        json result;
+        to_json(result, inputs);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string calculate_advanced_boost_inputs(std::string boostInputsString){
+    try {
+        json boostInputsJson = json::parse(boostInputsString);
+
+        OpenMagnetics::AdvancedBoost boostInputs(boostInputsJson);
+        auto inputs = boostInputs.process();
+
+        json result;
+        to_json(result, inputs);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string calculate_push_pull_inputs(std::string pushPullInputsString){
+    try {
+        json pushPullInputsJson = json::parse(pushPullInputsString);
+
+        OpenMagnetics::PushPull pushPullInputs(pushPullInputsJson);
+        auto inputs = pushPullInputs.process();
+
+        json result;
+        to_json(result, inputs);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string calculate_advanced_push_pull_inputs(std::string pushPullInputsString){
+    try {
+        json pushPullInputsJson = json::parse(pushPullInputsString);
+
+        OpenMagnetics::AdvancedPushPull pushPullInputs(pushPullInputsJson);
+        auto inputs = pushPullInputs.process();
+
+        json result;
+        to_json(result, inputs);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string calculate_single_switch_forward_inputs(std::string singleSwitchForwardInputsString){
+    try {
+        json singleSwitchForwardInputsJson = json::parse(singleSwitchForwardInputsString);
+
+        OpenMagnetics::SingleSwitchForward singleSwitchForwardInputs(singleSwitchForwardInputsJson);
+        auto inputs = singleSwitchForwardInputs.process();
+
+        json result;
+        to_json(result, inputs);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string calculate_advanced_single_switch_forward_inputs(std::string singleSwitchForwardInputsString){
+    try {
+        json singleSwitchForwardInputsJson = json::parse(singleSwitchForwardInputsString);
+
+        OpenMagnetics::AdvancedSingleSwitchForward singleSwitchForwardInputs(singleSwitchForwardInputsJson);
+        auto inputs = singleSwitchForwardInputs.process();
+
+        json result;
+        to_json(result, inputs);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string calculate_active_clamp_forward_inputs(std::string activeClampForwardInputsString){
+    try {
+        json activeClampForwardInputsJson = json::parse(activeClampForwardInputsString);
+
+        OpenMagnetics::ActiveClampForward activeClampForwardInputs(activeClampForwardInputsJson);
+        auto inputs = activeClampForwardInputs.process();
+
+        json result;
+        to_json(result, inputs);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string calculate_advanced_active_clamp_forward_inputs(std::string activeClampForwardInputsString){
+    try {
+        json activeClampForwardInputsJson = json::parse(activeClampForwardInputsString);
+
+        OpenMagnetics::AdvancedActiveClampForward activeClampForwardInputs(activeClampForwardInputsJson);
+        auto inputs = activeClampForwardInputs.process();
+
+        json result;
+        to_json(result, inputs);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string calculate_two_switch_forward_inputs(std::string twoSwitchForwardInputsString){
+    try {
+        json twoSwitchForwardInputsJson = json::parse(twoSwitchForwardInputsString);
+
+        OpenMagnetics::TwoSwitchForward twoSwitchForwardInputs(twoSwitchForwardInputsJson);
+        auto inputs = twoSwitchForwardInputs.process();
+
+        json result;
+        to_json(result, inputs);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string calculate_advanced_two_switch_forward_inputs(std::string twoSwitchForwardInputsString){
+    try {
+        json twoSwitchForwardInputsJson = json::parse(twoSwitchForwardInputsString);
+
+        OpenMagnetics::AdvancedTwoSwitchForward twoSwitchForwardInputs(twoSwitchForwardInputsJson);
+        auto inputs = twoSwitchForwardInputs.process();
+
+        json result;
+        to_json(result, inputs);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
 std::vector<size_t> get_only_temperature_dependent_indexes(std::string permeabilityPointsString) {
     try {
         std::vector<std::string> permeabilityPointsStringVector = json::parse(permeabilityPointsString);
@@ -3000,6 +3264,22 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("calculate_leakage_inductance", &calculate_leakage_inductance);
     function("calculate_flyback_inputs", &calculate_flyback_inputs);
     function("calculate_advanced_flyback_inputs", &calculate_advanced_flyback_inputs);
+    function("calculate_isolated_buck_inputs", &calculate_isolated_buck_inputs);
+    function("calculate_advanced_isolated_buck_inputs", &calculate_advanced_isolated_buck_inputs);
+    function("calculate_isolated_buck_boost_inputs", &calculate_isolated_buck_boost_inputs);
+    function("calculate_advanced_isolated_buck_boost_inputs", &calculate_advanced_isolated_buck_boost_inputs);
+    function("calculate_buck_inputs", &calculate_buck_inputs);
+    function("calculate_advanced_buck_inputs", &calculate_advanced_buck_inputs);
+    function("calculate_boost_inputs", &calculate_boost_inputs);
+    function("calculate_advanced_boost_inputs", &calculate_advanced_boost_inputs);
+    function("calculate_push_pull_inputs", &calculate_push_pull_inputs);
+    function("calculate_advanced_push_pull_inputs", &calculate_advanced_push_pull_inputs);
+    function("calculate_single_switch_forward_inputs", &calculate_single_switch_forward_inputs);
+    function("calculate_advanced_single_switch_forward_inputs", &calculate_advanced_single_switch_forward_inputs);
+    function("calculate_active_clamp_forward_inputs", &calculate_active_clamp_forward_inputs);
+    function("calculate_advanced_active_clamp_forward_inputs", &calculate_advanced_active_clamp_forward_inputs);
+    function("calculate_two_switch_forward_inputs", &calculate_two_switch_forward_inputs);
+    function("calculate_advanced_two_switch_forward_inputs", &calculate_advanced_two_switch_forward_inputs);
     function("get_only_temperature_dependent_indexes", &get_only_temperature_dependent_indexes);
     function("get_only_frequency_dependent_indexes", &get_only_frequency_dependent_indexes);
     function("get_only_magnetic_field_dc_bias_dependent_indexes", &get_only_magnetic_field_dc_bias_dependent_indexes);
