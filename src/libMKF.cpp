@@ -5,6 +5,7 @@
 #include <emscripten/emscripten.h>
 #include <emscripten/bind.h>
 #include "Constants.h"
+#include "Definitions.h"
 #include "constructive_models/Insulation.h"
 #include "Defaults.h"
 #include <MAS.hpp>
@@ -40,6 +41,7 @@
 #include "support/Utils.h"
 #include "processors/Sweeper.h"
 #include "processors/CircuitSimulatorInterface.h"
+#include <magic_enum.hpp>
 
 
 using namespace MAS;
@@ -750,11 +752,10 @@ std::vector<std::string> get_available_wire_standards(){
 
 std::string calculate_gap_reluctance(std::string coreGapData, std::string modelNameString){
     try {
-        std::string modelNameStringUpper = modelNameString;
-        std::transform(modelNameStringUpper.begin(), modelNameStringUpper.end(), modelNameStringUpper.begin(), ::toupper);
-        auto modelName = magic_enum::enum_cast<OpenMagnetics::ReluctanceModels>(modelNameStringUpper);
+        OpenMagnetics::ReluctanceModels modelName;
+        from_json(modelNameString, modelName);
+        auto reluctanceModel = OpenMagnetics::ReluctanceModel::factory(modelName);
 
-        auto reluctanceModel = OpenMagnetics::ReluctanceModel::factory(modelName.value());
         CoreGap coreGap(json::parse(coreGapData));
 
         auto coreGapResult = reluctanceModel->get_gap_reluctance(coreGap);
@@ -788,9 +789,7 @@ double calculate_inductance_from_number_turns_and_gapping(std::string coreData,
 
         auto reluctanceModelName = OpenMagnetics::Defaults().reluctanceModelDefault;
         if (models.find("reluctance") != models.end()) {
-            std::string modelNameStringUpper = models["reluctance"];
-            std::transform(modelNameStringUpper.begin(), modelNameStringUpper.end(), modelNameStringUpper.begin(), ::toupper);
-            reluctanceModelName = magic_enum::enum_cast<OpenMagnetics::ReluctanceModels>(modelNameStringUpper).value();
+            OpenMagnetics::from_json(models["reluctance"], reluctanceModelName);
         }
 
         OpenMagnetics::MagnetizingInductance magnetizingInductanceObj(reluctanceModelName);
@@ -826,9 +825,7 @@ double calculate_number_turns_from_gapping_and_inductance(std::string coreData,
     
     auto reluctanceModelName = OpenMagnetics::Defaults().reluctanceModelDefault;
     if (models.find("reluctance") != models.end()) {
-        std::string modelNameStringUpper = models["reluctance"];
-        std::transform(modelNameStringUpper.begin(), modelNameStringUpper.end(), modelNameStringUpper.begin(), ::toupper);
-        reluctanceModelName = magic_enum::enum_cast<OpenMagnetics::ReluctanceModels>(modelNameStringUpper).value();
+        OpenMagnetics::from_json(models["reluctance"], reluctanceModelName);
     }
 
     OpenMagnetics::MagnetizingInductance magnetizingInductanceObj(reluctanceModelName);
@@ -849,13 +846,12 @@ std::string calculate_gapping_from_number_turns_and_inductance(std::string coreD
     OpenMagnetics::Inputs inputs(json::parse(inputsData));
 
     std::map<std::string, std::string> models = json::parse(modelsData).get<std::map<std::string, std::string>>();
-    OpenMagnetics::GappingType gappingType = magic_enum::enum_cast<OpenMagnetics::GappingType>(gappingTypeString).value();
+    OpenMagnetics::GappingType gappingType;
+    OpenMagnetics::from_json(gappingTypeString, gappingType);
     
     auto reluctanceModelName = OpenMagnetics::Defaults().reluctanceModelDefault;
     if (models.find("reluctance") != models.end()) {
-        std::string modelNameStringUpper = models["reluctance"];
-        std::transform(modelNameStringUpper.begin(), modelNameStringUpper.end(), modelNameStringUpper.begin(), ::toupper);
-        reluctanceModelName = magic_enum::enum_cast<OpenMagnetics::ReluctanceModels>(modelNameStringUpper).value();
+        OpenMagnetics::from_json(models["reluctance"], reluctanceModelName);
     }
 
     OpenMagnetics::MagnetizingInductance magnetizingInductanceObj(reluctanceModelName);
@@ -908,21 +904,15 @@ std::string calculate_core_losses(std::string coreData,
 
         auto reluctanceModelName = defaults.reluctanceModelDefault;
         if (models.find("reluctance") != models.end()) {
-            std::string modelNameStringUpper = models["reluctance"];
-            std::transform(modelNameStringUpper.begin(), modelNameStringUpper.end(), modelNameStringUpper.begin(), ::toupper);
-            reluctanceModelName = magic_enum::enum_cast<OpenMagnetics::ReluctanceModels>(modelNameStringUpper).value();
+            OpenMagnetics::from_json(models["reluctance"], reluctanceModelName);
         }
         auto coreLossesModelName = defaults.coreLossesModelDefault;
         if (models.find("coreLosses") != models.end()) {
-            std::string modelNameStringUpper = models["coreLosses"];
-            std::transform(modelNameStringUpper.begin(), modelNameStringUpper.end(), modelNameStringUpper.begin(), ::toupper);
-            coreLossesModelName = magic_enum::enum_cast<OpenMagnetics::CoreLossesModels>(modelNameStringUpper).value();
+            OpenMagnetics::from_json(models["coreLosses"], coreLossesModelName);
         }
         auto coreTemperatureModelName = defaults.coreTemperatureModelDefault;
         if (models.find("coreTemperature") != models.end()) {
-            std::string modelNameStringUpper = models["coreTemperature"];
-            std::transform(modelNameStringUpper.begin(), modelNameStringUpper.end(), modelNameStringUpper.begin(), ::toupper);
-            coreTemperatureModelName = magic_enum::enum_cast<OpenMagnetics::CoreTemperatureModels>(modelNameStringUpper).value();
+            OpenMagnetics::from_json(models["coreTemperature"], coreTemperatureModelName);
         }
 
         OpenMagnetics::Magnetic magnetic;
@@ -1295,22 +1285,22 @@ double calculate_effective_skin_depth(std::string material, std::string currentS
 
 std::vector<std::string> get_available_winding_orientations(){
     std::vector<std::string> orientations;
-    for (auto& [orientation, _] : magic_enum::enum_entries<WindingOrientation>()) {
-        json orientationJson;
-        to_json(orientationJson, orientation);
-        orientations.push_back(orientationJson);
+
+    for (size_t index = 0; index < magic_enum::enum_count<WindingOrientation>(); ++index) {
+        auto orientation = static_cast<WindingOrientation>(index);
+        orientations.push_back(OpenMagnetics::to_string(orientation));
     }
     return orientations;
 }
 
 std::vector<std::string> get_available_coil_alignments(){
-    std::vector<std::string> orientations;
-    for (auto& [orientation, _] : magic_enum::enum_entries<CoilAlignment>()) {
-        json orientationJson;
-        to_json(orientationJson, orientation);
-        orientations.push_back(orientationJson);
+    std::vector<std::string> coilAlignments;
+
+    for (size_t index = 0; index < magic_enum::enum_count<CoilAlignment>(); ++index) {
+        auto coilAlignment = static_cast<CoilAlignment>(index);
+        coilAlignments.push_back(OpenMagnetics::to_string(coilAlignment));
     }
-    return orientations;
+    return coilAlignments;
 }
 
 bool check_requirement(std::string requirementString, double value){
@@ -1698,21 +1688,15 @@ std::string simulate(std::string inputsString,
 
         auto reluctanceModelName = defaults.reluctanceModelDefault;
         if (models.find("reluctance") != models.end()) {
-            std::string modelNameStringUpper = models["reluctance"];
-            std::transform(modelNameStringUpper.begin(), modelNameStringUpper.end(), modelNameStringUpper.begin(), ::toupper);
-            reluctanceModelName = magic_enum::enum_cast<OpenMagnetics::ReluctanceModels>(modelNameStringUpper).value();
+            OpenMagnetics::from_json(models["reluctance"], reluctanceModelName);
         }
         auto coreLossesModelName = defaults.coreLossesModelDefault;
         if (models.find("coreLosses") != models.end()) {
-            std::string modelNameStringUpper = models["coreLosses"];
-            std::transform(modelNameStringUpper.begin(), modelNameStringUpper.end(), modelNameStringUpper.begin(), ::toupper);
-            coreLossesModelName = magic_enum::enum_cast<OpenMagnetics::CoreLossesModels>(modelNameStringUpper).value();
+            OpenMagnetics::from_json(models["coreLosses"], coreLossesModelName);
         }
         auto coreTemperatureModelName = defaults.coreTemperatureModelDefault;
         if (models.find("coreTemperature") != models.end()) {
-            std::string modelNameStringUpper = models["coreTemperature"];
-            std::transform(modelNameStringUpper.begin(), modelNameStringUpper.end(), modelNameStringUpper.begin(), ::toupper);
-            coreTemperatureModelName = magic_enum::enum_cast<OpenMagnetics::CoreTemperatureModels>(modelNameStringUpper).value();
+            OpenMagnetics::from_json(models["coreTemperature"], coreTemperatureModelName);
         }
 
         OpenMagnetics::MagneticSimulator magneticSimulator;
@@ -2089,8 +2073,10 @@ std::string calculate_advised_cores(std::string inputsString, std::string weight
             externalSum += pair.second;
         }
 
-        for (auto const& pair : weightsKeysString) {
-            weights[magic_enum::enum_cast<OpenMagnetics::CoreAdviser::CoreAdviserFilters>(pair.first).value()] = pair.second / externalSum;
+        for (auto const& [filterName, weight] : weightsKeysString) {
+            OpenMagnetics::CoreAdviser::CoreAdviserFilters filter;
+            OpenMagnetics::from_json(filterName, filter);
+            weights[filter] = weight / externalSum;
         }
 
         OpenMagnetics::CoreAdviser coreAdviser;
@@ -2125,9 +2111,11 @@ std::string calculate_advised_cores(std::string inputsString, std::string weight
             // result["weightedTotalScoring"] = masMagnetic.second;
             result["weightedTotalScoring"] = scoring[name][OpenMagnetics::CoreAdviser::CoreAdviserFilters::COST] + scoring[name][OpenMagnetics::CoreAdviser::CoreAdviserFilters::EFFICIENCY] + scoring[name][OpenMagnetics::CoreAdviser::CoreAdviserFilters::DIMENSIONS];
             result["scoringPerFilter"] = json();
-            for (auto& filter : magic_enum::enum_names<OpenMagnetics::CoreAdviser::CoreAdviserFilters>()) {
-                std::string filterString(filter);
-                result["scoringPerFilter"][filterString] = scoring[name][magic_enum::enum_cast<OpenMagnetics::CoreAdviser::CoreAdviserFilters>(filterString).value()];
+
+            for (size_t index = 0; index < magic_enum::enum_count<OpenMagnetics::CoreAdviser::CoreAdviserFilters>(); ++index) {
+                auto filter = static_cast<OpenMagnetics::CoreAdviser::CoreAdviserFilters>(index);
+                auto filterString = OpenMagnetics::to_string(filter);
+                result["scoringPerFilter"][filterString] = scoring[name][filter];
             };
             results["data"].push_back(result);
         }
@@ -2294,8 +2282,10 @@ std::string calculate_advised_magnetics(std::string inputsString, std::string we
             externalSum += pair.second;
         }
 
-        for (auto const& pair : weightsKeysString) {
-            weights[magic_enum::enum_cast<OpenMagnetics::MagneticFilters>(pair.first).value()] = pair.second / externalSum;
+        for (auto const& [filterName, weight] : weightsKeysString) {
+            OpenMagnetics::MagneticFilters filter;
+            OpenMagnetics::from_json(filterName, filter);
+            weights[filter] = weight / externalSum;
         }
 
         OpenMagnetics::MagneticAdviser magneticAdviser;
@@ -2315,11 +2305,11 @@ std::string calculate_advised_magnetics(std::string inputsString, std::string we
             result["mas"] = masJson;
             result["weightedTotalScoring"] = scorings[name][OpenMagnetics::MagneticFilters::COST] + scorings[name][OpenMagnetics::MagneticFilters::LOSSES] + scorings[name][OpenMagnetics::MagneticFilters::DIMENSIONS];
             result["scoringPerFilter"] = json();
-            for (auto& filter : magic_enum::enum_names<OpenMagnetics::MagneticFilters>()) {
-                std::string filterString(filter);
-                auto filterEnum = magic_enum::enum_cast<OpenMagnetics::MagneticFilters>(filterString).value();
-                if (scorings[name].count(filterEnum)) {
-                    result["scoringPerFilter"][filterString] = scorings[name][filterEnum];
+            for (size_t index = 0; index < magic_enum::enum_count<OpenMagnetics::MagneticFilters>(); ++index) {
+                auto filter = static_cast<OpenMagnetics::MagneticFilters>(index);
+                auto filterString = OpenMagnetics::to_string(filter);
+                if (scorings[name].count(filter)) {
+                    result["scoringPerFilter"][filterString] = scorings[name][filter];
                 }
             };
             results["data"].push_back(result);
@@ -2382,9 +2372,10 @@ std::string calculate_advised_magnetics_from_catalog(std::string inputsString, s
 
 std::vector<std::string> get_available_core_filters(){
     std::vector<std::string> filters;
-    for (auto& filter : magic_enum::enum_names<OpenMagnetics::CoreAdviser::CoreAdviserFilters>()) {
-        std::string filterString(filter);
-        filters.push_back(filterString);
+    for (size_t index = 0; index < magic_enum::enum_count<OpenMagnetics::CoreAdviser::CoreAdviserFilters>(); ++index) {
+        auto filter = static_cast<OpenMagnetics::CoreAdviser::CoreAdviserFilters>(index);
+
+        filters.push_back(OpenMagnetics::to_string(filter));
     }
     return filters;
 }
