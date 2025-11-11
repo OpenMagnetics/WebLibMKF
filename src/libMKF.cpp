@@ -518,7 +518,14 @@ std::string get_material_data(std::string materialName){
 }
 
 std::string get_core_temperature_dependant_parameters(std::string coreData, double temperature){
-    OpenMagnetics::Core core(json::parse(coreData));
+    json coreJson = json::parse(coreData);
+    MAS::CoreFunctionalDescription coreFunctionalDescription(coreJson["functionalDescription"]);
+    MAS::CoreProcessedDescription coreProcessedDescription(coreJson["processedDescription"]);
+    std::vector<MAS::CoreGeometricalDescriptionElement> coreGeometricalDescription(coreJson["geometricalDescription"]);
+    OpenMagnetics::Core core;
+    core.set_functional_description(coreFunctionalDescription);
+    core.set_processed_description(coreProcessedDescription);
+    core.set_geometrical_description(coreGeometricalDescription);
     json result;
 
     result["magneticFluxDensitySaturation"] = core.get_magnetic_flux_density_saturation(temperature, false);
@@ -782,7 +789,14 @@ double calculate_inductance_from_number_turns_and_gapping(std::string coreData,
                                                           std::string operatingPointData,
                                                           std::string modelsData){
     try {
-        OpenMagnetics::Core core(json::parse(coreData));
+        json coreJson = json::parse(coreData);
+        MAS::CoreFunctionalDescription coreFunctionalDescription(coreJson["functionalDescription"]);
+        MAS::CoreProcessedDescription coreProcessedDescription(coreJson["processedDescription"]);
+        std::vector<MAS::CoreGeometricalDescriptionElement> coreGeometricalDescription(coreJson["geometricalDescription"]);
+        OpenMagnetics::Core core;
+        core.set_functional_description(coreFunctionalDescription);
+        core.set_processed_description(coreProcessedDescription);
+        core.set_geometrical_description(coreGeometricalDescription);
         OpenMagnetics::Coil coil(json::parse(coilData), false);
 
         std::map<std::string, std::string> models = json::parse(modelsData).get<std::map<std::string, std::string>>();
@@ -879,10 +893,15 @@ std::string calculate_core_losses(std::string coreData,
                                   std::string inputsData,    
                                   std::string modelsData,    
                                   int operatingPointIndex){
- 
     try {
-
-        OpenMagnetics::Core core(json::parse(coreData));
+        json coreJson = json::parse(coreData);
+        MAS::CoreFunctionalDescription coreFunctionalDescription(coreJson["functionalDescription"]);
+        MAS::CoreProcessedDescription coreProcessedDescription(coreJson["processedDescription"]);
+        std::vector<MAS::CoreGeometricalDescriptionElement> coreGeometricalDescription(coreJson["geometricalDescription"]);
+        OpenMagnetics::Core core;
+        core.set_functional_description(coreFunctionalDescription);
+        core.set_processed_description(coreProcessedDescription);
+        core.set_geometrical_description(coreGeometricalDescription);
         OpenMagnetics::Coil coil(json::parse(coilData), false);
 
         OpenMagnetics::MagnetizingInductance magnetizingInductanceModel;
@@ -947,6 +966,10 @@ std::string calculate_core_losses(std::string coreData,
         return result.dump(4);
     }
     catch (const std::exception &exc) {
+        std::cerr << coreData << std::endl;
+        std::cerr << coilData << std::endl;
+        std::cerr << inputsData << std::endl;
+        std::cerr << modelsData << std::endl;
         return "Exception: " + std::string{exc.what()};
     }
 }
@@ -1446,6 +1469,7 @@ std::string wind(std::string coilString, size_t repetitions, std::string proport
         std::cout << repetitions << std::endl;
         std::cout << proportionPerWindingString << std::endl;
         std::cout << patternString << std::endl;
+        std::cout << marginPairsString << std::endl;
         return "Exception: " + std::string{exc.what()};
     }
 }
@@ -2165,7 +2189,7 @@ std::string calculate_advised_sections(std::string masString, std::string patter
     }
 }
 
-std::string calculate_advised_coil(std::string masString, bool usePlanarWires){
+std::string calculate_advised_coil(std::string masString){
     try {
         settings->set_coil_delimit_and_compact(true);
         OpenMagnetics::Mas mas(json::parse(masString));
@@ -2187,6 +2211,7 @@ std::string calculate_advised_coil(std::string masString, bool usePlanarWires){
             return result.dump(4);
         }
         else{
+            std::cerr << masString << std::endl;
             return "Exception: No coil found";
         }
     }
@@ -2365,6 +2390,53 @@ std::string calculate_advised_magnetics_from_catalog(std::string inputsString, s
     catch (const std::exception &exc) {
         std::cout << inputsString << std::endl;
         std::cout << catalogString << std::endl;
+        std::cout << maximumNumberResults << std::endl;
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string calculate_advised_magnetics_from_cache(std::string inputsString, std::string filterFlowString, int maximumNumberResults){
+    try {
+        settings->set_coil_delimit_and_compact(true);
+        OpenMagnetics::Inputs inputs(json::parse(inputsString));
+
+        std::vector<OpenMagnetics::MagneticFilterOperation> filterFlow;
+        json filterFlowJson = json::parse(filterFlowString);
+        for (auto filterJson : filterFlowJson) {
+            OpenMagnetics::MagneticFilterOperation filter(filterJson);
+            filterFlow.push_back(filter);
+        }
+
+        if (magneticsCache.size() == 0) {
+            return "Exception: No magnetics found in cache";
+        }
+
+        OpenMagnetics::MagneticAdviser magneticAdviser;
+        auto masMagnetics = magneticAdviser.get_advised_magnetic(inputs, magneticsCache.get(), filterFlow, maximumNumberResults);
+
+        auto scorings = magneticAdviser.get_scorings();
+
+        json results = json();
+        results["data"] = json::array();
+        for (auto& [masMagnetic, scoring] : masMagnetics) {
+            std::string name = masMagnetic.get_magnetic().get_manufacturer_info().value().get_reference().value();
+            json result;
+            json masJson;
+            to_json(masJson, masMagnetic);
+            result["mas"] = masJson;
+            result["scoring"] = scoring;
+            results["data"].push_back(result);
+        }
+
+        sort(results["data"].begin(), results["data"].end(), [](json& b1, json& b2) {
+            return b1["scoring"] > b2["scoring"];
+        });
+
+        return results.dump(4);
+    }
+    catch (const std::exception &exc) {
+        std::cout << inputsString << std::endl;
+        std::cout << filterFlowString << std::endl;
         std::cout << maximumNumberResults << std::endl;
         return "Exception: " + std::string{exc.what()};
     }
@@ -3129,6 +3201,98 @@ void reset_settings(std::string settingsString) {
     settings->reset();
 }
 
+std::string clear_magnetic_cache() {
+    try {
+        magneticsCache.clear();
+        return std::to_string(magneticsCache.size());
+    }
+    catch (const std::exception &exc) {
+        return std::string{exc.what()};
+    }
+}
+
+
+std::string load_magnetic(std::string key, std::string magneticString, bool expand) {
+    try {
+        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
+        if (expand) {
+            magnetic = OpenMagnetics::magnetic_autocomplete(magnetic);
+        }
+        magneticsCache.load(key, magnetic);
+
+        return std::to_string(magneticsCache.size());
+    }
+    catch (const std::exception &exc) {
+        return std::string{exc.what()};
+    }
+}
+
+std::string load_magnetics(std::string keysString, std::string magneticsString, bool expand) {
+    try {
+        json keys = json::parse(keysString);
+        json magneticJsons = json::parse(magneticsString);
+        std::cout << "magneticJsons.size(): " << magneticJsons.size() << std::endl;
+        for (size_t magneticIndex = 0; magneticIndex < magneticJsons.size(); magneticIndex++) {
+            OpenMagnetics::Magnetic magnetic(magneticJsons[magneticIndex]);
+            std::cout << keys[magneticIndex] << std::endl;
+            if (expand) {
+                magnetic = OpenMagnetics::magnetic_autocomplete(magnetic);
+            }
+            magneticsCache.load(keys[magneticIndex], magnetic);
+        }
+        return std::to_string(magneticsCache.size());
+    }
+    catch (const std::exception &exc) {
+        return std::string{exc.what()};
+    }
+}
+
+std::string load_magnetics_from_file(std::string path, bool expand) {
+    try {
+        std::ifstream in(path);
+        if (in) {
+            std::string line;
+            while (getline(in, line)) {
+                json jf = json::parse(line);
+                OpenMagnetics::Magnetic magnetic(jf);
+                if (expand) {
+                    magnetic = OpenMagnetics::magnetic_autocomplete(magnetic);
+                }
+                std::string key = magnetic.get_manufacturer_info()->get_reference().value();
+                magneticsCache.load(key, magnetic);
+            }
+        }
+        return std::to_string(magneticsCache.size());
+    }
+    catch (const std::exception &exc) {
+        return std::string{exc.what()};
+    }
+}
+
+std::string load_magnetics_from_string(std::string database, bool expand) {
+    try {
+        std::string delimiter = "\n";
+        size_t pos = 0;
+        std::string token;
+        if (database.back() != delimiter.back()) {
+            database += delimiter;
+        }
+        while ((pos = database.find(delimiter)) != std::string::npos) {
+            token = database.substr(0, pos);
+            json jf = json::parse(token);
+            OpenMagnetics::Magnetic magnetic(jf);
+            std::cout << jf["manufacturerInfo"]["reference"] << std::endl;
+            magneticsCache.load(jf["manufacturerInfo"]["reference"], magnetic);
+            database.erase(0, pos + delimiter.length());
+        }
+        return std::to_string(magneticsCache.size());
+    }
+    catch (const std::exception &exc) {
+        return std::string{exc.what()};
+    }
+}
+
+
 EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_constants", &get_constants);
     function("get_defaults", &get_defaults);
@@ -3249,6 +3413,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_solid_insulation_requirements_for_wires", &get_solid_insulation_requirements_for_wires);
     function("calculate_advised_magnetics", &calculate_advised_magnetics);
     function("calculate_advised_magnetics_from_catalog", &calculate_advised_magnetics_from_catalog);
+    function("calculate_advised_magnetics_from_cache", &calculate_advised_magnetics_from_cache);
     function("get_available_core_filters", &get_available_core_filters);
     function("load_cores", &load_cores);
     function("clear_loaded_cores", &clear_loaded_cores);
@@ -3292,6 +3457,11 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_settings", &get_settings);
     function("set_settings", &set_settings);
     function("reset_settings", &reset_settings);
+    function("clear_magnetic_cache", &clear_magnetic_cache);
+    function("load_magnetic", &load_magnetic);
+    function("load_magnetics", &load_magnetics);
+    function("load_magnetics_from_file", &load_magnetics_from_file);
+    function("load_magnetics_from_string", &load_magnetics_from_string);
     
     register_map<std::string, double>("map<string, double>");
     register_map<std::string, std::string>("map<string, string>");
