@@ -1,92 +1,138 @@
-cmake_minimum_required(VERSION 3.5.1)
-project (libMKF)
+# =============================================================================
+# Project Configuration
+# =============================================================================
+cmake_minimum_required(VERSION 3.14)
+project(libMKF LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# =============================================================================
+# Build Options
+# =============================================================================
 option(JS_ONLY "Compiles to native JS (No WASM)" OFF)
+option(DEBUG_WASM "Build in debug mode" OFF)
+option(BUILD_TESTS "Build tests" OFF)
+option(BUILD_EXAMPLES "Build examples" OFF)
+option(INCLUDE_MKF_TESTS "Build MKF tests" OFF)
+option(UTPP_INCLUDE_TESTS_IN_BUILD "Build UnitTest++ tests" OFF)
+option(HAVE_LAPACK "Enable LAPACK support" OFF)
 
-# add_definitions(-std=c++23)
-include_directories(include)
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
 
-# SET(CMAKE_BUILD_TYPE MinSizeRel)
-SET(CMAKE_BUILD_TYPE Release)
-# SET(CMAKE_BUILD_TYPE RelWithDebInfo)
+# =============================================================================
+# Compiler Flags
+# =============================================================================
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -fwasm-exceptions")
 
-SET(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -fwasm-exceptions")
-
-option(BUILD_TESTS      "Build tests"    OFF)
-option(BUILD_EXAMPLES   "Build examples" OFF)
-option(UTPP_INCLUDE_TESTS_IN_BUILD   "Build tests" OFF)
-option(INCLUDE_MKF_TESTS      "Build tests"    OFF)
-option(DEBUG_WASM      "Build in debug mode"    OFF)
-option(HAVE_LAPACK   "HAVE_LAPACK" 0)
-
+# =============================================================================
+# Dependencies
+# =============================================================================
 include(FetchContent)
-include(ExternalProject)
 
 FetchContent_Declare(MKF
-        GIT_REPOSITORY https://github.com/OpenMagnetics/MKF.git
-        GIT_TAG main)
+    GIT_REPOSITORY https://github.com/OpenMagnetics/MKF.git
+    GIT_TAG test-and-doc-refactor
+)
 
 FetchContent_Declare(magic-enum
-        GIT_REPOSITORY https://github.com/Neargye/magic_enum
-        GIT_TAG  tags/v0.9.6)
-
-FetchContent_Declare(
-       mas
-       GIT_REPOSITORY https://github.com/OpenMagnetics/MAS.git
-       GIT_TAG main
+    GIT_REPOSITORY https://github.com/Neargye/magic_enum
+    GIT_TAG v0.9.6
 )
+
+FetchContent_Declare(mas
+    GIT_REPOSITORY https://github.com/OpenMagnetics/MAS.git
+    GIT_TAG main
+)
+
 FetchContent_GetProperties(mas)
-message(STATUS ${mas_POPULATED})
 if(NOT mas_POPULATED)
-  FetchContent_Populate(mas)
+    FetchContent_Populate(mas)
 endif()
-message(STATUS ${MAS_SOURCE_DIR})
-
-# add_subdirectory(${MAS_SOURCE_DIR} EXCLUDE_FROM_ALL)
-
-SET(MAS_DIRECTORY "${CMAKE_BINARY_DIR}/MAS/")
-SET(MAS_DIR ${MAS_SOURCE_DIR})
-message(STATUS ${MAS_DIRECTORY})
 
 FetchContent_MakeAvailable(MKF magic-enum)
-include_directories("${CMAKE_BINARY_DIR}/_deps/magic-enum-src/include/magic_enum")
-# SET(CMAKE_CXX_FLAGS "-Wall -Wextra -fwasm-exceptions")
 
-find_program(NAMES quicktype REQUIRED)
-find_program(NAMES libgtest-dev REQUIRED)
+# =============================================================================
+# Path Configuration
+# =============================================================================
+set(MAS_DIRECTORY "${CMAKE_BINARY_DIR}/MAS/")
+set(MAS_DIR ${mas_SOURCE_DIR})
+set(DEPS_DIR "${CMAKE_BINARY_DIR}/_deps")
 
+message(STATUS "MAS_DIRECTORY: ${MAS_DIRECTORY}")
+message(STATUS "MAS_DIR: ${MAS_DIR}")
 
+# =============================================================================
+# Executables
+# =============================================================================
 add_executable(libMKF src/libMKF.cpp)
 add_executable(libInsulationCoordinator src/libInsulationCoordinator.cpp)
 add_executable(libCrossReferencers src/libCrossReferencers.cpp)
 
-include_directories("${CMAKE_BINARY_DIR}/_deps/json-src/include/nlohmann/")
-include_directories("${CMAKE_BINARY_DIR}/_deps/pybind11-src/include/")
-include_directories("${CMAKE_BINARY_DIR}/_deps/pybind11_json-src/include/pybind11_json/")
-include_directories("${CMAKE_BINARY_DIR}/_deps/json-src/include/nlohmann/")
+# Common include directories for all targets
+set(COMMON_INCLUDE_DIRS
+    ${CMAKE_SOURCE_DIR}/include
+    ${DEPS_DIR}/magic-enum-src/include/magic_enum
+    ${DEPS_DIR}/json-src/include
+    ${DEPS_DIR}/json-src/include/nlohmann
+    ${DEPS_DIR}/svg-src/src
+    ${DEPS_DIR}/spline-src/src
+    ${MAS_DIRECTORY}
+)
 
-include_directories("${CMAKE_BINARY_DIR}/_deps/svg-src/src")
-include_directories("${CMAKE_BINARY_DIR}/_deps/spline-src/src") 
-include_directories("${CMAKE_BINARY_DIR}/_deps/json-src/include/")
-include_directories("${MAS_DIRECTORY}")
-message(STATUS MAS_DIRECTORY)
-message(STATUS ${MAS_DIRECTORY})
+foreach(target libMKF libInsulationCoordinator libCrossReferencers)
+    target_include_directories(${target} PRIVATE ${COMMON_INCLUDE_DIRS})
+    target_link_libraries(${target} PRIVATE MKF)
+endforeach()
 
-target_link_libraries(libMKF MKF)
-target_link_libraries(libInsulationCoordinator MKF)
-target_link_libraries(libCrossReferencers MKF)
-
-
+# =============================================================================
+# WASM/JS Configuration
+# =============================================================================
 if(JS_ONLY)
     message(STATUS "Setting compilation target to native JavaScript")
     set(CMAKE_EXECUTABLE_SUFFIX ".js")
-    set_target_properties(libMKF PROPERTIES LINK_FLAGS "-s WASM=0 -s EXPORTED_FUNCTIONS='[_main, _getCoreShapeNames, _process_operating_point]' -s EXPORT_ES6=1")
-else(JS_ONLY)
+    set_target_properties(libMKF PROPERTIES 
+        LINK_FLAGS "-s WASM=0 -s EXPORTED_FUNCTIONS='[_main, _getCoreShapeNames, _process_operating_point]' -s EXPORT_ES6=1"
+    )
+else()
     message(STATUS "Setting compilation target to WASM")
     set(CMAKE_EXECUTABLE_SUFFIX ".wasm.js")
-    set_target_properties(libMKF PROPERTIES LINK_FLAGS "-O3 -s WASM=1 -s MAXIMUM_MEMORY=4gb -sSTACK_SIZE=67108864 -s INITIAL_MEMORY=134217728 -s ALLOW_MEMORY_GROWTH -s EXPORT_ES6=1 -std=c++23 -s EXCEPTION_CATCHING_ALLOWED=[..] -fwasm-exceptions -l embind --bind --use-preload-cache")
-    set_target_properties(libInsulationCoordinator PROPERTIES LINK_FLAGS "-O3 -s WASM=1 -s MAXIMUM_MEMORY=4gb -sSTACK_SIZE=67108864 -s INITIAL_MEMORY=134217728 -s ALLOW_MEMORY_GROWTH -s EXPORT_ES6=1 -std=c++23 -s EXCEPTION_CATCHING_ALLOWED=[..] -fwasm-exceptions -l embind --bind --use-preload-cache")
-    set_target_properties(libCrossReferencers PROPERTIES LINK_FLAGS "-O3 -s WASM=1 -s MAXIMUM_MEMORY=4gb -sSTACK_SIZE=67108864 -s INITIAL_MEMORY=134217728 -s ALLOW_MEMORY_GROWTH -s EXPORT_ES6=1 -std=c++23 -s EXCEPTION_CATCHING_ALLOWED=[..] -fwasm-exceptions -l embind --bind --use-preload-cache")
-
-    # set_target_properties(libMKF PROPERTIES LINK_FLAGS "-s WASM=1 -s MAXIMUM_MEMORY=4gb -sSTACK_SIZE=67108864 -s INITIAL_MEMORY=134217728 -s ALLOW_MEMORY_GROWTH -s EXPORT_ES6=1 -std=c++23 -g3 -s ASSERTIONS=2 -s SAFE_HEAP=1 -s STACK_OVERFLOW_CHECK=2 -s DEMANGLE_SUPPORT=1 -s EXCEPTION_CATCHING_ALLOWED=[..] -fwasm-exceptions --source-map-base http://localhost:5173/ -l embind --bind --use-preload-cache")
-    # set_target_properties(libCrossReferencers PROPERTIES LINK_FLAGS "-s WASM=1 -s MAXIMUM_MEMORY=4gb -sSTACK_SIZE=67108864 -s INITIAL_MEMORY=134217728 -s ALLOW_MEMORY_GROWTH -s EXPORT_ES6=1 -std=c++23 -g3 -s ASSERTIONS=2 -s SAFE_HEAP=1 -s STACK_OVERFLOW_CHECK=2 -s DEMANGLE_SUPPORT=1 -s EXCEPTION_CATCHING_ALLOWED=[..] -fwasm-exceptions --source-map-base http://localhost:5173/ -l embind --bind --use-preload-cache")
-endif(JS_ONLY)
+    
+    # Common WASM link flags
+    set(WASM_LINK_FLAGS
+        "-O3"
+        "-s WASM=1"
+        "-s MAXIMUM_MEMORY=4gb"
+        "-s STACK_SIZE=67108864"
+        "-s INITIAL_MEMORY=134217728"
+        "-s ALLOW_MEMORY_GROWTH"
+        "-s EXPORT_ES6=1"
+        "-s EXCEPTION_CATCHING_ALLOWED=[..]"
+        "-fwasm-exceptions"
+        "-l embind"
+        "--bind"
+        "--use-preload-cache"
+    )
+    
+    # Debug flags (optional)
+    if(DEBUG_WASM)
+        list(APPEND WASM_LINK_FLAGS
+            "-g3"
+            "-s ASSERTIONS=2"
+            "-s SAFE_HEAP=1"
+            "-s STACK_OVERFLOW_CHECK=2"
+            "-s DEMANGLE_SUPPORT=1"
+            "--source-map-base http://localhost:5173/"
+        )
+        list(REMOVE_ITEM WASM_LINK_FLAGS "-O3")
+    endif()
+    
+    list(JOIN WASM_LINK_FLAGS " " WASM_LINK_FLAGS_STRING)
+    
+    foreach(target libMKF libInsulationCoordinator libCrossReferencers)
+        set_target_properties(${target} PROPERTIES LINK_FLAGS "${WASM_LINK_FLAGS_STRING}")
+    endforeach()
+endif()

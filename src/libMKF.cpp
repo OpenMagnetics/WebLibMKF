@@ -188,7 +188,7 @@ std::string calculate_processed(std::string harmonicsString, std::string wavefor
     }
 }
 
-std::string calculate_shape_data(std::string shapeString){
+std::string calculate_core_data_from_shape(std::string shapeString){
     try {
         CoreShape shape(json::parse(shapeString));
         OpenMagnetics::Core core;
@@ -242,7 +242,10 @@ std::string calculate_bobbin_data(std::string magneticString){
         if (std::holds_alternative<std::string>(optionalBobbin)) {
             auto bobbinString = std::get<std::string>(optionalBobbin);
             if (bobbinString == "Dummy") {
-                bobbin = OpenMagnetics::Bobbin::create_quick_bobbin(magnetic.get_mutable_core());
+                return "Exception: " + std::string{"Use create_simple_bobbin_from_core instead"};
+            }
+            else {
+                bobbin = OpenMagnetics::find_bobbin_by_name(bobbinString);
             }
         }
         else {
@@ -258,6 +261,34 @@ std::string calculate_bobbin_data(std::string magneticString){
         return "Exception: " + std::string{exc.what()};
     }
 }
+
+std::string create_simple_bobbin_from_core(std::string coresString){
+    OpenMagnetics::Core core(json::parse(coresString), false, true);
+    auto bobbin = OpenMagnetics::Bobbin::create_quick_bobbin(core);
+
+    json result;
+    to_json(result, bobbin);
+    return result.dump(4);
+}
+
+std::string create_simple_bobbin_from_core_with_custom_thickness(std::string coresString, double thickness){
+    OpenMagnetics::Core core(json::parse(coresString), false, true);
+    auto bobbin = OpenMagnetics::Bobbin::create_quick_bobbin(core, thickness);
+
+    json result;
+    to_json(result, bobbin);
+    return result.dump(4);
+}
+
+std::string create_simple_bobbin_from_core_with_custom_thicknesses(std::string coresString, double wallThickness, double columnThickness){
+    OpenMagnetics::Core core(json::parse(coresString), false, true);
+    auto bobbin = OpenMagnetics::Bobbin::create_quick_bobbin(core, wallThickness, columnThickness);
+
+    json result;
+    to_json(result, bobbin);
+    return result.dump(4);
+}
+
 
 std::string get_wire_data(std::string windingDataString){
     OpenMagnetics::Winding winding(json::parse(windingDataString));
@@ -1421,7 +1452,7 @@ std::string wind(std::string coilString, size_t repetitions, std::string proport
     try {
         auto coilJson = json::parse(coilString);
         auto marginPairs = std::vector<std::vector<double>>(json::parse(marginPairsString));
-        OpenMagnetics::settings->set_coil_wind_even_if_not_fit(true);
+        OpenMagnetics::Settings::GetInstance().set_coil_wind_even_if_not_fit(true);
  
         std::vector<double> proportionPerWinding = json::parse(proportionPerWindingString);
         std::vector<size_t> pattern = json::parse(patternString);
@@ -1476,7 +1507,7 @@ std::string wind(std::string coilString, size_t repetitions, std::string proport
 
 std::string wind_planar(std::string coilString, std::string stackUpString, double borderToWireDistance, std::string wireToWireDistanceString, std::string insulationThicknessString, double coreToLayerDistance) {
     try {
-        OpenMagnetics::settings->set_coil_wind_even_if_not_fit(true);
+        OpenMagnetics::Settings::GetInstance().set_coil_wind_even_if_not_fit(true);
         auto coilJson = json::parse(coilString);
         auto coil = OpenMagnetics::Coil(coilJson, false);
         std::vector<size_t> stackUp = json::parse(stackUpString);
@@ -2037,8 +2068,8 @@ size_t load_cores(std::string fileToLoad, bool includeToroids, bool useOnlyCores
             OpenMagnetics::load_cores(fileToLoad);
         }
         else {
-            OpenMagnetics::settings->set_use_toroidal_cores(includeToroids);
-            OpenMagnetics::settings->set_use_only_cores_in_stock(useOnlyCoresInStock);
+            OpenMagnetics::Settings::GetInstance().set_use_toroidal_cores(includeToroids);
+            OpenMagnetics::Settings::GetInstance().set_use_only_cores_in_stock(useOnlyCoresInStock);
             OpenMagnetics::load_cores();
         }
         return OpenMagnetics::coreDatabase.size();
@@ -2076,7 +2107,7 @@ std::vector<double> get_maximum_dimensions(std::string magneticString){
 
 std::string calculate_advised_cores(std::string inputsString, std::string weightsString, int maximumNumberResults, std::string coreModeString){
     try {
-        OpenMagnetics::settings->set_coil_delimit_and_compact(true);
+        OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(true);
 
         OpenMagnetics::Inputs inputs(json::parse(inputsString));
         OpenMagnetics::CoreAdviser::CoreAdviserModes coreMode;
@@ -2087,9 +2118,9 @@ std::string calculate_advised_cores(std::string inputsString, std::string weight
         bool filterMode = bool(inputs.get_design_requirements().get_minimum_impedance());
 
         if (filterMode) {
-            OpenMagnetics::settings->set_use_toroidal_cores(true);
-            OpenMagnetics::settings->set_use_only_cores_in_stock(false);
-            OpenMagnetics::settings->set_use_concentric_cores(false);
+            OpenMagnetics::Settings::GetInstance().set_use_toroidal_cores(true);
+            OpenMagnetics::Settings::GetInstance().set_use_only_cores_in_stock(false);
+            OpenMagnetics::Settings::GetInstance().set_use_concentric_cores(false);
         }
 
         double externalSum = 0;
@@ -2191,7 +2222,7 @@ std::string calculate_advised_sections(std::string masString, std::string patter
 
 std::string calculate_advised_coil(std::string masString){
     try {
-        OpenMagnetics::settings->set_coil_delimit_and_compact(true);
+        OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(true);
         OpenMagnetics::Mas mas(json::parse(masString));
 
         for (size_t windingIndex = 0; windingIndex < mas.get_magnetic().get_coil().get_functional_description().size(); ++windingIndex) {
@@ -2229,7 +2260,7 @@ std::string calculate_advised_wires(std::string windingString,
                                     size_t maximumNumberResults,
                                     bool usePlanarWires){
     try {
-        OpenMagnetics::settings->set_coil_delimit_and_compact(true);
+        OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(true);
         OpenMagnetics::Winding winding(json::parse(windingString));
         OpenMagnetics::WireSolidInsulationRequirements wireSolidInsulationRequirements(json::parse(solidInsulationRequirementsString));
         Section section(json::parse(sectionString));
@@ -2293,7 +2324,7 @@ std::string get_solid_insulation_requirements_for_wires(std::string inputsString
 
 std::string calculate_advised_magnetics(std::string inputsString, std::string weightsString, int maximumNumberResults, std::string coreModeString){
     try {
-        OpenMagnetics::settings->set_coil_delimit_and_compact(true);
+        OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(true);
         OpenMagnetics::Inputs inputs(json::parse(inputsString));
 
         OpenMagnetics::CoreAdviser::CoreAdviserModes coreMode;
@@ -2353,7 +2384,7 @@ std::string calculate_advised_magnetics(std::string inputsString, std::string we
 
 std::string calculate_advised_magnetics_from_catalog(std::string inputsString, std::string catalogString, int maximumNumberResults){
     try {
-        OpenMagnetics::settings->set_coil_delimit_and_compact(true);
+        OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(true);
         OpenMagnetics::Inputs inputs(json::parse(inputsString));
         std::map<OpenMagnetics::MagneticFilters, double> weights;
 
@@ -2397,7 +2428,7 @@ std::string calculate_advised_magnetics_from_catalog(std::string inputsString, s
 
 std::string calculate_advised_magnetics_from_cache(std::string inputsString, std::string filterFlowString, int maximumNumberResults){
     try {
-        settings->set_coil_delimit_and_compact(true);
+        OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(true);
         OpenMagnetics::Inputs inputs(json::parse(inputsString));
 
         std::vector<OpenMagnetics::MagneticFilterOperation> filterFlow;
@@ -2407,12 +2438,12 @@ std::string calculate_advised_magnetics_from_cache(std::string inputsString, std
             filterFlow.push_back(filter);
         }
 
-        if (magneticsCache.size() == 0) {
+        if (OpenMagnetics::magneticsCache.size() == 0) {
             return "Exception: No magnetics found in cache";
         }
 
         OpenMagnetics::MagneticAdviser magneticAdviser;
-        auto masMagnetics = magneticAdviser.get_advised_magnetic(inputs, magneticsCache.get(), filterFlow, maximumNumberResults);
+        auto masMagnetics = magneticAdviser.get_advised_magnetic(inputs, OpenMagnetics::magneticsCache.get(), filterFlow, maximumNumberResults);
 
         auto scorings = magneticAdviser.get_scorings();
 
@@ -2803,25 +2834,6 @@ std::vector<size_t> get_only_magnetic_field_dc_bias_dependent_indexes(std::strin
     }
 }
 
-std::string create_quick_bobbin(std::string coresString, double thickness){
-    OpenMagnetics::Core core(json::parse(coresString), false, true);
-    auto bobbin = OpenMagnetics::Bobbin::create_quick_bobbin(core, thickness);
-
-    json result;
-    to_json(result, bobbin);
-    return result.dump(4);
-}
-
-std::string create_quick_bobbin_different_thicknesses(std::string coresString, double wallThickness, double columnThickness){
-    OpenMagnetics::Core core(json::parse(coresString), false, true);
-    auto bobbin = OpenMagnetics::Bobbin::create_quick_bobbin(core, wallThickness, columnThickness);
-
-    json result;
-    to_json(result, bobbin);
-    return result.dump(4);
-}
-
-
 std::string mas_autocomplete(std::string masString, bool simulate, std::string configurationString) {
     try {
         OpenMagnetics::Mas mas(json::parse(masString));
@@ -2888,7 +2900,7 @@ std::string calculate_complex_permeability(std::string coreMaterialString) {
             complexPermeabilityData = OpenMagnetics::ComplexPermeability().calculate_complex_permeability_from_frequency_dependent_initial_permeability(coreMaterial);
         }
         else {
-            throw OpenMagnetics::missing_material_data_exception("Missing complex data in material " + coreMaterial.get_name());
+            throw OpenMagnetics::MaterialDataMissingException("Missing complex data in material " + coreMaterial.get_name());
         }
 
         json result;
@@ -2977,8 +2989,8 @@ std::string plot_layers(std::string magneticString) {
 
 std::string plot_turns(std::string magneticString) {
     try {
-        OpenMagnetics::settings->set_painter_simple_litz(true);
-        OpenMagnetics::settings->set_painter_advanced_litz(false);
+        OpenMagnetics::Settings::GetInstance().set_painter_simple_litz(true);
+        OpenMagnetics::Settings::GetInstance().set_painter_advanced_litz(false);
         std::filesystem::path emptyFilepath;
         OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
         OpenMagnetics::Painter painter(emptyFilepath, false, false, false);
@@ -3004,8 +3016,8 @@ std::string plot_turns(std::string magneticString) {
 
 std::string plot_wire(std::string wireString) {
     try {
-        OpenMagnetics::settings->set_painter_simple_litz(false);
-        OpenMagnetics::settings->set_painter_advanced_litz(true);
+        OpenMagnetics::Settings::GetInstance().set_painter_simple_litz(false);
+        OpenMagnetics::Settings::GetInstance().set_painter_advanced_litz(true);
         std::filesystem::path emptyFilepath;
         OpenMagnetics::Wire wire(json::parse(wireString));
         OpenMagnetics::Painter painter(emptyFilepath, false, false, false);
@@ -3104,46 +3116,46 @@ std::string get_settings() {
     try {
         json settingsJson;
 
-        settingsJson["magnetizingInductanceIncludeAirInductance"] = OpenMagnetics::settings->get_magnetizing_inductance_include_air_inductance();
-        settingsJson["coilAllowMarginTape"] = OpenMagnetics::settings->get_coil_allow_margin_tape();
-        settingsJson["coilAllowInsulatedWire"] = OpenMagnetics::settings->get_coil_allow_insulated_wire();
-        settingsJson["coilFillSectionsWithMarginTape"] = OpenMagnetics::settings->get_coil_fill_sections_with_margin_tape();
-        settingsJson["coilWindEvenIfNotFit"] = OpenMagnetics::settings->get_coil_wind_even_if_not_fit();
-        settingsJson["coilDelimitAndCompact"] = OpenMagnetics::settings->get_coil_delimit_and_compact();
-        settingsJson["coilOnlyOneTurnPerLayerInContiguousRectangular"] = OpenMagnetics::settings->get_coil_only_one_turn_per_layer_in_contiguous_rectangular();
-        settingsJson["coilTryRewind"] = OpenMagnetics::settings->get_coil_try_rewind();
-        settingsJson["coilMaximumLayersPlanar"] = OpenMagnetics::settings->get_coil_maximum_layers_planar();
+        settingsJson["magnetizingInductanceIncludeAirInductance"] = OpenMagnetics::Settings::GetInstance().get_magnetizing_inductance_include_air_inductance();
+        settingsJson["coilAllowMarginTape"] = OpenMagnetics::Settings::GetInstance().get_coil_allow_margin_tape();
+        settingsJson["coilAllowInsulatedWire"] = OpenMagnetics::Settings::GetInstance().get_coil_allow_insulated_wire();
+        settingsJson["coilFillSectionsWithMarginTape"] = OpenMagnetics::Settings::GetInstance().get_coil_fill_sections_with_margin_tape();
+        settingsJson["coilWindEvenIfNotFit"] = OpenMagnetics::Settings::GetInstance().get_coil_wind_even_if_not_fit();
+        settingsJson["coilDelimitAndCompact"] = OpenMagnetics::Settings::GetInstance().get_coil_delimit_and_compact();
+        settingsJson["coilOnlyOneTurnPerLayerInContiguousRectangular"] = OpenMagnetics::Settings::GetInstance().get_coil_only_one_turn_per_layer_in_contiguous_rectangular();
+        settingsJson["coilTryRewind"] = OpenMagnetics::Settings::GetInstance().get_coil_try_rewind();
+        settingsJson["coilMaximumLayersPlanar"] = OpenMagnetics::Settings::GetInstance().get_coil_maximum_layers_planar();
 
-        settingsJson["useOnlyCoresInStock"] = OpenMagnetics::settings->get_use_only_cores_in_stock();
-        settingsJson["painterNumberPointsX"] = OpenMagnetics::settings->get_painter_number_points_x();
-        settingsJson["painterNumberPointsY"] = OpenMagnetics::settings->get_painter_number_points_y();
-        settingsJson["painterMirroringDimension"] = OpenMagnetics::settings->get_painter_mirroring_dimension();
-        settingsJson["painterMode"] = OpenMagnetics::settings->get_painter_mode();
-        settingsJson["painterLogarithmicScale"] = OpenMagnetics::settings->get_painter_logarithmic_scale();
-        settingsJson["painterIncludeFringing"] = OpenMagnetics::settings->get_painter_include_fringing();
-        if (OpenMagnetics::settings->get_painter_maximum_value_colorbar()) {
-            settingsJson["painterMaximumValueColorbar"] = OpenMagnetics::settings->get_painter_maximum_value_colorbar();
+        settingsJson["useOnlyCoresInStock"] = OpenMagnetics::Settings::GetInstance().get_use_only_cores_in_stock();
+        settingsJson["painterNumberPointsX"] = OpenMagnetics::Settings::GetInstance().get_painter_number_points_x();
+        settingsJson["painterNumberPointsY"] = OpenMagnetics::Settings::GetInstance().get_painter_number_points_y();
+        settingsJson["painterMirroringDimension"] = OpenMagnetics::Settings::GetInstance().get_painter_mirroring_dimension();
+        settingsJson["painterMode"] = OpenMagnetics::Settings::GetInstance().get_painter_mode();
+        settingsJson["painterLogarithmicScale"] = OpenMagnetics::Settings::GetInstance().get_painter_logarithmic_scale();
+        settingsJson["painterIncludeFringing"] = OpenMagnetics::Settings::GetInstance().get_painter_include_fringing();
+        if (OpenMagnetics::Settings::GetInstance().get_painter_maximum_value_colorbar()) {
+            settingsJson["painterMaximumValueColorbar"] = OpenMagnetics::Settings::GetInstance().get_painter_maximum_value_colorbar();
         }
-        if (OpenMagnetics::settings->get_painter_minimum_value_colorbar()) {
-            settingsJson["painterMinimumValueColorbar"] = OpenMagnetics::settings->get_painter_minimum_value_colorbar();
+        if (OpenMagnetics::Settings::GetInstance().get_painter_minimum_value_colorbar()) {
+            settingsJson["painterMinimumValueColorbar"] = OpenMagnetics::Settings::GetInstance().get_painter_minimum_value_colorbar();
         }
-        settingsJson["painterColorFerrite"] = OpenMagnetics::settings->get_painter_color_ferrite();
-        settingsJson["painterColorBobbin"] = OpenMagnetics::settings->get_painter_color_bobbin();
-        settingsJson["painterColorCopper"] = OpenMagnetics::settings->get_painter_color_copper();
-        settingsJson["painterColorInsulation"] = OpenMagnetics::settings->get_painter_color_insulation();
-        settingsJson["painterColorMargin"] = OpenMagnetics::settings->get_painter_color_margin();
-        settingsJson["magneticFieldNumberPointsX"] = OpenMagnetics::settings->get_magnetic_field_number_points_x();
-        settingsJson["magneticFieldNumberPointsY"] = OpenMagnetics::settings->get_magnetic_field_number_points_y();
-        settingsJson["magneticFieldMirroringDimension"] = OpenMagnetics::settings->get_magnetic_field_mirroring_dimension();
-        settingsJson["magneticFieldIncludeFringing"] = OpenMagnetics::settings->get_magnetic_field_include_fringing();
-        settingsJson["coilAdviserMaximumNumberWires"] = OpenMagnetics::settings->get_coil_adviser_maximum_number_wires();
-        settingsJson["coreIncludeMargin"] = OpenMagnetics::settings->get_core_adviser_include_margin();
-        settingsJson["coreIncludeStacks"] = OpenMagnetics::settings->get_core_adviser_include_stacks();
-        settingsJson["coreIncludeDistributedGaps"] = OpenMagnetics::settings->get_core_adviser_include_distributed_gaps();
-        settingsJson["verbose"] = OpenMagnetics::settings->get_verbose();
+        settingsJson["painterColorFerrite"] = OpenMagnetics::Settings::GetInstance().get_painter_color_ferrite();
+        settingsJson["painterColorBobbin"] = OpenMagnetics::Settings::GetInstance().get_painter_color_bobbin();
+        settingsJson["painterColorCopper"] = OpenMagnetics::Settings::GetInstance().get_painter_color_copper();
+        settingsJson["painterColorInsulation"] = OpenMagnetics::Settings::GetInstance().get_painter_color_insulation();
+        settingsJson["painterColorMargin"] = OpenMagnetics::Settings::GetInstance().get_painter_color_margin();
+        settingsJson["magneticFieldNumberPointsX"] = OpenMagnetics::Settings::GetInstance().get_magnetic_field_number_points_x();
+        settingsJson["magneticFieldNumberPointsY"] = OpenMagnetics::Settings::GetInstance().get_magnetic_field_number_points_y();
+        settingsJson["magneticFieldMirroringDimension"] = OpenMagnetics::Settings::GetInstance().get_magnetic_field_mirroring_dimension();
+        settingsJson["magneticFieldIncludeFringing"] = OpenMagnetics::Settings::GetInstance().get_magnetic_field_include_fringing();
+        settingsJson["coilAdviserMaximumNumberWires"] = OpenMagnetics::Settings::GetInstance().get_coil_adviser_maximum_number_wires();
+        settingsJson["coreIncludeMargin"] = OpenMagnetics::Settings::GetInstance().get_core_adviser_include_margin();
+        settingsJson["coreIncludeStacks"] = OpenMagnetics::Settings::GetInstance().get_core_adviser_include_stacks();
+        settingsJson["coreIncludeDistributedGaps"] = OpenMagnetics::Settings::GetInstance().get_core_adviser_include_distributed_gaps();
+        settingsJson["verbose"] = OpenMagnetics::Settings::GetInstance().get_verbose();
 
-        settingsJson["useToroidalCores"] = OpenMagnetics::settings->get_use_toroidal_cores();
-        settingsJson["useConcentricCores"] = OpenMagnetics::settings->get_use_concentric_cores();
+        settingsJson["useToroidalCores"] = OpenMagnetics::Settings::GetInstance().get_use_toroidal_cores();
+        settingsJson["useConcentricCores"] = OpenMagnetics::Settings::GetInstance().get_use_concentric_cores();
 
         return settingsJson.dump(4);
     }
@@ -3155,56 +3167,56 @@ std::string get_settings() {
 void set_settings(std::string settingsString) {
     json settingsJson = json::parse(settingsString);
 
-    OpenMagnetics::settings->set_magnetizing_inductance_include_air_inductance(settingsJson["magnetizingInductanceIncludeAirInductance"]);
-    OpenMagnetics::settings->set_coil_allow_margin_tape(settingsJson["coilAllowMarginTape"]);
-    OpenMagnetics::settings->set_coil_allow_insulated_wire(settingsJson["coilAllowInsulatedWire"]);
-    OpenMagnetics::settings->set_coil_fill_sections_with_margin_tape(settingsJson["coilFillSectionsWithMarginTape"]);
-    OpenMagnetics::settings->set_coil_wind_even_if_not_fit(settingsJson["coilWindEvenIfNotFit"]);
-    OpenMagnetics::settings->set_coil_delimit_and_compact(settingsJson["coilDelimitAndCompact"]);
-    OpenMagnetics::settings->set_coil_only_one_turn_per_layer_in_contiguous_rectangular(settingsJson["coilOnlyOneTurnPerLayerInContiguousRectangular"]);
-    OpenMagnetics::settings->set_coil_try_rewind(settingsJson["coilTryRewind"]);
-    OpenMagnetics::settings->set_coil_maximum_layers_planar(settingsJson["coilMaximumLayersPlanar"]);
+    OpenMagnetics::Settings::GetInstance().set_magnetizing_inductance_include_air_inductance(settingsJson["magnetizingInductanceIncludeAirInductance"]);
+    OpenMagnetics::Settings::GetInstance().set_coil_allow_margin_tape(settingsJson["coilAllowMarginTape"]);
+    OpenMagnetics::Settings::GetInstance().set_coil_allow_insulated_wire(settingsJson["coilAllowInsulatedWire"]);
+    OpenMagnetics::Settings::GetInstance().set_coil_fill_sections_with_margin_tape(settingsJson["coilFillSectionsWithMarginTape"]);
+    OpenMagnetics::Settings::GetInstance().set_coil_wind_even_if_not_fit(settingsJson["coilWindEvenIfNotFit"]);
+    OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(settingsJson["coilDelimitAndCompact"]);
+    OpenMagnetics::Settings::GetInstance().set_coil_only_one_turn_per_layer_in_contiguous_rectangular(settingsJson["coilOnlyOneTurnPerLayerInContiguousRectangular"]);
+    OpenMagnetics::Settings::GetInstance().set_coil_try_rewind(settingsJson["coilTryRewind"]);
+    OpenMagnetics::Settings::GetInstance().set_coil_maximum_layers_planar(settingsJson["coilMaximumLayersPlanar"]);
 
-    OpenMagnetics::settings->set_use_only_cores_in_stock(settingsJson["useOnlyCoresInStock"]);
-    OpenMagnetics::settings->set_painter_number_points_x(settingsJson["painterNumberPointsX"]);
-    OpenMagnetics::settings->set_painter_number_points_y(settingsJson["painterNumberPointsY"]);
-    OpenMagnetics::settings->set_painter_mirroring_dimension(settingsJson["painterMirroringDimension"]);
-    OpenMagnetics::settings->set_painter_mode(settingsJson["painterMode"]);
-    OpenMagnetics::settings->set_painter_logarithmic_scale(settingsJson["painterLogarithmicScale"]);
-    OpenMagnetics::settings->set_painter_include_fringing(settingsJson["painterIncludeFringing"]);
+    OpenMagnetics::Settings::GetInstance().set_use_only_cores_in_stock(settingsJson["useOnlyCoresInStock"]);
+    OpenMagnetics::Settings::GetInstance().set_painter_number_points_x(settingsJson["painterNumberPointsX"]);
+    OpenMagnetics::Settings::GetInstance().set_painter_number_points_y(settingsJson["painterNumberPointsY"]);
+    OpenMagnetics::Settings::GetInstance().set_painter_mirroring_dimension(settingsJson["painterMirroringDimension"]);
+    OpenMagnetics::Settings::GetInstance().set_painter_mode(settingsJson["painterMode"]);
+    OpenMagnetics::Settings::GetInstance().set_painter_logarithmic_scale(settingsJson["painterLogarithmicScale"]);
+    OpenMagnetics::Settings::GetInstance().set_painter_include_fringing(settingsJson["painterIncludeFringing"]);
     if (settingsJson.contains("painterMaximumValueColorbar")) {
-        OpenMagnetics::settings->set_painter_maximum_value_colorbar(settingsJson["painterMaximumValueColorbar"]);
+        OpenMagnetics::Settings::GetInstance().set_painter_maximum_value_colorbar(settingsJson["painterMaximumValueColorbar"]);
     }
     if (settingsJson.contains("painterMinimumValueColorbar")) {
-        OpenMagnetics::settings->set_painter_minimum_value_colorbar(settingsJson["painterMinimumValueColorbar"]);
+        OpenMagnetics::Settings::GetInstance().set_painter_minimum_value_colorbar(settingsJson["painterMinimumValueColorbar"]);
     }
-    OpenMagnetics::settings->set_painter_color_ferrite(settingsJson["painterColorFerrite"]);
-    OpenMagnetics::settings->set_painter_color_bobbin(settingsJson["painterColorBobbin"]);
-    OpenMagnetics::settings->set_painter_color_copper(settingsJson["painterColorCopper"]);
-    OpenMagnetics::settings->set_painter_color_insulation(settingsJson["painterColorInsulation"]);
-    OpenMagnetics::settings->set_painter_color_margin(settingsJson["painterColorMargin"]);
-    OpenMagnetics::settings->set_magnetic_field_number_points_x(settingsJson["magneticFieldNumberPointsX"]);
-    OpenMagnetics::settings->set_magnetic_field_number_points_y(settingsJson["magneticFieldNumberPointsY"]);
-    OpenMagnetics::settings->set_magnetic_field_mirroring_dimension(settingsJson["magneticFieldMirroringDimension"]);
-    OpenMagnetics::settings->set_magnetic_field_include_fringing(settingsJson["magneticFieldIncludeFringing"]);
-    OpenMagnetics::settings->set_coil_adviser_maximum_number_wires(settingsJson["coilAdviserMaximumNumberWires"]);
-    OpenMagnetics::settings->set_core_adviser_include_margin(settingsJson["coreIncludeMargin"]);
-    OpenMagnetics::settings->set_core_adviser_include_stacks(settingsJson["coreIncludeStacks"]);
-    OpenMagnetics::settings->set_core_adviser_include_distributed_gaps(settingsJson["coreIncludeDistributedGaps"]);
-    OpenMagnetics::settings->set_verbose(settingsJson["verbose"]);
+    OpenMagnetics::Settings::GetInstance().set_painter_color_ferrite(settingsJson["painterColorFerrite"]);
+    OpenMagnetics::Settings::GetInstance().set_painter_color_bobbin(settingsJson["painterColorBobbin"]);
+    OpenMagnetics::Settings::GetInstance().set_painter_color_copper(settingsJson["painterColorCopper"]);
+    OpenMagnetics::Settings::GetInstance().set_painter_color_insulation(settingsJson["painterColorInsulation"]);
+    OpenMagnetics::Settings::GetInstance().set_painter_color_margin(settingsJson["painterColorMargin"]);
+    OpenMagnetics::Settings::GetInstance().set_magnetic_field_number_points_x(settingsJson["magneticFieldNumberPointsX"]);
+    OpenMagnetics::Settings::GetInstance().set_magnetic_field_number_points_y(settingsJson["magneticFieldNumberPointsY"]);
+    OpenMagnetics::Settings::GetInstance().set_magnetic_field_mirroring_dimension(settingsJson["magneticFieldMirroringDimension"]);
+    OpenMagnetics::Settings::GetInstance().set_magnetic_field_include_fringing(settingsJson["magneticFieldIncludeFringing"]);
+    OpenMagnetics::Settings::GetInstance().set_coil_adviser_maximum_number_wires(settingsJson["coilAdviserMaximumNumberWires"]);
+    OpenMagnetics::Settings::GetInstance().set_core_adviser_include_margin(settingsJson["coreIncludeMargin"]);
+    OpenMagnetics::Settings::GetInstance().set_core_adviser_include_stacks(settingsJson["coreIncludeStacks"]);
+    OpenMagnetics::Settings::GetInstance().set_core_adviser_include_distributed_gaps(settingsJson["coreIncludeDistributedGaps"]);
+    OpenMagnetics::Settings::GetInstance().set_verbose(settingsJson["verbose"]);
 
-    OpenMagnetics::settings->set_use_toroidal_cores(settingsJson["useToroidalCores"]);
-    OpenMagnetics::settings->set_use_concentric_cores(settingsJson["useConcentricCores"]);
+    OpenMagnetics::Settings::GetInstance().set_use_toroidal_cores(settingsJson["useToroidalCores"]);
+    OpenMagnetics::Settings::GetInstance().set_use_concentric_cores(settingsJson["useConcentricCores"]);
 
 }
 void reset_settings(std::string settingsString) {
-    OpenMagnetics::settings->reset();
+    OpenMagnetics::Settings::GetInstance().reset();
 }
 
 std::string clear_magnetic_cache() {
     try {
-        magneticsCache.clear();
-        return std::to_string(magneticsCache.size());
+        OpenMagnetics::magneticsCache.clear();
+        return std::to_string(OpenMagnetics::magneticsCache.size());
     }
     catch (const std::exception &exc) {
         return std::string{exc.what()};
@@ -3218,9 +3230,9 @@ std::string load_magnetic(std::string key, std::string magneticString, bool expa
         if (expand) {
             magnetic = OpenMagnetics::magnetic_autocomplete(magnetic);
         }
-        magneticsCache.load(key, magnetic);
+        OpenMagnetics::magneticsCache.load(key, magnetic);
 
-        return std::to_string(magneticsCache.size());
+        return std::to_string(OpenMagnetics::magneticsCache.size());
     }
     catch (const std::exception &exc) {
         return std::string{exc.what()};
@@ -3238,9 +3250,9 @@ std::string load_magnetics(std::string keysString, std::string magneticsString, 
             if (expand) {
                 magnetic = OpenMagnetics::magnetic_autocomplete(magnetic);
             }
-            magneticsCache.load(keys[magneticIndex], magnetic);
+            OpenMagnetics::magneticsCache.load(keys[magneticIndex], magnetic);
         }
-        return std::to_string(magneticsCache.size());
+        return std::to_string(OpenMagnetics::magneticsCache.size());
     }
     catch (const std::exception &exc) {
         return std::string{exc.what()};
@@ -3259,10 +3271,10 @@ std::string load_magnetics_from_file(std::string path, bool expand) {
                     magnetic = OpenMagnetics::magnetic_autocomplete(magnetic);
                 }
                 std::string key = magnetic.get_manufacturer_info()->get_reference().value();
-                magneticsCache.load(key, magnetic);
+                OpenMagnetics::magneticsCache.load(key, magnetic);
             }
         }
-        return std::to_string(magneticsCache.size());
+        return std::to_string(OpenMagnetics::magneticsCache.size());
     }
     catch (const std::exception &exc) {
         return std::string{exc.what()};
@@ -3282,10 +3294,10 @@ std::string load_magnetics_from_string(std::string database, bool expand) {
             json jf = json::parse(token);
             OpenMagnetics::Magnetic magnetic(jf);
             std::cout << jf["manufacturerInfo"]["reference"] << std::endl;
-            magneticsCache.load(jf["manufacturerInfo"]["reference"], magnetic);
+            OpenMagnetics::magneticsCache.load(jf["manufacturerInfo"]["reference"], magnetic);
             database.erase(0, pos + delimiter.length());
         }
-        return std::to_string(magneticsCache.size());
+        return std::to_string(OpenMagnetics::magneticsCache.size());
     }
     catch (const std::exception &exc) {
         return std::string{exc.what()};
@@ -3323,7 +3335,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("load_core_data", &load_core_data);
     function("get_material_data", &get_material_data);
     function("get_core_temperature_dependant_parameters", &get_core_temperature_dependant_parameters);
-    function("calculate_shape_data", &calculate_shape_data);
+    function("calculate_core_data_from_shape", &calculate_core_data_from_shape);
     function("get_shape_data", &get_shape_data);
     function("get_available_core_materials", &get_available_core_materials);
     function("get_available_core_manufacturers", &get_available_core_manufacturers);
@@ -3439,8 +3451,9 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_only_temperature_dependent_indexes", &get_only_temperature_dependent_indexes);
     function("get_only_frequency_dependent_indexes", &get_only_frequency_dependent_indexes);
     function("get_only_magnetic_field_dc_bias_dependent_indexes", &get_only_magnetic_field_dc_bias_dependent_indexes);
-    function("create_quick_bobbin", &create_quick_bobbin);
-    function("create_quick_bobbin_different_thicknesses", &create_quick_bobbin_different_thicknesses);
+    function("create_simple_bobbin_from_core", &create_simple_bobbin_from_core);
+    function("create_simple_bobbin_from_core_with_custom_thickness", &create_simple_bobbin_from_core_with_custom_thickness);
+    function("create_simple_bobbin_from_core_with_custom_thicknesses", &create_simple_bobbin_from_core_with_custom_thicknesses);
     function("mas_autocomplete", &mas_autocomplete);
     function("calculate_steinmetz_coefficients", &calculate_steinmetz_coefficients);
     function("get_initial_permeability_equations", &get_initial_permeability_equations);
