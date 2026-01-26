@@ -26,22 +26,52 @@ endif()
 # =============================================================================
 # Compiler Flags
 # =============================================================================
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -fwasm-exceptions")
+# Base warning flags for our code
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
+# Add -fwasm-exceptions only for emscripten
+if(EMSCRIPTEN)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fwasm-exceptions")
+endif()
+# Suppress warnings from dependency code (MKF, svg, levmar, etc.) - must use add_compile_options for global effect
+add_compile_options(
+    -Wno-deprecated-declarations
+    -Wno-unused-parameter
+    -Wno-switch
+    -Wno-delete-non-abstract-non-virtual-dtor
+    -Wno-unused-but-set-variable
+    -Wno-sign-compare
+    -Wno-potentially-evaluated-expression
+    -Wno-unknown-warning-option
+    -Wno-unused-private-field
+    -Wno-bitwise-instead-of-logical
+    -Wno-format-truncation
+)
+# Suppress C preprocessor #warning directives from dependencies (levmar)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-cpp")
 
 # =============================================================================
 # Dependencies
 # =============================================================================
 include(FetchContent)
 
+# Speed up matplotplusplus configuration by disabling optional features
+set(MATPLOTPP_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(MATPLOTPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(MATPLOTPP_BUILD_HIGH_RESOLUTION_WORLD_MAP OFF CACHE BOOL "" FORCE)
+set(MATPLOTPP_BUILD_EXPERIMENTAL_OPENGL_BACKEND OFF CACHE BOOL "" FORCE)
+
 FetchContent_Declare(MKF
     GIT_REPOSITORY https://github.com/OpenMagnetics/MKF.git
-    GIT_TAG test-and-doc-refactor
+    GIT_TAG main
 )
 
 FetchContent_Declare(magic-enum
     GIT_REPOSITORY https://github.com/Neargye/magic_enum
     GIT_TAG v0.9.6
 )
+
+# Skip LFS downloads for MAS (not needed for compilation)
+set(ENV{GIT_LFS_SKIP_SMUDGE} 1)
 
 FetchContent_Declare(mas
     GIT_REPOSITORY https://github.com/OpenMagnetics/MAS.git

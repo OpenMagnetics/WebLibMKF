@@ -15,6 +15,7 @@
 #include "processors/MagneticSimulator.h"
 #include "physical_models/WindingOhmicLosses.h"
 #include "physical_models/WindingSkinEffectLosses.h"
+#include "physical_models/WindingLosses.h"
 #include "advisers/WireAdviser.h"
 #include "advisers/CoilAdviser.h"
 #include "advisers/CoreAdviser.h"
@@ -27,6 +28,8 @@
 #include "physical_models/InitialPermeability.h"
 #include "physical_models/LeakageInductance.h"
 #include "physical_models/MagnetizingInductance.h"
+#include "physical_models/Inductance.h"
+#include "physical_models/StrayCapacitance.h"
 #include "physical_models/Reluctance.h"
 #include "converter_models/Flyback.h"
 #include "converter_models/IsolatedBuck.h"
@@ -213,6 +216,51 @@ std::string calculate_core_data_from_shape(std::string shapeString){
         json result;
         to_json(result, core);
         return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string calculate_all_core_data_from_shapes(){
+    try {
+        // Get all shapes from the database
+        auto allShapes = OpenMagnetics::get_shapes(true);
+        
+        json resultArray = json::array();
+        
+        for (const auto& shape : allShapes) {
+            try {
+                OpenMagnetics::Core core;
+                CoreFunctionalDescription coreFunctionalDescription;
+                coreFunctionalDescription.set_shape(shape);
+                coreFunctionalDescription.set_material("Dummy");
+                coreFunctionalDescription.set_number_stacks(1);
+                if (shape.get_magnetic_circuit() == MagneticCircuit::OPEN) {
+                    coreFunctionalDescription.set_type(CoreType::TWO_PIECE_SET);
+                }
+                else {
+                    if (shape.get_family() == CoreShapeFamily::T) {
+                        coreFunctionalDescription.set_type(CoreType::TOROIDAL);
+                    }
+                    else {
+                        coreFunctionalDescription.set_type(CoreType::CLOSED_SHAPE);
+                    }
+                }
+                core.set_functional_description(coreFunctionalDescription);
+                core.process_data();
+                
+                json coreJson;
+                to_json(coreJson, core);
+                resultArray.push_back(coreJson);
+            }
+            catch (const std::exception &exc) {
+                // Skip shapes that fail to process, log if needed
+                // std::cerr << "Failed to process shape: " << exc.what() << std::endl;
+            }
+        }
+        
+        return resultArray.dump();
     }
     catch (const std::exception &exc) {
         return "Exception: " + std::string{exc.what()};
@@ -2152,9 +2200,13 @@ std::string calculate_advised_cores(std::string inputsString, std::string weight
                 for (size_t operatingPointIndex = 0; operatingPointIndex < inputs.get_operating_points().size(); ++operatingPointIndex) {
                     auto operatingPoint = inputs.get_operating_point(operatingPointIndex);
                     auto magnetizingInductanceOutput = magnetizingInductanceModel.calculate_inductance_from_number_turns_and_gapping(mas.get_magnetic().get_core(), mas.get_magnetic().get_coil(), &operatingPoint);
-                    auto magnetizingInductanceOutputEnergy = mas.get_mutable_outputs()[operatingPointIndex].get_magnetizing_inductance();
-                    magnetizingInductanceOutput.set_maximum_magnetic_energy_core(magnetizingInductanceOutputEnergy->get_maximum_magnetic_energy_core());
-                    mas.get_mutable_outputs()[operatingPointIndex].set_magnetizing_inductance(magnetizingInductanceOutput);
+                    if (mas.get_mutable_outputs()[operatingPointIndex].get_inductance()) {
+                        auto magnetizingInductanceOutputEnergy = mas.get_mutable_outputs()[operatingPointIndex].get_inductance()->get_magnetizing_inductance();
+                        magnetizingInductanceOutput.set_maximum_magnetic_energy_core(magnetizingInductanceOutputEnergy.get_maximum_magnetic_energy_core());
+                        InductanceOutput inductanceOutput = *mas.get_mutable_outputs()[operatingPointIndex].get_inductance();
+                        inductanceOutput.set_magnetizing_inductance(magnetizingInductanceOutput);
+                        mas.get_mutable_outputs()[operatingPointIndex].set_inductance(inductanceOutput);
+                    }
                     masMagnetic.first = mas;
                 }
             }
@@ -2491,6 +2543,89 @@ std::string calculate_leakage_inductance(std::string magneticString, double freq
 
         json result;
         to_json(result, leakageInductanceOutput);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string calculate_inductance_matrix(std::string magneticString, double frequency, std::string modelsData){
+    try {
+        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
+        
+        std::map<std::string, std::string> models = json::parse(modelsData).get<std::map<std::string, std::string>>();
+        
+        auto reluctanceModelName = OpenMagnetics::Defaults().reluctanceModelDefault;
+        if (models.find("reluctance") != models.end()) {
+            OpenMagnetics::from_json(models["reluctance"], reluctanceModelName);
+        }
+
+        OpenMagnetics::Inductance inductance(reluctanceModelName);
+        auto inductanceMatrix = inductance.calculate_inductance_matrix(magnetic, frequency);
+
+        json result;
+        to_json(result, inductanceMatrix);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string calculate_stray_capacitance(std::string coilString, std::string operatingPointString, std::string modelsData){
+    try {
+        OpenMagnetics::Coil coil(json::parse(coilString), false);
+        OperatingPoint operatingPoint(json::parse(operatingPointString));
+        
+        std::map<std::string, std::string> models = json::parse(modelsData).get<std::map<std::string, std::string>>();
+        
+        auto strayCapacitanceModelName = OpenMagnetics::StrayCapacitanceModels::ALBACH;
+        if (models.find("strayCapacitance") != models.end()) {
+            OpenMagnetics::from_json(models["strayCapacitance"], strayCapacitanceModelName);
+        }
+
+        OpenMagnetics::StrayCapacitance strayCapacitance(strayCapacitanceModelName);
+        auto strayCapacitanceOutput = strayCapacitance.calculate_capacitance(coil);
+
+        json result;
+        to_json(result, strayCapacitanceOutput);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string calculate_maxwell_capacitance_matrix(std::string coilString, std::string capacitanceAmongWindingsString){
+    try {
+        OpenMagnetics::Coil coil(json::parse(coilString), false);
+        auto capacitanceAmongWindings = json::parse(capacitanceAmongWindingsString).get<std::map<std::string, std::map<std::string, double>>>();
+
+        auto maxwellMatrix = OpenMagnetics::StrayCapacitance::calculate_maxwell_capacitance_matrix(coil, capacitanceAmongWindings);
+
+        json result = json::array();
+        for (const auto& matrix : maxwellMatrix) {
+            json matrixJson;
+            to_json(matrixJson, matrix);
+            result.push_back(matrixJson);
+        }
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string calculate_resistance_matrix(std::string magneticString, double temperature, double frequency){
+    try {
+        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
+        
+        OpenMagnetics::WindingLosses windingLosses;
+        auto resistanceMatrix = windingLosses.calculate_resistance_matrix(magnetic, temperature, frequency);
+
+        json result;
+        to_json(result, resistanceMatrix);
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -3014,6 +3149,96 @@ std::string plot_turns(std::string magneticString) {
     }
 }
 
+
+std::string plot_magnetic_field(std::string magneticString, std::string operatingPointString) {
+    try {
+        OpenMagnetics::Settings::GetInstance().set_painter_simple_litz(true);
+        OpenMagnetics::Settings::GetInstance().set_painter_advanced_litz(false);
+        std::filesystem::path emptyFilepath;
+        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
+        OperatingPoint operatingPoint(json::parse(operatingPointString));
+        OpenMagnetics::Painter painter(emptyFilepath, false, false, false);
+        painter.paint_magnetic_field(operatingPoint, magnetic);
+        painter.paint_core(magnetic);
+        // painter.paint_bobbin(magnetic);
+        painter.paint_coil_turns(magnetic);
+        auto result = painter.export_svg();
+        return result;
+    }
+    catch(const std::runtime_error& re)
+    {
+        return re.what();
+    }
+    catch(const std::exception& ex)
+    {
+        return ex.what();
+    }
+    catch(...)
+    {
+        return "Unknown failure occurred. Possible memory corruption";
+    }
+}
+
+
+std::string plot_electric_field(std::string magneticString, std::string operatingPointString) {
+    try {
+        OpenMagnetics::Settings::GetInstance().set_painter_simple_litz(true);
+        OpenMagnetics::Settings::GetInstance().set_painter_advanced_litz(false);
+        std::filesystem::path emptyFilepath;
+        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
+        OperatingPoint operatingPoint(json::parse(operatingPointString));
+        OpenMagnetics::Painter painter(emptyFilepath, false, false, false);
+        painter.paint_electric_field(operatingPoint, magnetic);
+        painter.paint_core(magnetic);
+        // painter.paint_bobbin(magnetic);
+        painter.paint_coil_turns(magnetic);
+        auto result = painter.export_svg();
+        return result;
+    }
+    catch(const std::runtime_error& re)
+    {
+        return re.what();
+    }
+    catch(const std::exception& ex)
+    {
+        return ex.what();
+    }
+    catch(...)
+    {
+        return "Unknown failure occurred. Possible memory corruption";
+    }
+}
+
+
+std::string plot_wire_losses(std::string magneticString, std::string operatingPointString) {
+    try {
+        OpenMagnetics::Settings::GetInstance().set_painter_simple_litz(true);
+        OpenMagnetics::Settings::GetInstance().set_painter_advanced_litz(false);
+        std::filesystem::path emptyFilepath;
+        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
+        OperatingPoint operatingPoint(json::parse(operatingPointString));
+        OpenMagnetics::Painter painter(emptyFilepath, false, false, false);
+        painter.paint_core(magnetic);
+        painter.paint_bobbin(magnetic);
+        painter.paint_coil_turns(magnetic);
+        painter.paint_wire_losses(magnetic, std::nullopt, operatingPoint);
+        auto result = painter.export_svg();
+        return result;
+    }
+    catch(const std::runtime_error& re)
+    {
+        return re.what();
+    }
+    catch(const std::exception& ex)
+    {
+        return ex.what();
+    }
+    catch(...)
+    {
+        return "Unknown failure occurred. Possible memory corruption";
+    }
+}
+
 std::string plot_wire(std::string wireString) {
     try {
         OpenMagnetics::Settings::GetInstance().set_painter_simple_litz(false);
@@ -3336,6 +3561,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_material_data", &get_material_data);
     function("get_core_temperature_dependant_parameters", &get_core_temperature_dependant_parameters);
     function("calculate_core_data_from_shape", &calculate_core_data_from_shape);
+    function("calculate_all_core_data_from_shapes", &calculate_all_core_data_from_shapes);
     function("get_shape_data", &get_shape_data);
     function("get_available_core_materials", &get_available_core_materials);
     function("get_available_core_manufacturers", &get_available_core_manufacturers);
@@ -3430,6 +3656,10 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("load_cores", &load_cores);
     function("clear_loaded_cores", &clear_loaded_cores);
     function("calculate_leakage_inductance", &calculate_leakage_inductance);
+    function("calculate_inductance_matrix", &calculate_inductance_matrix);
+    function("calculate_stray_capacitance", &calculate_stray_capacitance);
+    function("calculate_maxwell_capacitance_matrix", &calculate_maxwell_capacitance_matrix);
+    function("calculate_resistance_matrix", &calculate_resistance_matrix);
     function("calculate_flyback_inputs", &calculate_flyback_inputs);
     function("calculate_advanced_flyback_inputs", &calculate_advanced_flyback_inputs);
     function("calculate_isolated_buck_inputs", &calculate_isolated_buck_inputs);
@@ -3463,6 +3693,9 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("plot_sections", &plot_sections);
     function("plot_layers", &plot_layers);
     function("plot_turns", &plot_turns);
+    function("plot_magnetic_field", &plot_magnetic_field);
+    function("plot_electric_field", &plot_electric_field);
+    function("plot_wire_losses", &plot_wire_losses);
     function("plot_wire", &plot_wire);
     function("set_interlayer_insulation", &set_interlayer_insulation);
     function("set_intersection_insulation", &set_intersection_insulation);

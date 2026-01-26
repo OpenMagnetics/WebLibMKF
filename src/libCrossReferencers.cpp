@@ -11,6 +11,7 @@
 #include "advisers/CoreCrossReferencer.h"
 #include "advisers/CoreMaterialCrossReferencer.h"
 #include "support/Settings.h"
+#include <magic_enum.hpp>
 
 
 using namespace emscripten;
@@ -49,7 +50,7 @@ std::vector<std::string> get_available_core_shapes(){
 }
 
 std::vector<std::string> get_available_core_shapes_by_manufacturer(std::string manufacturer){
-    return OpenMagnetics::get_core_shapes_names(manufacturer);
+    return OpenMagnetics::get_core_shape_names(manufacturer);
 }
 
 std::string calculate_cross_referenced_core(std::string coreString, int numberTurns, std::string inputsString, int maximumNumberResults, std::string onlyManufacturer, bool useToroidalCores, bool useTwoPieceSetCores, bool useOnlyCoresInStock, bool keepMaterialConstant){
@@ -65,14 +66,14 @@ std::string calculate_cross_referenced_core(std::string coreString, int numberTu
         coreCrossReferencer.set_limit(100);
     }
 
-    if (useToroidalCores != settings->get_use_toroidal_cores() || useTwoPieceSetCores != settings->get_use_concentric_cores() || useOnlyCoresInStock != settings->get_use_only_cores_in_stock()) {
+    if (useToroidalCores != OpenMagnetics::settings.get_use_toroidal_cores() || useTwoPieceSetCores != OpenMagnetics::settings.get_use_concentric_cores() || useOnlyCoresInStock != OpenMagnetics::settings.get_use_only_cores_in_stock()) {
         OpenMagnetics::clear_databases();
-        settings->set_use_toroidal_cores(true);
-        settings->set_use_concentric_cores(true);
+        OpenMagnetics::settings.set_use_toroidal_cores(true);
+        OpenMagnetics::settings.set_use_concentric_cores(true);
         OpenMagnetics::load_core_shapes();
-        settings->set_use_only_cores_in_stock(useOnlyCoresInStock);
-        settings->set_use_toroidal_cores(useToroidalCores);
-        settings->set_use_concentric_cores(useTwoPieceSetCores);
+        OpenMagnetics::settings.set_use_only_cores_in_stock(useOnlyCoresInStock);
+        OpenMagnetics::settings.set_use_toroidal_cores(useToroidalCores);
+        OpenMagnetics::settings.set_use_concentric_cores(useTwoPieceSetCores);
     }
 
     auto crossReferencedCores = coreCrossReferencer.get_cross_referenced_core(referenceCore, numberTurns, inputs, maximumNumberResults);
@@ -93,19 +94,19 @@ std::string calculate_cross_referenced_core(std::string coreString, int numberTu
         json result;
         result["scoringPerFilter"] = json();
         result["scoredValuePerFilter"] = json();
-        for (auto& filter : magic_enum::enum_names<OpenMagnetics::CoreCrossReferencer::CoreCrossReferencerFilters>()) {
+        for (auto& filter : magic_enum::enum_names<OpenMagnetics::CoreCrossReferencerFilters>()) {
             std::string filterString(filter);
-            result["scoringPerFilter"][filterString] = scorings[name][magic_enum::enum_cast<OpenMagnetics::CoreCrossReferencer::CoreCrossReferencerFilters>(filterString).value()];
-            result["scoredValuePerFilter"][filterString] = scoredValues[name][magic_enum::enum_cast<OpenMagnetics::CoreCrossReferencer::CoreCrossReferencerFilters>(filterString).value()];
+            result["scoringPerFilter"][filterString] = scorings[name][magic_enum::enum_cast<OpenMagnetics::CoreCrossReferencerFilters>(filterString).value()];
+            result["scoredValuePerFilter"][filterString] = scoredValues[name][magic_enum::enum_cast<OpenMagnetics::CoreCrossReferencerFilters>(filterString).value()];
         };
         results["data"].push_back(result);
     }
     results["referenceScoredValues"] = json();
 
 
-    for (auto& filter : magic_enum::enum_names<OpenMagnetics::CoreCrossReferencer::CoreCrossReferencerFilters>()) {
+    for (auto& filter : magic_enum::enum_names<OpenMagnetics::CoreCrossReferencerFilters>()) {
         std::string filterString(filter);
-        results["referenceScoredValues"][filterString] = scoredValues["Reference"][magic_enum::enum_cast<OpenMagnetics::CoreCrossReferencer::CoreCrossReferencerFilters>(filterString).value()];
+        results["referenceScoredValues"][filterString] = scoredValues["Reference"][magic_enum::enum_cast<OpenMagnetics::CoreCrossReferencerFilters>(filterString).value()];
     };
 
     return results.dump(4);
@@ -118,14 +119,14 @@ std::string calculate_cross_referenced_core_material(std::string materialName, d
     if (onlyManufacturer != "") {
         coreMaterialCrossReferencer.use_only_manufacturer(onlyManufacturer);
     }
-    if (useOnlyCoresInStock != settings->get_use_only_cores_in_stock()) {
+    if (useOnlyCoresInStock != OpenMagnetics::settings.get_use_only_cores_in_stock()) {
         OpenMagnetics::clear_databases();
-        settings->set_use_only_cores_in_stock(useOnlyCoresInStock);
+        OpenMagnetics::settings.set_use_only_cores_in_stock(useOnlyCoresInStock);
     }
 
     auto crossReferencedCoreMaterials = coreMaterialCrossReferencer.get_cross_referenced_core_material(referenceCoreMaterial, temperature, maximumNumberResults);
-    std::cout << "coreDatabase.size(): " << coreDatabase.size() << std::endl;
-    std::cout << "coreMaterialDatabase.size(): " << coreMaterialDatabase.size() << std::endl;
+    std::cout << "coreDatabase.size(): " << OpenMagnetics::coreDatabase.size() << std::endl;
+    std::cout << "coreMaterialDatabase.size(): " << OpenMagnetics::coreMaterialDatabase.size() << std::endl;
     std::cout << "referenceCoreMaterial.get_name(): " << referenceCoreMaterial.get_name() << std::endl;
     std::cout << "crossReferencedCoreMaterials.size(): " << crossReferencedCoreMaterials.size() << std::endl;
 
@@ -146,19 +147,19 @@ std::string calculate_cross_referenced_core_material(std::string materialName, d
         json result;
         result["scoringPerFilter"] = json();
         result["scoredValuePerFilter"] = json();
-        for (auto& filter : magic_enum::enum_names<OpenMagnetics::CoreMaterialCrossReferencer::CoreMaterialCrossReferencerFilters>()) {
+        for (auto& filter : magic_enum::enum_names<OpenMagnetics::CoreMaterialCrossReferencerFilters>()) {
             std::string filterString(filter);
-            result["scoringPerFilter"][filterString] = scorings[name][magic_enum::enum_cast<OpenMagnetics::CoreMaterialCrossReferencer::CoreMaterialCrossReferencerFilters>(filterString).value()];
-            result["scoredValuePerFilter"][filterString] = scoredValues[name][magic_enum::enum_cast<OpenMagnetics::CoreMaterialCrossReferencer::CoreMaterialCrossReferencerFilters>(filterString).value()];
+            result["scoringPerFilter"][filterString] = scorings[name][magic_enum::enum_cast<OpenMagnetics::CoreMaterialCrossReferencerFilters>(filterString).value()];
+            result["scoredValuePerFilter"][filterString] = scoredValues[name][magic_enum::enum_cast<OpenMagnetics::CoreMaterialCrossReferencerFilters>(filterString).value()];
         };
         results["data"].push_back(result);
     }
     results["referenceScoredValues"] = json();
 
 
-    for (auto& filter : magic_enum::enum_names<OpenMagnetics::CoreMaterialCrossReferencer::CoreMaterialCrossReferencerFilters>()) {
+    for (auto& filter : magic_enum::enum_names<OpenMagnetics::CoreMaterialCrossReferencerFilters>()) {
         std::string filterString(filter);
-        results["referenceScoredValues"][filterString] = scoredValues["Reference"][magic_enum::enum_cast<OpenMagnetics::CoreMaterialCrossReferencer::CoreMaterialCrossReferencerFilters>(filterString).value()];
+        results["referenceScoredValues"][filterString] = scoredValues["Reference"][magic_enum::enum_cast<OpenMagnetics::CoreMaterialCrossReferencerFilters>(filterString).value()];
     };
 
     return results.dump(4);
