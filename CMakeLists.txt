@@ -60,9 +60,14 @@ set(MATPLOTPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(MATPLOTPP_BUILD_HIGH_RESOLUTION_WORLD_MAP OFF CACHE BOOL "" FORCE)
 set(MATPLOTPP_BUILD_EXPERIMENTAL_OPENGL_BACKEND OFF CACHE BOOL "" FORCE)
 
+# Enable ngspice for WASM - using --with-ngshared with emscripten produces a 
+# static library (despite .so extension) that provides the sharedspice.h API.
+# Based on ngspice patch #96: https://sourceforge.net/p/ngspice/patches/96/
+set(ENABLE_NGSPICE ON CACHE BOOL "" FORCE)
+
+# Use local MKF (has ngspice WASM patches for Emscripten compatibility)
 FetchContent_Declare(MKF
-    GIT_REPOSITORY https://github.com/OpenMagnetics/MKF.git
-    GIT_TAG main
+    SOURCE_DIR ${CMAKE_SOURCE_DIR}/../MKF
 )
 
 FetchContent_Declare(magic-enum
@@ -116,6 +121,8 @@ set(COMMON_INCLUDE_DIRS
 foreach(target libMKF libInsulationCoordinator libCrossReferencers)
     target_include_directories(${target} PRIVATE ${COMMON_INCLUDE_DIRS})
     target_link_libraries(${target} PRIVATE MKF)
+    # Add ENABLE_NGSPICE compile definition so libMKF.cpp knows ngspice is available
+    target_compile_definitions(${target} PRIVATE ENABLE_NGSPICE)
 endforeach()
 
 # =============================================================================
@@ -141,6 +148,7 @@ else()
         "-s ALLOW_MEMORY_GROWTH"
         "-s EXPORT_ES6=1"
         "-s EXCEPTION_CATCHING_ALLOWED=[..]"
+        "-s SUPPORT_LONGJMP=wasm"
         "-fwasm-exceptions"
         "-l embind"
         "--bind"

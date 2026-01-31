@@ -21,78 +21,104 @@ namespace fs = std::filesystem;
 
 
 std::vector<std::string> get_available_core_materials(std::string manufacturer){
-    return OpenMagnetics::get_core_material_names(manufacturer);
+    try {
+        return OpenMagnetics::get_core_material_names(manufacturer);
+    }
+    catch (const std::exception &exc) {
+        return {"Exception: " + std::string{exc.what()}};
+    }
 }
 
 std::vector<std::string> get_available_core_manufacturers(){
-    std::vector<std::string> manufacturers;
-    auto materials = OpenMagnetics::get_materials("");
-    for (auto material : materials) {
-        std::string manufacturer = material.get_manufacturer_info().get_name();
-        if (std::find(manufacturers.begin(), manufacturers.end(), manufacturer) == manufacturers.end()) {
-            manufacturers.push_back(manufacturer);
+    try {
+        std::vector<std::string> manufacturers;
+        auto materials = OpenMagnetics::get_materials("");
+        for (auto material : materials) {
+            std::string manufacturer = material.get_manufacturer_info().get_name();
+            if (std::find(manufacturers.begin(), manufacturers.end(), manufacturer) == manufacturers.end()) {
+                manufacturers.push_back(manufacturer);
+            }
         }
+        return manufacturers;
     }
-    return manufacturers;
+    catch (const std::exception &exc) {
+        return {"Exception: " + std::string{exc.what()}};
+    }
 }
 
 std::vector<std::string> get_available_core_shape_families(){
-    std::vector<std::string> families;
-    for (auto& family : magic_enum::enum_names<MAS::CoreShapeFamily>()) {
-        std::string familyString(family);
-        families.push_back(familyString);
+    try {
+        std::vector<std::string> families;
+        for (auto& family : magic_enum::enum_names<MAS::CoreShapeFamily>()) {
+            std::string familyString(family);
+            families.push_back(familyString);
+        }
+        return families;
     }
-    return families;
+    catch (const std::exception &exc) {
+        return {"Exception: " + std::string{exc.what()}};
+    }
 }
 
 std::vector<std::string> get_available_core_shapes(){
-    return OpenMagnetics::get_core_shape_names();
+    try {
+        return OpenMagnetics::get_core_shape_names();
+    }
+    catch (const std::exception &exc) {
+        return {"Exception: " + std::string{exc.what()}};
+    }
 }
 
 std::vector<std::string> get_available_core_shapes_by_manufacturer(std::string manufacturer){
-    return OpenMagnetics::get_core_shape_names(manufacturer);
+    try {
+        return OpenMagnetics::get_core_shape_names(manufacturer);
+    }
+    catch (const std::exception &exc) {
+        return {"Exception: " + std::string{exc.what()}};
+    }
 }
 
 std::string calculate_cross_referenced_core(std::string coreString, int numberTurns, std::string inputsString, int maximumNumberResults, std::string onlyManufacturer, bool useToroidalCores, bool useTwoPieceSetCores, bool useOnlyCoresInStock, bool keepMaterialConstant){
-    OpenMagnetics::Core referenceCore(json::parse(coreString));
-    OpenMagnetics::Inputs inputs(json::parse(inputsString));
+    try {
+        OpenMagnetics::Core referenceCore(json::parse(coreString));
+        OpenMagnetics::Inputs inputs(json::parse(inputsString));
 
-    OpenMagnetics::CoreCrossReferencer coreCrossReferencer;
-    if (onlyManufacturer != "") {
-        coreCrossReferencer.use_only_manufacturer(onlyManufacturer);
-    }
-    coreCrossReferencer.use_only_reference_material(keepMaterialConstant);
-    if (keepMaterialConstant) {
-        coreCrossReferencer.set_limit(100);
-    }
+        OpenMagnetics::CoreCrossReferencer coreCrossReferencer;
+        if (onlyManufacturer != "") {
+            coreCrossReferencer.use_only_manufacturer(onlyManufacturer);
+        }
+        coreCrossReferencer.use_only_reference_material(keepMaterialConstant);
+        if (keepMaterialConstant) {
+            coreCrossReferencer.set_limit(100);
+        }
 
-    if (useToroidalCores != OpenMagnetics::settings.get_use_toroidal_cores() || useTwoPieceSetCores != OpenMagnetics::settings.get_use_concentric_cores() || useOnlyCoresInStock != OpenMagnetics::settings.get_use_only_cores_in_stock()) {
-        OpenMagnetics::clear_databases();
-        OpenMagnetics::settings.set_use_toroidal_cores(true);
-        OpenMagnetics::settings.set_use_concentric_cores(true);
-        OpenMagnetics::load_core_shapes();
-        OpenMagnetics::settings.set_use_only_cores_in_stock(useOnlyCoresInStock);
-        OpenMagnetics::settings.set_use_toroidal_cores(useToroidalCores);
-        OpenMagnetics::settings.set_use_concentric_cores(useTwoPieceSetCores);
-    }
+        if (useToroidalCores != OpenMagnetics::settings.get_use_toroidal_cores() || useTwoPieceSetCores != OpenMagnetics::settings.get_use_concentric_cores() || useOnlyCoresInStock != OpenMagnetics::settings.get_use_only_cores_in_stock()) {
+            OpenMagnetics::clear_databases();
+            OpenMagnetics::settings.set_use_toroidal_cores(true);
+            OpenMagnetics::settings.set_use_concentric_cores(true);
+            OpenMagnetics::load_core_shapes();
+            OpenMagnetics::settings.set_use_only_cores_in_stock(useOnlyCoresInStock);
+            OpenMagnetics::settings.set_use_toroidal_cores(useToroidalCores);
+            OpenMagnetics::settings.set_use_concentric_cores(useTwoPieceSetCores);
+        }
 
-    auto crossReferencedCores = coreCrossReferencer.get_cross_referenced_core(referenceCore, numberTurns, inputs, maximumNumberResults);
-    auto scorings = coreCrossReferencer.get_scorings();
-    auto scoredValues = coreCrossReferencer.get_scored_values();
-    json results;
-    results["cores"] = json::array();
-    results["scorings"] = json::array();
-    results["data"] = json::array();
-    for (auto& [core, scoring] : crossReferencedCores) {
-        std::string name = core.get_name().value();
+        auto crossReferencedCores = coreCrossReferencer.get_cross_referenced_core(referenceCore, numberTurns, inputs, maximumNumberResults);
+        auto scorings = coreCrossReferencer.get_scorings();
+        auto scoredValues = coreCrossReferencer.get_scored_values();
+        json results;
+        results["cores"] = json::array();
+        results["scorings"] = json::array();
+        results["data"] = json::array();
+        for (auto& [core, scoring] : crossReferencedCores) {
+            std::string name = core.get_name().value();
 
-        json coreJson;
-        MAS::to_json(coreJson, core);
-        results["cores"].push_back(coreJson);
-        results["scorings"].push_back(scoring);
+            json coreJson;
+            MAS::to_json(coreJson, core);
+            results["cores"].push_back(coreJson);
+            results["scorings"].push_back(scoring);
 
-        json result;
-        result["scoringPerFilter"] = json();
+            json result;
+            result["scoringPerFilter"] = json();
         result["scoredValuePerFilter"] = json();
         for (auto& filter : magic_enum::enum_names<OpenMagnetics::CoreCrossReferencerFilters>()) {
             std::string filterString(filter);
@@ -107,13 +133,18 @@ std::string calculate_cross_referenced_core(std::string coreString, int numberTu
     for (auto& filter : magic_enum::enum_names<OpenMagnetics::CoreCrossReferencerFilters>()) {
         std::string filterString(filter);
         results["referenceScoredValues"][filterString] = scoredValues["Reference"][magic_enum::enum_cast<OpenMagnetics::CoreCrossReferencerFilters>(filterString).value()];
-    };
+        };
 
-    return results.dump(4);
+        return results.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
 }
 
 std::string calculate_cross_referenced_core_material(std::string materialName, double temperature, int maximumNumberResults, std::string onlyManufacturer, bool useOnlyCoresInStock){
-    auto referenceCoreMaterial = OpenMagnetics::find_core_material_by_name(materialName);
+    try {
+        auto referenceCoreMaterial = OpenMagnetics::find_core_material_by_name(materialName);
 
     OpenMagnetics::CoreMaterialCrossReferencer coreMaterialCrossReferencer;
     if (onlyManufacturer != "") {
@@ -160,44 +191,63 @@ std::string calculate_cross_referenced_core_material(std::string materialName, d
     for (auto& filter : magic_enum::enum_names<OpenMagnetics::CoreMaterialCrossReferencerFilters>()) {
         std::string filterString(filter);
         results["referenceScoredValues"][filterString] = scoredValues["Reference"][magic_enum::enum_cast<OpenMagnetics::CoreMaterialCrossReferencerFilters>(filterString).value()];
-    };
+        };
 
-    return results.dump(4);
+        return results.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
 }
 
 std::string calculate_core_data(std::string coreDataString, bool includeMaterialData){
-    OpenMagnetics::Core core(json::parse(coreDataString), includeMaterialData);
-    json result;
-    to_json(result, core);
-    return result.dump(4);
+    try {
+        OpenMagnetics::Core core(json::parse(coreDataString), includeMaterialData);
+        json result;
+        to_json(result, core);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
 }
 
 std::string get_core_temperature_dependant_parameters(std::string coreData, double temperature){
-    OpenMagnetics::Core core(json::parse(coreData));
-    json result;
+    try {
+        OpenMagnetics::Core core(json::parse(coreData));
+        json result;
 
-    result["magneticFluxDensitySaturation"] = core.get_magnetic_flux_density_saturation(temperature, false);
-    result["magneticFieldStrengthSaturation"] = core.get_magnetic_field_strength_saturation(temperature);
-    result["initialPermeability"] = core.get_initial_permeability(temperature);
-    result["effectivePermeability"] = core.get_effective_permeability(temperature);
-    result["reluctance"] = core.get_reluctance(temperature);
-    result["resistivity"] = core.get_resistivity(temperature);
+        result["magneticFluxDensitySaturation"] = core.get_magnetic_flux_density_saturation(temperature, false);
+        result["magneticFieldStrengthSaturation"] = core.get_magnetic_field_strength_saturation(temperature);
+        result["initialPermeability"] = core.get_initial_permeability(temperature);
+        result["effectivePermeability"] = core.get_effective_permeability(temperature);
+        result["reluctance"] = core.get_reluctance(temperature);
+        result["resistivity"] = core.get_resistivity(temperature);
 
-    return result.dump(4);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
 }
 
 std::string get_core_material_temperature_dependant_parameters(std::string coreMaterialString, double temperature){
-    MAS::CoreMaterial coreMaterial(json::parse(coreMaterialString));
-    json result;
+    try {
+        MAS::CoreMaterial coreMaterial(json::parse(coreMaterialString));
+        json result;
 
-    result["magneticFluxDensitySaturation"] = OpenMagnetics::Core::get_magnetic_flux_density_saturation(coreMaterial, temperature, false);
-    result["magneticFieldStrengthSaturation"] = OpenMagnetics::Core::get_magnetic_field_strength_saturation(coreMaterial, temperature);
-    result["initialPermeability"] = OpenMagnetics::Core::get_initial_permeability(coreMaterial, temperature);
-    result["resistivity"] = OpenMagnetics::Core::get_resistivity(coreMaterial, temperature);
-    result["remanence"] = OpenMagnetics::Core::get_remanence(coreMaterial, temperature);
-    result["coerciveForce"] = OpenMagnetics::Core::get_coercive_force(coreMaterial, temperature);
+        result["magneticFluxDensitySaturation"] = OpenMagnetics::Core::get_magnetic_flux_density_saturation(coreMaterial, temperature, false);
+        result["magneticFieldStrengthSaturation"] = OpenMagnetics::Core::get_magnetic_field_strength_saturation(coreMaterial, temperature);
+        result["initialPermeability"] = OpenMagnetics::Core::get_initial_permeability(coreMaterial, temperature);
+        result["resistivity"] = OpenMagnetics::Core::get_resistivity(coreMaterial, temperature);
+        result["remanence"] = OpenMagnetics::Core::get_remanence(coreMaterial, temperature);
+        result["coerciveForce"] = OpenMagnetics::Core::get_coercive_force(coreMaterial, temperature);
 
-    return result.dump(4);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
 }
 
 
