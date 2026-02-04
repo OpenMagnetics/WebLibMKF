@@ -41,6 +41,8 @@
 #include "processors/NgspiceRunner.h"
 #include "converter_models/ActiveClampForward.h"
 #include "converter_models/TwoSwitchForward.h"
+#include "converter_models/CommonModeChoke.h"
+#include "converter_models/DifferentialModeChoke.h"
 #include "support/Painter.h"
 #include "support/Utils.h"
 #include "processors/Sweeper.h"
@@ -2707,6 +2709,53 @@ std::string calculate_inductance_matrix(std::string magneticString, double frequ
     }
 }
 
+std::string calculate_coupling_coefficient_matrix(std::string magneticString, double frequency, std::string modelsData){
+    try {
+        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
+        
+        std::map<std::string, std::string> models = json::parse(modelsData).get<std::map<std::string, std::string>>();
+        
+        auto reluctanceModelName = OpenMagnetics::Defaults().reluctanceModelDefault;
+        if (models.find("reluctance") != models.end()) {
+            OpenMagnetics::from_json(models["reluctance"], reluctanceModelName);
+        }
+
+        OpenMagnetics::Inductance inductance(reluctanceModelName);
+        
+        auto& functionalDescription = magnetic.get_coil().get_functional_description();
+        size_t numWindings = functionalDescription.size();
+        
+        ScalarMatrixAtFrequency result;
+        result.set_frequency(frequency);
+        
+        std::map<std::string, std::map<std::string, DimensionWithTolerance>> magnitude;
+        
+        // Calculate coupling coefficient matrix
+        for (size_t i = 0; i < numWindings; ++i) {
+            std::string windingName_i = functionalDescription[i].get_name();
+            
+            for (size_t j = 0; j < numWindings; ++j) {
+                std::string windingName_j = functionalDescription[j].get_name();
+                
+                double k = inductance.calculate_coupling_coefficient(magnetic, i, j, frequency);
+                
+                DimensionWithTolerance dimValue;
+                dimValue.set_nominal(k);
+                magnitude[windingName_i][windingName_j] = dimValue;
+            }
+        }
+        
+        result.set_magnitude(magnitude);
+
+        json jsonResult;
+        to_json(jsonResult, result);
+        return jsonResult.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
 std::string calculate_stray_capacitance(std::string coilString, std::string operatingPointString, std::string modelsData){
     try {
         OpenMagnetics::Coil coil(json::parse(coilString), false);
@@ -2922,6 +2971,15 @@ std::string simulate_flyback_ideal_waveforms(std::string flybackInputsString){
             numberOfPeriods = flybackInputsJson["numberOfPeriods"].get<size_t>();
         }
         
+        // Read number of steady state periods from input (default to 5)
+        size_t numberOfSteadyStatePeriods = 5;
+        if (flybackInputsJson.contains("numberOfSteadyStatePeriods")) {
+            numberOfSteadyStatePeriods = flybackInputsJson["numberOfSteadyStatePeriods"].get<size_t>();
+        }
+        std::cout << "DEBUG [libMKF Flyback]: Extracted numberOfSteadyStatePeriods = " << numberOfSteadyStatePeriods << std::endl;
+        flybackPtr->set_num_steady_state_periods(numberOfSteadyStatePeriods);
+        std::cout << "DEBUG [libMKF Flyback]: After setter, get_num_steady_state_periods() = " << flybackPtr->get_num_steady_state_periods() << std::endl;
+        
         // Use ngspice-based simulation for accurate waveforms
         auto topologyWaveforms = flybackPtr->simulate_and_extract_topology_waveforms(turnsRatios, magnetizingInductance, numberOfPeriods);
         
@@ -3129,6 +3187,109 @@ std::string calculate_isolated_buck_boost_inputs(std::string isolatedBuckBoostIn
 
         json result;
         to_json(result, inputs);
+        
+        // Add output voltages/currents to each operating point
+        // These come from the original IsolatedBuckBoost operating points
+        if (isolatedBuckBoostInputs.get_operating_points().size() > 0 && result.contains("operatingPoints")) {
+            size_t opIdx = 0;
+            for (auto& op : result["operatingPoints"]) {
+                // Extract the original operating point index from the result
+                // The pattern is: for each input voltage, we iterate through all original operating points
+                size_t originalOpIdx = opIdx % isolatedBuckBoostInputs.get_operating_points().size();
+                auto origOp = isolatedBuckBoostInputs.get_operating_points()[originalOpIdx];
+                
+                // Create output waveforms similar to excitations
+                // For DC outputs, we create constant waveforms at the output voltage/current levels
+                json outputVoltagesArray = json::array();
+                json outputCurrentsArray = json::array();
+                
+                for (size_t i = 0; i < origOp.get_output_voltages().size(); i++) {
+                    // Extract frequency and duty cycle from first excitation
+                    double frequency = 100000; // default
+                    double dutyCycle = 0.5; // default
+                    if (op.contains("excitationsPerWinding") && op["excitationsPerWinding"].size() > 0) {
+                        if (op["excitationsPerWinding"][0].contains("frequency")) {
+                            frequency = op["excitationsPerWinding"][0]["frequency"];
+                        }
+                        // Try to extract duty cycle from primary excitation
+                        if (op["excitationsPerWinding"][0].contains("current") && 
+                            op["excitationsPerWinding"][0]["current"].contains("processed") &&
+                            op["excitationsPerWinding"][0]["current"]["processed"].contains("dutyCycle")) {
+                            dutyCycle = op["excitationsPerWinding"][0]["current"]["processed"]["dutyCycle"];
+                        }
+                    }
+                    
+                    double period = 1.0 / frequency;
+                    double tOn = dutyCycle * period;  // Switch on-time
+                    double tOff = (1.0 - dutyCycle) * period;  // Switch off-time
+                    int numPoints = 100;
+                    
+                    json voltageWaveform = {
+                        {"time", json::array()},
+                        {"data", json::array()}
+                    };
+                    
+                    json currentWaveform = {
+                        {"time", json::array()},
+                        {"data", json::array()}
+                    };
+                    
+                    double outputVoltage = origOp.get_output_voltages()[i];
+                    double outputCurrent = origOp.get_output_currents()[i];
+                    
+                    // For primary output (index 0): create flyback-style pulsed current
+                    // Current flows only during switch-off time (when diode conducts)
+                    // Peak current is higher than DC to deliver same average power
+                    if (i == 0) {
+                        // Primary output current: zero during tOn, triangular ramp-down during tOff
+                        double peakCurrent = outputCurrent / (1.0 - dutyCycle) * 2.0;  // Triangular average
+                        
+                        for (int j = 0; j < numPoints; j++) {
+                            double t = (j / double(numPoints)) * period;
+                            voltageWaveform["time"].push_back(t);
+                            voltageWaveform["data"].push_back(outputVoltage);  // DC voltage
+                            currentWaveform["time"].push_back(t);
+                            
+                            if (t < tOn) {
+                                // Switch on: no output current (diode blocking)
+                                currentWaveform["data"].push_back(0.0);
+                            } else {
+                                // Switch off: triangular ramp-down from peak to zero
+                                double tInOffPeriod = t - tOn;
+                                double current = peakCurrent * (1.0 - tInOffPeriod / tOff);
+                                currentWaveform["data"].push_back(current);
+                            }
+                        }
+                    } else {
+                        // Secondary outputs (index 1+): also flyback-style pulsed current
+                        double peakCurrent = outputCurrent / (1.0 - dutyCycle) * 2.0;
+                        
+                        for (int j = 0; j < numPoints; j++) {
+                            double t = (j / double(numPoints)) * period;
+                            voltageWaveform["time"].push_back(t);
+                            voltageWaveform["data"].push_back(outputVoltage);  // DC voltage
+                            currentWaveform["time"].push_back(t);
+                            
+                            if (t < tOn) {
+                                currentWaveform["data"].push_back(0.0);
+                            } else {
+                                double tInOffPeriod = t - tOn;
+                                double current = peakCurrent * (1.0 - tInOffPeriod / tOff);
+                                currentWaveform["data"].push_back(current);
+                            }
+                        }
+                    }
+                    
+                    outputVoltagesArray.push_back({{"waveform", voltageWaveform}});
+                    outputCurrentsArray.push_back({{"waveform", currentWaveform}});
+                }
+                
+                op["outputVoltages"] = outputVoltagesArray;
+                op["outputCurrents"] = outputCurrentsArray;
+                opIdx++;
+            }
+        }
+        
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -3145,6 +3306,79 @@ std::string calculate_advanced_isolated_buck_boost_inputs(std::string isolatedBu
 
         json result;
         to_json(result, inputs);
+        
+        // Add output voltages/currents to each operating point
+        if (isolatedBuckBoostInputs.get_operating_points().size() > 0 && result.contains("operatingPoints")) {
+            size_t opIdx = 0;
+            for (auto& op : result["operatingPoints"]) {
+                size_t originalOpIdx = opIdx % isolatedBuckBoostInputs.get_operating_points().size();
+                auto origOp = isolatedBuckBoostInputs.get_operating_points()[originalOpIdx];
+                
+                // Create output waveforms similar to excitations
+                json outputVoltagesArray = json::array();
+                json outputCurrentsArray = json::array();
+                
+                for (size_t i = 0; i < origOp.get_output_voltages().size(); i++) {
+                    // Extract frequency and duty cycle from first excitation
+                    double frequency = 100000; // default
+                    double dutyCycle = 0.5; // default
+                    if (op.contains("excitationsPerWinding") && op["excitationsPerWinding"].size() > 0) {
+                        if (op["excitationsPerWinding"][0].contains("frequency")) {
+                            frequency = op["excitationsPerWinding"][0]["frequency"];
+                        }
+                        if (op["excitationsPerWinding"][0].contains("current") && 
+                            op["excitationsPerWinding"][0]["current"].contains("processed") &&
+                            op["excitationsPerWinding"][0]["current"]["processed"].contains("dutyCycle")) {
+                            dutyCycle = op["excitationsPerWinding"][0]["current"]["processed"]["dutyCycle"];
+                        }
+                    }
+                    
+                    double period = 1.0 / frequency;
+                    double tOn = dutyCycle * period;
+                    double tOff = (1.0 - dutyCycle) * period;
+                    int numPoints = 100;
+                    
+                    json voltageWaveform = {
+                        {"time", json::array()},
+                        {"data", json::array()}
+                    };
+                    
+                    json currentWaveform = {
+                        {"time", json::array()},
+                        {"data", json::array()}
+                    };
+                    
+                    double outputVoltage = origOp.get_output_voltages()[i];
+                    double outputCurrent = origOp.get_output_currents()[i];
+                    
+                    // Create flyback-style pulsed current for all outputs
+                    double peakCurrent = outputCurrent / (1.0 - dutyCycle) * 2.0;
+                    
+                    for (int j = 0; j < numPoints; j++) {
+                        double t = (j / double(numPoints)) * period;
+                        voltageWaveform["time"].push_back(t);
+                        voltageWaveform["data"].push_back(outputVoltage);
+                        currentWaveform["time"].push_back(t);
+                        
+                        if (t < tOn) {
+                            currentWaveform["data"].push_back(0.0);
+                        } else {
+                            double tInOffPeriod = t - tOn;
+                            double current = peakCurrent * (1.0 - tInOffPeriod / tOff);
+                            currentWaveform["data"].push_back(current);
+                        }
+                    }
+                    
+                    outputVoltagesArray.push_back({{"waveform", voltageWaveform}});
+                    outputCurrentsArray.push_back({{"waveform", currentWaveform}});
+                }
+                
+                op["outputVoltages"] = outputVoltagesArray;
+                op["outputCurrents"] = outputCurrentsArray;
+                opIdx++;
+            }
+        }
+        
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -3264,6 +3498,9 @@ std::string simulate_buck_ideal_waveforms(std::string buckInputsString){
         if (!runner.is_available()) {
             throw std::runtime_error("ngspice simulation is required but ngspice is not available");
         }
+        
+        // Set to extract only 1 period - frontend handles period repetition
+        buckPtr->set_num_periods_to_extract(1);
         
         auto topologyWaveforms = buckPtr->simulate_and_extract_topology_waveforms(inductance);
         auto operatingPoints = buckPtr->simulate_and_extract_operating_points(inductance);
@@ -3412,6 +3649,9 @@ std::string simulate_boost_ideal_waveforms(std::string boostInputsString){
             throw std::runtime_error("ngspice simulation is required but ngspice is not available");
         }
         
+        // Set to extract only 1 period - frontend handles period repetition
+        boostPtr->set_num_periods_to_extract(1);
+        
         auto topologyWaveforms = boostPtr->simulate_and_extract_topology_waveforms(inductance);
         auto operatingPoints = boostPtr->simulate_and_extract_operating_points(inductance);
         
@@ -3517,6 +3757,18 @@ std::string simulate_forward_ideal_waveforms(std::string forwardInputsString){
         // Detect if this is an AdvancedSingleSwitchForward or regular
         bool isAdvanced = forwardInputsJson.contains("desiredInductance");
         
+        // Read number of periods from input (default to 1)
+        size_t numberOfPeriods = 1;
+        if (forwardInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = forwardInputsJson["numberOfPeriods"].get<size_t>();
+        }
+        
+        // Read number of steady state periods from input (default to 5)
+        size_t numberOfSteadyStatePeriods = 5;
+        if (forwardInputsJson.contains("numberOfSteadyStatePeriods")) {
+            numberOfSteadyStatePeriods = forwardInputsJson["numberOfSteadyStatePeriods"].get<size_t>();
+        }
+        
         DesignRequirements designRequirements;
         double magnetizingInductance;
         std::vector<double> turnsRatios;
@@ -3561,6 +3813,9 @@ std::string simulate_forward_ideal_waveforms(std::string forwardInputsString){
             }
         }
         
+        forwardPtr->set_num_periods_to_extract(numberOfPeriods);
+        forwardPtr->set_num_steady_state_periods(numberOfSteadyStatePeriods);
+        
 #ifndef ENABLE_NGSPICE
         throw std::runtime_error("ngspice simulation is required but ENABLE_NGSPICE was not defined at compile time");
 #endif
@@ -3601,7 +3856,6 @@ std::string simulate_forward_ideal_waveforms(std::string forwardInputsString){
             converterOp["frequency"] = tw.frequency;
             converterOp["operatingPointName"] = tw.operatingPointName;
             converterOp["inputVoltage"] = tw.inputVoltageValue;
-            converterOp["outputVoltages"] = tw.outputVoltageValues;
             converterOp["dutyCycle"] = tw.dutyCycle;
             converterOp["waveforms"] = json::array();
             
@@ -3637,35 +3891,382 @@ std::string simulate_forward_ideal_waveforms(std::string forwardInputsString){
                 magneticOp["waveforms"].push_back(waveform);
             }
             
+            // Demagnetization Current
+            if (!tw.demagCurrent.empty()) {
+                json waveform;
+                waveform["label"] = "Demag Current";
+                waveform["unit"] = "A";
+                waveform["x"] = tw.time;
+                waveform["y"] = tw.demagCurrent;
+                magneticOp["waveforms"].push_back(waveform);
+            }
+            
             // Secondary waveforms
-            for (size_t secIdx = 0; secIdx < tw.secondaryWindingVoltages.size(); ++secIdx) {
-                if (!tw.secondaryWindingVoltages[secIdx].empty()) {
+            for (size_t secIdx = 0; secIdx < tw.secondaryVoltages.size(); ++secIdx) {
+                if (!tw.secondaryVoltages[secIdx].empty()) {
                     json waveform;
                     waveform["label"] = "Secondary " + std::to_string(secIdx) + " Voltage";
                     waveform["unit"] = "V";
                     waveform["x"] = tw.time;
-                    waveform["y"] = tw.secondaryWindingVoltages[secIdx];
+                    waveform["y"] = tw.secondaryVoltages[secIdx];
                     magneticOp["waveforms"].push_back(waveform);
                 }
                 
-                if (secIdx < tw.outputVoltages.size() && !tw.outputVoltages[secIdx].empty()) {
+                if (secIdx < tw.secondaryCurrents.size() && !tw.secondaryCurrents[secIdx].empty()) {
                     json waveform;
-                    waveform["label"] = "Output " + std::to_string(secIdx) + " Voltage";
-                    waveform["unit"] = "V";
-                    waveform["x"] = tw.time;
-                    waveform["y"] = tw.outputVoltages[secIdx];
-                    converterOp["waveforms"].push_back(waveform);
-                }
-                
-                if (secIdx < tw.outputInductorCurrents.size() && !tw.outputInductorCurrents[secIdx].empty()) {
-                    json waveform;
-                    waveform["label"] = "Output " + std::to_string(secIdx) + " Inductor Current";
+                    waveform["label"] = "Secondary " + std::to_string(secIdx) + " Current";
                     waveform["unit"] = "A";
                     waveform["x"] = tw.time;
-                    waveform["y"] = tw.outputInductorCurrents[secIdx];
+                    waveform["y"] = tw.secondaryCurrents[secIdx];
                     magneticOp["waveforms"].push_back(waveform);
                     converterOp["waveforms"].push_back(waveform);
                 }
+            }
+            
+            // Output voltage
+            if (!tw.outputVoltage.empty()) {
+                json waveform;
+                waveform["label"] = "Output Voltage";
+                waveform["unit"] = "V";
+                waveform["x"] = tw.time;
+                waveform["y"] = tw.outputVoltage;
+                converterOp["waveforms"].push_back(waveform);
+            }
+            
+            result["magneticWaveforms"].push_back(magneticOp);
+            result["converterWaveforms"].push_back(converterOp);
+        }
+        
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string simulate_two_switch_forward_ideal_waveforms(std::string forwardInputsString){
+    try {
+        json forwardInputsJson = json::parse(forwardInputsString);
+
+        // Detect if this is an AdvancedTwoSwitchForward or regular
+        bool isAdvanced = forwardInputsJson.contains("desiredInductance");
+        
+        // Read number of periods from input (default to 1)
+        size_t numberOfPeriods = 1;
+        if (forwardInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = forwardInputsJson["numberOfPeriods"].get<size_t>();
+        }
+        
+        // Read number of steady state periods from input (default to 5)
+        size_t numberOfSteadyStatePeriods = 5;
+        if (forwardInputsJson.contains("numberOfSteadyStatePeriods")) {
+            numberOfSteadyStatePeriods = forwardInputsJson["numberOfSteadyStatePeriods"].get<size_t>();
+        }
+        
+        DesignRequirements designRequirements;
+        double magnetizingInductance;
+        std::vector<double> turnsRatios;
+        
+        std::unique_ptr<OpenMagnetics::TwoSwitchForward> forwardPtr;
+        
+        if (isAdvanced) {
+            auto advancedPtr = std::make_unique<OpenMagnetics::AdvancedTwoSwitchForward>(forwardInputsJson);
+            magnetizingInductance = advancedPtr->get_desired_inductance();
+            turnsRatios = advancedPtr->get_desired_turns_ratios();
+            
+            // Build designRequirements
+            designRequirements.get_mutable_turns_ratios().clear();
+            for (auto tr : turnsRatios) {
+                DimensionWithTolerance trWithTolerance;
+                trWithTolerance.set_nominal(tr);
+                designRequirements.get_mutable_turns_ratios().push_back(trWithTolerance);
+            }
+            DimensionWithTolerance inductanceWithTolerance;
+            inductanceWithTolerance.set_nominal(magnetizingInductance);
+            designRequirements.set_magnetizing_inductance(inductanceWithTolerance);
+            designRequirements.set_topology(Topologies::TWO_SWITCH_FORWARD_CONVERTER);
+            
+            forwardPtr = std::move(advancedPtr);
+        } else {
+            forwardPtr = std::make_unique<OpenMagnetics::TwoSwitchForward>(forwardInputsJson);
+            designRequirements = forwardPtr->process_design_requirements();
+            
+            // Extract turns ratios from design requirements
+            for (const auto& tr : designRequirements.get_turns_ratios()) {
+                if (tr.get_nominal()) {
+                    turnsRatios.push_back(tr.get_nominal().value());
+                }
+            }
+            
+            magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+        }
+        
+        forwardPtr->set_num_periods_to_extract(numberOfPeriods);
+        forwardPtr->set_num_steady_state_periods(numberOfSteadyStatePeriods);
+        
+#ifndef ENABLE_NGSPICE
+        throw std::runtime_error("ngspice simulation is required but ENABLE_NGSPICE was not defined at compile time");
+#endif
+        
+        OpenMagnetics::NgspiceRunner runner;
+        if (!runner.is_available()) {
+            throw std::runtime_error("ngspice simulation is required but ngspice is not available");
+        }
+        
+        auto topologyWaveforms = forwardPtr->simulate_and_extract_topology_waveforms(turnsRatios, magnetizingInductance);
+        auto operatingPoints = forwardPtr->simulate_and_extract_operating_points(turnsRatios, magnetizingInductance);
+        
+        // Build the result
+        json result;
+        result["designRequirements"] = json();
+        to_json(result["designRequirements"], designRequirements);
+        result["magnetizingInductance"] = magnetizingInductance;
+        result["turnsRatios"] = turnsRatios;
+        result["simulationMethod"] = "ngspice";
+        result["operatingPoints"] = json::array();
+        result["magneticWaveforms"] = json::array();
+        result["converterWaveforms"] = json::array();
+        
+        for (const auto& op : operatingPoints) {
+            json opJson;
+            to_json(opJson, op);
+            result["operatingPoints"].push_back(opJson);
+        }
+        
+        // Convert topology waveforms to frontend format
+        for (const auto& tw : topologyWaveforms) {
+            json magneticOp;
+            magneticOp["frequency"] = tw.frequency;
+            magneticOp["operatingPointName"] = tw.operatingPointName;
+            magneticOp["waveforms"] = json::array();
+            
+            json converterOp;
+            converterOp["frequency"] = tw.frequency;
+            converterOp["operatingPointName"] = tw.operatingPointName;
+            converterOp["inputVoltage"] = tw.inputVoltageValue;
+            converterOp["dutyCycle"] = tw.dutyCycle;
+            converterOp["waveforms"] = json::array();
+            
+            // Primary Voltage
+            if (!tw.primaryVoltage.empty()) {
+                json waveform;
+                waveform["label"] = "Primary Voltage";
+                waveform["unit"] = "V";
+                waveform["x"] = tw.time;
+                waveform["y"] = tw.primaryVoltage;
+                magneticOp["waveforms"].push_back(waveform);
+                converterOp["waveforms"].push_back(waveform);
+            }
+            
+            // Primary Current
+            if (!tw.primaryCurrent.empty()) {
+                json waveform;
+                waveform["label"] = "Primary Current";
+                waveform["unit"] = "A";
+                waveform["x"] = tw.time;
+                waveform["y"] = tw.primaryCurrent;
+                magneticOp["waveforms"].push_back(waveform);
+                converterOp["waveforms"].push_back(waveform);
+            }
+            
+            // Secondary waveforms
+            for (size_t secIdx = 0; secIdx < tw.secondaryVoltages.size(); ++secIdx) {
+                if (!tw.secondaryVoltages[secIdx].empty()) {
+                    json waveform;
+                    waveform["label"] = "Secondary " + std::to_string(secIdx) + " Voltage";
+                    waveform["unit"] = "V";
+                    waveform["x"] = tw.time;
+                    waveform["y"] = tw.secondaryVoltages[secIdx];
+                    magneticOp["waveforms"].push_back(waveform);
+                }
+                
+                if (secIdx < tw.secondaryCurrents.size() && !tw.secondaryCurrents[secIdx].empty()) {
+                    json waveform;
+                    waveform["label"] = "Secondary " + std::to_string(secIdx) + " Current";
+                    waveform["unit"] = "A";
+                    waveform["x"] = tw.time;
+                    waveform["y"] = tw.secondaryCurrents[secIdx];
+                    magneticOp["waveforms"].push_back(waveform);
+                    converterOp["waveforms"].push_back(waveform);
+                }
+            }
+            
+            // Output voltage
+            if (!tw.outputVoltage.empty()) {
+                json waveform;
+                waveform["label"] = "Output Voltage";
+                waveform["unit"] = "V";
+                waveform["x"] = tw.time;
+                waveform["y"] = tw.outputVoltage;
+                converterOp["waveforms"].push_back(waveform);
+            }
+            
+            result["magneticWaveforms"].push_back(magneticOp);
+            result["converterWaveforms"].push_back(converterOp);
+        }
+        
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string simulate_active_clamp_forward_ideal_waveforms(std::string forwardInputsString){
+    try {
+        json forwardInputsJson = json::parse(forwardInputsString);
+
+        // Detect if this is an AdvancedActiveClampForward or regular
+        bool isAdvanced = forwardInputsJson.contains("desiredInductance");
+        
+        // Read number of periods from input (default to 1)
+        size_t numberOfPeriods = 1;
+        if (forwardInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = forwardInputsJson["numberOfPeriods"].get<size_t>();
+        }
+        
+        // Read number of steady state periods from input (default to 5)
+        size_t numberOfSteadyStatePeriods = 5;
+        if (forwardInputsJson.contains("numberOfSteadyStatePeriods")) {
+            numberOfSteadyStatePeriods = forwardInputsJson["numberOfSteadyStatePeriods"].get<size_t>();
+        }
+        
+        DesignRequirements designRequirements;
+        double magnetizingInductance;
+        std::vector<double> turnsRatios;
+        
+        std::unique_ptr<OpenMagnetics::ActiveClampForward> forwardPtr;
+        
+        if (isAdvanced) {
+            auto advancedPtr = std::make_unique<OpenMagnetics::AdvancedActiveClampForward>(forwardInputsJson);
+            magnetizingInductance = advancedPtr->get_desired_inductance();
+            turnsRatios = advancedPtr->get_desired_turns_ratios();
+            
+            // Build designRequirements
+            designRequirements.get_mutable_turns_ratios().clear();
+            for (auto tr : turnsRatios) {
+                DimensionWithTolerance trWithTolerance;
+                trWithTolerance.set_nominal(tr);
+                designRequirements.get_mutable_turns_ratios().push_back(trWithTolerance);
+            }
+            DimensionWithTolerance inductanceWithTolerance;
+            inductanceWithTolerance.set_nominal(magnetizingInductance);
+            designRequirements.set_magnetizing_inductance(inductanceWithTolerance);
+            designRequirements.set_topology(Topologies::ACTIVE_CLAMP_FORWARD_CONVERTER);
+            
+            forwardPtr = std::move(advancedPtr);
+        } else {
+            forwardPtr = std::make_unique<OpenMagnetics::ActiveClampForward>(forwardInputsJson);
+            designRequirements = forwardPtr->process_design_requirements();
+            
+            // Extract turns ratios from design requirements
+            for (const auto& tr : designRequirements.get_turns_ratios()) {
+                if (tr.get_nominal()) {
+                    turnsRatios.push_back(tr.get_nominal().value());
+                }
+            }
+            
+            magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+        }
+        
+        forwardPtr->set_num_periods_to_extract(numberOfPeriods);
+        forwardPtr->set_num_steady_state_periods(numberOfSteadyStatePeriods);
+        
+#ifndef ENABLE_NGSPICE
+        throw std::runtime_error("ngspice simulation is required but ENABLE_NGSPICE was not defined at compile time");
+#endif
+        
+        OpenMagnetics::NgspiceRunner runner;
+        if (!runner.is_available()) {
+            throw std::runtime_error("ngspice simulation is required but ngspice is not available");
+        }
+        
+        auto topologyWaveforms = forwardPtr->simulate_and_extract_topology_waveforms(turnsRatios, magnetizingInductance);
+        auto operatingPoints = forwardPtr->simulate_and_extract_operating_points(turnsRatios, magnetizingInductance);
+        
+        // Build the result
+        json result;
+        result["designRequirements"] = json();
+        to_json(result["designRequirements"], designRequirements);
+        result["magnetizingInductance"] = magnetizingInductance;
+        result["turnsRatios"] = turnsRatios;
+        result["simulationMethod"] = "ngspice";
+        result["operatingPoints"] = json::array();
+        result["magneticWaveforms"] = json::array();
+        result["converterWaveforms"] = json::array();
+        
+        for (const auto& op : operatingPoints) {
+            json opJson;
+            to_json(opJson, op);
+            result["operatingPoints"].push_back(opJson);
+        }
+        
+        // Convert topology waveforms to frontend format
+        for (const auto& tw : topologyWaveforms) {
+            json magneticOp;
+            magneticOp["frequency"] = tw.frequency;
+            magneticOp["operatingPointName"] = tw.operatingPointName;
+            magneticOp["waveforms"] = json::array();
+            
+            json converterOp;
+            converterOp["frequency"] = tw.frequency;
+            converterOp["operatingPointName"] = tw.operatingPointName;
+            converterOp["inputVoltage"] = tw.inputVoltageValue;
+            converterOp["dutyCycle"] = tw.dutyCycle;
+            converterOp["waveforms"] = json::array();
+            
+            // Primary Voltage
+            if (!tw.primaryVoltage.empty()) {
+                json waveform;
+                waveform["label"] = "Primary Voltage";
+                waveform["unit"] = "V";
+                waveform["x"] = tw.time;
+                waveform["y"] = tw.primaryVoltage;
+                magneticOp["waveforms"].push_back(waveform);
+                converterOp["waveforms"].push_back(waveform);
+            }
+            
+            // Primary Current
+            if (!tw.primaryCurrent.empty()) {
+                json waveform;
+                waveform["label"] = "Primary Current";
+                waveform["unit"] = "A";
+                waveform["x"] = tw.time;
+                waveform["y"] = tw.primaryCurrent;
+                magneticOp["waveforms"].push_back(waveform);
+                converterOp["waveforms"].push_back(waveform);
+            }
+            
+            // Secondary waveforms
+            for (size_t secIdx = 0; secIdx < tw.secondaryVoltages.size(); ++secIdx) {
+                if (!tw.secondaryVoltages[secIdx].empty()) {
+                    json waveform;
+                    waveform["label"] = "Secondary " + std::to_string(secIdx) + " Voltage";
+                    waveform["unit"] = "V";
+                    waveform["x"] = tw.time;
+                    waveform["y"] = tw.secondaryVoltages[secIdx];
+                    magneticOp["waveforms"].push_back(waveform);
+                }
+                
+                if (secIdx < tw.secondaryCurrents.size() && !tw.secondaryCurrents[secIdx].empty()) {
+                    json waveform;
+                    waveform["label"] = "Secondary " + std::to_string(secIdx) + " Current";
+                    waveform["unit"] = "A";
+                    waveform["x"] = tw.time;
+                    waveform["y"] = tw.secondaryCurrents[secIdx];
+                    magneticOp["waveforms"].push_back(waveform);
+                    converterOp["waveforms"].push_back(waveform);
+                }
+            }
+            
+            // Output voltage
+            if (!tw.outputVoltage.empty()) {
+                json waveform;
+                waveform["label"] = "Output Voltage";
+                waveform["unit"] = "V";
+                waveform["x"] = tw.time;
+                waveform["y"] = tw.outputVoltage;
+                converterOp["waveforms"].push_back(waveform);
             }
             
             result["magneticWaveforms"].push_back(magneticOp);
@@ -3685,6 +4286,18 @@ std::string simulate_push_pull_ideal_waveforms(std::string pushPullInputsString)
 
         // Detect if this is an AdvancedPushPull or regular
         bool isAdvanced = pushPullInputsJson.contains("desiredInductance");
+        
+        // Read number of periods from input (default to 1)
+        size_t numberOfPeriods = 1;
+        if (pushPullInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = pushPullInputsJson["numberOfPeriods"].get<size_t>();
+        }
+        
+        // Read number of steady state periods from input (default to 5)
+        size_t numberOfSteadyStatePeriods = 5;
+        if (pushPullInputsJson.contains("numberOfSteadyStatePeriods")) {
+            numberOfSteadyStatePeriods = pushPullInputsJson["numberOfSteadyStatePeriods"].get<size_t>();
+        }
         
         DesignRequirements designRequirements;
         double magnetizingInductance;
@@ -3730,6 +4343,10 @@ std::string simulate_push_pull_ideal_waveforms(std::string pushPullInputsString)
             }
         }
         
+        // Set steady state periods
+        pushPullPtr->set_num_periods_to_extract(numberOfPeriods);
+        pushPullPtr->set_num_steady_state_periods(numberOfSteadyStatePeriods);
+        
 #ifndef ENABLE_NGSPICE
         throw std::runtime_error("ngspice simulation is required but ENABLE_NGSPICE was not defined at compile time");
 #endif
@@ -3770,47 +4387,46 @@ std::string simulate_push_pull_ideal_waveforms(std::string pushPullInputsString)
             converterOp["frequency"] = tw.frequency;
             converterOp["operatingPointName"] = tw.operatingPointName;
             converterOp["inputVoltage"] = tw.inputVoltageValue;
-            converterOp["outputVoltage"] = tw.outputVoltageValue;
             converterOp["dutyCycle"] = tw.dutyCycle;
             converterOp["waveforms"] = json::array();
             
-            // Primary 1 Voltage
-            if (!tw.primary1Voltage.empty()) {
+            // Primary Top Voltage
+            if (!tw.primaryTopVoltage.empty()) {
                 json waveform;
-                waveform["label"] = "Primary 1 Voltage";
+                waveform["label"] = "Primary Top Voltage";
                 waveform["unit"] = "V";
                 waveform["x"] = tw.time;
-                waveform["y"] = tw.primary1Voltage;
+                waveform["y"] = tw.primaryTopVoltage;
                 magneticOp["waveforms"].push_back(waveform);
             }
             
-            // Primary 2 Voltage
-            if (!tw.primary2Voltage.empty()) {
+            // Primary Bottom Voltage
+            if (!tw.primaryBottomVoltage.empty()) {
                 json waveform;
-                waveform["label"] = "Primary 2 Voltage";
+                waveform["label"] = "Primary Bottom Voltage";
                 waveform["unit"] = "V";
                 waveform["x"] = tw.time;
-                waveform["y"] = tw.primary2Voltage;
+                waveform["y"] = tw.primaryBottomVoltage;
                 magneticOp["waveforms"].push_back(waveform);
             }
             
-            // Primary 1 Current
-            if (!tw.primary1Current.empty()) {
+            // Primary Top Current
+            if (!tw.primaryTopCurrent.empty()) {
                 json waveform;
-                waveform["label"] = "Primary 1 Current";
+                waveform["label"] = "Primary Top Current";
                 waveform["unit"] = "A";
                 waveform["x"] = tw.time;
-                waveform["y"] = tw.primary1Current;
+                waveform["y"] = tw.primaryTopCurrent;
                 magneticOp["waveforms"].push_back(waveform);
             }
             
-            // Primary 2 Current
-            if (!tw.primary2Current.empty()) {
+            // Primary Bottom Current
+            if (!tw.primaryBottomCurrent.empty()) {
                 json waveform;
-                waveform["label"] = "Primary 2 Current";
+                waveform["label"] = "Primary Bottom Current";
                 waveform["unit"] = "A";
                 waveform["x"] = tw.time;
-                waveform["y"] = tw.primary2Current;
+                waveform["y"] = tw.primaryBottomCurrent;
                 magneticOp["waveforms"].push_back(waveform);
             }
             
@@ -3834,13 +4450,13 @@ std::string simulate_push_pull_ideal_waveforms(std::string pushPullInputsString)
                 converterOp["waveforms"].push_back(waveform);
             }
             
-            // Output Inductor Current
-            if (!tw.outputInductorCurrent.empty()) {
+            // Secondary Current
+            if (!tw.secondaryCurrent.empty()) {
                 json waveform;
-                waveform["label"] = "Output Inductor Current";
+                waveform["label"] = "Secondary Current";
                 waveform["unit"] = "A";
                 waveform["x"] = tw.time;
-                waveform["y"] = tw.outputInductorCurrent;
+                waveform["y"] = tw.secondaryCurrent;
                 magneticOp["waveforms"].push_back(waveform);
                 converterOp["waveforms"].push_back(waveform);
             }
@@ -3862,6 +4478,12 @@ std::string simulate_isolated_buck_boost_ideal_waveforms(std::string ibbInputsSt
 
         // Detect if this is an AdvancedIsolatedBuckBoost or regular
         bool isAdvanced = ibbInputsJson.contains("desiredInductance");
+        
+        // Read number of steady state periods from input (default to 5)
+        size_t numberOfSteadyStatePeriods = 5;
+        if (ibbInputsJson.contains("numberOfSteadyStatePeriods")) {
+            numberOfSteadyStatePeriods = ibbInputsJson["numberOfSteadyStatePeriods"].get<size_t>();
+        }
         
         DesignRequirements designRequirements;
         double magnetizingInductance;
@@ -3907,6 +4529,9 @@ std::string simulate_isolated_buck_boost_ideal_waveforms(std::string ibbInputsSt
             }
         }
         
+        // Set steady state periods after pointer creation
+        ibbPtr->set_num_steady_state_periods(numberOfSteadyStatePeriods);
+        
 #ifndef ENABLE_NGSPICE
         throw std::runtime_error("ngspice simulation is required but ENABLE_NGSPICE was not defined at compile time");
 #endif
@@ -3947,7 +4572,6 @@ std::string simulate_isolated_buck_boost_ideal_waveforms(std::string ibbInputsSt
             converterOp["frequency"] = tw.frequency;
             converterOp["operatingPointName"] = tw.operatingPointName;
             converterOp["inputVoltage"] = tw.inputVoltageValue;
-            converterOp["outputVoltages"] = tw.outputVoltageValues;
             converterOp["dutyCycle"] = tw.dutyCycle;
             converterOp["waveforms"] = json::array();
             
@@ -3973,35 +4597,49 @@ std::string simulate_isolated_buck_boost_ideal_waveforms(std::string ibbInputsSt
                 converterOp["waveforms"].push_back(waveform);
             }
             
-            // Secondary waveforms
-            for (size_t secIdx = 0; secIdx < tw.secondaryWindingVoltages.size(); ++secIdx) {
-                if (!tw.secondaryWindingVoltages[secIdx].empty()) {
+            // Secondary waveforms (all secondaries)
+            for (size_t secIdx = 0; secIdx < tw.secondaryVoltages.size(); ++secIdx) {
+                if (!tw.secondaryVoltages[secIdx].empty()) {
                     json waveform;
-                    waveform["label"] = "Secondary " + std::to_string(secIdx) + " Voltage";
+                    waveform["label"] = "Secondary " + std::to_string(secIdx + 1) + " Voltage";
                     waveform["unit"] = "V";
                     waveform["x"] = tw.time;
-                    waveform["y"] = tw.secondaryWindingVoltages[secIdx];
+                    waveform["y"] = tw.secondaryVoltages[secIdx];
                     magneticOp["waveforms"].push_back(waveform);
-                }
-                
-                if (secIdx < tw.outputVoltages.size() && !tw.outputVoltages[secIdx].empty()) {
-                    json waveform;
-                    waveform["label"] = "Output " + std::to_string(secIdx) + " Voltage";
-                    waveform["unit"] = "V";
-                    waveform["x"] = tw.time;
-                    waveform["y"] = tw.outputVoltages[secIdx];
                     converterOp["waveforms"].push_back(waveform);
                 }
                 
                 if (secIdx < tw.secondaryCurrents.size() && !tw.secondaryCurrents[secIdx].empty()) {
                     json waveform;
-                    waveform["label"] = "Secondary " + std::to_string(secIdx) + " Current";
+                    waveform["label"] = "Secondary " + std::to_string(secIdx + 1) + " Current";
                     waveform["unit"] = "A";
                     waveform["x"] = tw.time;
                     waveform["y"] = tw.secondaryCurrents[secIdx];
                     magneticOp["waveforms"].push_back(waveform);
                     converterOp["waveforms"].push_back(waveform);
                 }
+            }
+            
+            // Output voltage (primary buck-boost output) - add to both views
+            if (!tw.outputVoltage.empty()) {
+                json waveform;
+                waveform["label"] = "Primary Output Voltage";
+                waveform["unit"] = "V";
+                waveform["x"] = tw.time;
+                waveform["y"] = tw.outputVoltage;
+                magneticOp["waveforms"].push_back(waveform);
+                converterOp["waveforms"].push_back(waveform);
+            }
+            
+            // Output current (primary buck-boost output) - add to both views
+            if (!tw.outputCurrent.empty()) {
+                json waveform;
+                waveform["label"] = "Primary Output Current";
+                waveform["unit"] = "A";
+                waveform["x"] = tw.time;
+                waveform["y"] = tw.outputCurrent;
+                magneticOp["waveforms"].push_back(waveform);
+                converterOp["waveforms"].push_back(waveform);
             }
             
             result["magneticWaveforms"].push_back(magneticOp);
@@ -4056,6 +4694,71 @@ std::string calculate_single_switch_forward_inputs(std::string singleSwitchForwa
 
         json result;
         to_json(result, inputs);
+        
+        // Add output voltages/currents to each operating point
+        if (singleSwitchForwardInputs.get_operating_points().size() > 0 && result.contains("operatingPoints")) {
+            size_t opIdx = 0;
+            for (auto& op : result["operatingPoints"]) {
+                size_t originalOpIdx = opIdx % singleSwitchForwardInputs.get_operating_points().size();
+                auto origOp = singleSwitchForwardInputs.get_operating_points()[originalOpIdx];
+                
+                json outputVoltagesArray = json::array();
+                json outputCurrentsArray = json::array();
+                
+                for (size_t i = 0; i < origOp.get_output_voltages().size(); i++) {
+                    double frequency = 100000;
+                    double dutyCycle = 0.5;
+                    if (op.contains("excitationsPerWinding") && op["excitationsPerWinding"].size() > 0) {
+                        if (op["excitationsPerWinding"][0].contains("frequency")) {
+                            frequency = op["excitationsPerWinding"][0]["frequency"];
+                        }
+                        if (op["excitationsPerWinding"][0].contains("current") && 
+                            op["excitationsPerWinding"][0]["current"].contains("processed") &&
+                            op["excitationsPerWinding"][0]["current"]["processed"].contains("dutyCycle")) {
+                            dutyCycle = op["excitationsPerWinding"][0]["current"]["processed"]["dutyCycle"];
+                        }
+                    }
+                    
+                    double period = 1.0 / frequency;
+                    double tOn = dutyCycle * period;
+                    int numPoints = 100;
+                    
+                    json voltageWaveform = {{"time", json::array()}, {"data", json::array()}};
+                    json currentWaveform = {{"time", json::array()}, {"data", json::array()}};
+                    
+                    double outputVoltage = origOp.get_output_voltages()[i];
+                    double outputCurrent = origOp.get_output_currents()[i];
+                    double currentRipple = outputCurrent * 0.3;
+                    double minCurrent = outputCurrent - currentRipple / 2;
+                    double maxCurrent = outputCurrent + currentRipple / 2;
+                    
+                    for (int j = 0; j < numPoints; j++) {
+                        double t = (j / double(numPoints)) * period;
+                        voltageWaveform["time"].push_back(t);
+                        voltageWaveform["data"].push_back(outputVoltage);
+                        currentWaveform["time"].push_back(t);
+                        
+                        if (t < tOn) {
+                            double progress = t / tOn;
+                            double current = minCurrent + (maxCurrent - minCurrent) * progress;
+                            currentWaveform["data"].push_back(current);
+                        } else {
+                            double progress = (t - tOn) / (period - tOn);
+                            double current = maxCurrent - (maxCurrent - minCurrent) * progress;
+                            currentWaveform["data"].push_back(current);
+                        }
+                    }
+                    
+                    outputVoltagesArray.push_back({{"waveform", voltageWaveform}});
+                    outputCurrentsArray.push_back({{"waveform", currentWaveform}});
+                }
+                
+                op["outputVoltages"] = outputVoltagesArray;
+                op["outputCurrents"] = outputCurrentsArray;
+                opIdx++;
+            }
+        }
+        
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -4072,6 +4775,71 @@ std::string calculate_advanced_single_switch_forward_inputs(std::string singleSw
 
         json result;
         to_json(result, inputs);
+        
+        // Add output voltages/currents to each operating point
+        if (singleSwitchForwardInputs.get_operating_points().size() > 0 && result.contains("operatingPoints")) {
+            size_t opIdx = 0;
+            for (auto& op : result["operatingPoints"]) {
+                size_t originalOpIdx = opIdx % singleSwitchForwardInputs.get_operating_points().size();
+                auto origOp = singleSwitchForwardInputs.get_operating_points()[originalOpIdx];
+                
+                json outputVoltagesArray = json::array();
+                json outputCurrentsArray = json::array();
+                
+                for (size_t i = 0; i < origOp.get_output_voltages().size(); i++) {
+                    double frequency = 100000;
+                    double dutyCycle = 0.5;
+                    if (op.contains("excitationsPerWinding") && op["excitationsPerWinding"].size() > 0) {
+                        if (op["excitationsPerWinding"][0].contains("frequency")) {
+                            frequency = op["excitationsPerWinding"][0]["frequency"];
+                        }
+                        if (op["excitationsPerWinding"][0].contains("current") && 
+                            op["excitationsPerWinding"][0]["current"].contains("processed") &&
+                            op["excitationsPerWinding"][0]["current"]["processed"].contains("dutyCycle")) {
+                            dutyCycle = op["excitationsPerWinding"][0]["current"]["processed"]["dutyCycle"];
+                        }
+                    }
+                    
+                    double period = 1.0 / frequency;
+                    double tOn = dutyCycle * period;
+                    int numPoints = 100;
+                    
+                    json voltageWaveform = {{"time", json::array()}, {"data", json::array()}};
+                    json currentWaveform = {{"time", json::array()}, {"data", json::array()}};
+                    
+                    double outputVoltage = origOp.get_output_voltages()[i];
+                    double outputCurrent = origOp.get_output_currents()[i];
+                    double currentRipple = outputCurrent * 0.3;
+                    double minCurrent = outputCurrent - currentRipple / 2;
+                    double maxCurrent = outputCurrent + currentRipple / 2;
+                    
+                    for (int j = 0; j < numPoints; j++) {
+                        double t = (j / double(numPoints)) * period;
+                        voltageWaveform["time"].push_back(t);
+                        voltageWaveform["data"].push_back(outputVoltage);
+                        currentWaveform["time"].push_back(t);
+                        
+                        if (t < tOn) {
+                            double progress = t / tOn;
+                            double current = minCurrent + (maxCurrent - minCurrent) * progress;
+                            currentWaveform["data"].push_back(current);
+                        } else {
+                            double progress = (t - tOn) / (period - tOn);
+                            double current = maxCurrent - (maxCurrent - minCurrent) * progress;
+                            currentWaveform["data"].push_back(current);
+                        }
+                    }
+                    
+                    outputVoltagesArray.push_back({{"waveform", voltageWaveform}});
+                    outputCurrentsArray.push_back({{"waveform", currentWaveform}});
+                }
+                
+                op["outputVoltages"] = outputVoltagesArray;
+                op["outputCurrents"] = outputCurrentsArray;
+                opIdx++;
+            }
+        }
+        
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -4088,6 +4856,71 @@ std::string calculate_active_clamp_forward_inputs(std::string activeClampForward
 
         json result;
         to_json(result, inputs);
+        
+        // Add output voltages/currents to each operating point
+        if (activeClampForwardInputs.get_operating_points().size() > 0 && result.contains("operatingPoints")) {
+            size_t opIdx = 0;
+            for (auto& op : result["operatingPoints"]) {
+                size_t originalOpIdx = opIdx % activeClampForwardInputs.get_operating_points().size();
+                auto origOp = activeClampForwardInputs.get_operating_points()[originalOpIdx];
+                
+                json outputVoltagesArray = json::array();
+                json outputCurrentsArray = json::array();
+                
+                for (size_t i = 0; i < origOp.get_output_voltages().size(); i++) {
+                    double frequency = 100000;
+                    double dutyCycle = 0.5;
+                    if (op.contains("excitationsPerWinding") && op["excitationsPerWinding"].size() > 0) {
+                        if (op["excitationsPerWinding"][0].contains("frequency")) {
+                            frequency = op["excitationsPerWinding"][0]["frequency"];
+                        }
+                        if (op["excitationsPerWinding"][0].contains("current") && 
+                            op["excitationsPerWinding"][0]["current"].contains("processed") &&
+                            op["excitationsPerWinding"][0]["current"]["processed"].contains("dutyCycle")) {
+                            dutyCycle = op["excitationsPerWinding"][0]["current"]["processed"]["dutyCycle"];
+                        }
+                    }
+                    
+                    double period = 1.0 / frequency;
+                    double tOn = dutyCycle * period;
+                    int numPoints = 100;
+                    
+                    json voltageWaveform = {{"time", json::array()}, {"data", json::array()}};
+                    json currentWaveform = {{"time", json::array()}, {"data", json::array()}};
+                    
+                    double outputVoltage = origOp.get_output_voltages()[i];
+                    double outputCurrent = origOp.get_output_currents()[i];
+                    double currentRipple = outputCurrent * 0.3;
+                    double minCurrent = outputCurrent - currentRipple / 2;
+                    double maxCurrent = outputCurrent + currentRipple / 2;
+                    
+                    for (int j = 0; j < numPoints; j++) {
+                        double t = (j / double(numPoints)) * period;
+                        voltageWaveform["time"].push_back(t);
+                        voltageWaveform["data"].push_back(outputVoltage);
+                        currentWaveform["time"].push_back(t);
+                        
+                        if (t < tOn) {
+                            double progress = t / tOn;
+                            double current = minCurrent + (maxCurrent - minCurrent) * progress;
+                            currentWaveform["data"].push_back(current);
+                        } else {
+                            double progress = (t - tOn) / (period - tOn);
+                            double current = maxCurrent - (maxCurrent - minCurrent) * progress;
+                            currentWaveform["data"].push_back(current);
+                        }
+                    }
+                    
+                    outputVoltagesArray.push_back({{"waveform", voltageWaveform}});
+                    outputCurrentsArray.push_back({{"waveform", currentWaveform}});
+                }
+                
+                op["outputVoltages"] = outputVoltagesArray;
+                op["outputCurrents"] = outputCurrentsArray;
+                opIdx++;
+            }
+        }
+        
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -4104,6 +4937,71 @@ std::string calculate_advanced_active_clamp_forward_inputs(std::string activeCla
 
         json result;
         to_json(result, inputs);
+        
+        // Add output voltages/currents to each operating point
+        if (activeClampForwardInputs.get_operating_points().size() > 0 && result.contains("operatingPoints")) {
+            size_t opIdx = 0;
+            for (auto& op : result["operatingPoints"]) {
+                size_t originalOpIdx = opIdx % activeClampForwardInputs.get_operating_points().size();
+                auto origOp = activeClampForwardInputs.get_operating_points()[originalOpIdx];
+                
+                json outputVoltagesArray = json::array();
+                json outputCurrentsArray = json::array();
+                
+                for (size_t i = 0; i < origOp.get_output_voltages().size(); i++) {
+                    double frequency = 100000;
+                    double dutyCycle = 0.5;
+                    if (op.contains("excitationsPerWinding") && op["excitationsPerWinding"].size() > 0) {
+                        if (op["excitationsPerWinding"][0].contains("frequency")) {
+                            frequency = op["excitationsPerWinding"][0]["frequency"];
+                        }
+                        if (op["excitationsPerWinding"][0].contains("current") && 
+                            op["excitationsPerWinding"][0]["current"].contains("processed") &&
+                            op["excitationsPerWinding"][0]["current"]["processed"].contains("dutyCycle")) {
+                            dutyCycle = op["excitationsPerWinding"][0]["current"]["processed"]["dutyCycle"];
+                        }
+                    }
+                    
+                    double period = 1.0 / frequency;
+                    double tOn = dutyCycle * period;
+                    int numPoints = 100;
+                    
+                    json voltageWaveform = {{"time", json::array()}, {"data", json::array()}};
+                    json currentWaveform = {{"time", json::array()}, {"data", json::array()}};
+                    
+                    double outputVoltage = origOp.get_output_voltages()[i];
+                    double outputCurrent = origOp.get_output_currents()[i];
+                    double currentRipple = outputCurrent * 0.3;
+                    double minCurrent = outputCurrent - currentRipple / 2;
+                    double maxCurrent = outputCurrent + currentRipple / 2;
+                    
+                    for (int j = 0; j < numPoints; j++) {
+                        double t = (j / double(numPoints)) * period;
+                        voltageWaveform["time"].push_back(t);
+                        voltageWaveform["data"].push_back(outputVoltage);
+                        currentWaveform["time"].push_back(t);
+                        
+                        if (t < tOn) {
+                            double progress = t / tOn;
+                            double current = minCurrent + (maxCurrent - minCurrent) * progress;
+                            currentWaveform["data"].push_back(current);
+                        } else {
+                            double progress = (t - tOn) / (period - tOn);
+                            double current = maxCurrent - (maxCurrent - minCurrent) * progress;
+                            currentWaveform["data"].push_back(current);
+                        }
+                    }
+                    
+                    outputVoltagesArray.push_back({{"waveform", voltageWaveform}});
+                    outputCurrentsArray.push_back({{"waveform", currentWaveform}});
+                }
+                
+                op["outputVoltages"] = outputVoltagesArray;
+                op["outputCurrents"] = outputCurrentsArray;
+                opIdx++;
+            }
+        }
+        
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -4120,6 +5018,71 @@ std::string calculate_two_switch_forward_inputs(std::string twoSwitchForwardInpu
 
         json result;
         to_json(result, inputs);
+        
+        // Add output voltages/currents to each operating point
+        if (twoSwitchForwardInputs.get_operating_points().size() > 0 && result.contains("operatingPoints")) {
+            size_t opIdx = 0;
+            for (auto& op : result["operatingPoints"]) {
+                size_t originalOpIdx = opIdx % twoSwitchForwardInputs.get_operating_points().size();
+                auto origOp = twoSwitchForwardInputs.get_operating_points()[originalOpIdx];
+                
+                json outputVoltagesArray = json::array();
+                json outputCurrentsArray = json::array();
+                
+                for (size_t i = 0; i < origOp.get_output_voltages().size(); i++) {
+                    double frequency = 100000;
+                    double dutyCycle = 0.5;
+                    if (op.contains("excitationsPerWinding") && op["excitationsPerWinding"].size() > 0) {
+                        if (op["excitationsPerWinding"][0].contains("frequency")) {
+                            frequency = op["excitationsPerWinding"][0]["frequency"];
+                        }
+                        if (op["excitationsPerWinding"][0].contains("current") && 
+                            op["excitationsPerWinding"][0]["current"].contains("processed") &&
+                            op["excitationsPerWinding"][0]["current"]["processed"].contains("dutyCycle")) {
+                            dutyCycle = op["excitationsPerWinding"][0]["current"]["processed"]["dutyCycle"];
+                        }
+                    }
+                    
+                    double period = 1.0 / frequency;
+                    double tOn = dutyCycle * period;
+                    int numPoints = 100;
+                    
+                    json voltageWaveform = {{"time", json::array()}, {"data", json::array()}};
+                    json currentWaveform = {{"time", json::array()}, {"data", json::array()}};
+                    
+                    double outputVoltage = origOp.get_output_voltages()[i];
+                    double outputCurrent = origOp.get_output_currents()[i];
+                    double currentRipple = outputCurrent * 0.3;
+                    double minCurrent = outputCurrent - currentRipple / 2;
+                    double maxCurrent = outputCurrent + currentRipple / 2;
+                    
+                    for (int j = 0; j < numPoints; j++) {
+                        double t = (j / double(numPoints)) * period;
+                        voltageWaveform["time"].push_back(t);
+                        voltageWaveform["data"].push_back(outputVoltage);
+                        currentWaveform["time"].push_back(t);
+                        
+                        if (t < tOn) {
+                            double progress = t / tOn;
+                            double current = minCurrent + (maxCurrent - minCurrent) * progress;
+                            currentWaveform["data"].push_back(current);
+                        } else {
+                            double progress = (t - tOn) / (period - tOn);
+                            double current = maxCurrent - (maxCurrent - minCurrent) * progress;
+                            currentWaveform["data"].push_back(current);
+                        }
+                    }
+                    
+                    outputVoltagesArray.push_back({{"waveform", voltageWaveform}});
+                    outputCurrentsArray.push_back({{"waveform", currentWaveform}});
+                }
+                
+                op["outputVoltages"] = outputVoltagesArray;
+                op["outputCurrents"] = outputCurrentsArray;
+                opIdx++;
+            }
+        }
+        
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -4136,6 +5099,230 @@ std::string calculate_advanced_two_switch_forward_inputs(std::string twoSwitchFo
 
         json result;
         to_json(result, inputs);
+        
+        // Add output voltages/currents to each operating point
+        if (twoSwitchForwardInputs.get_operating_points().size() > 0 && result.contains("operatingPoints")) {
+            size_t opIdx = 0;
+            for (auto& op : result["operatingPoints"]) {
+                size_t originalOpIdx = opIdx % twoSwitchForwardInputs.get_operating_points().size();
+                auto origOp = twoSwitchForwardInputs.get_operating_points()[originalOpIdx];
+                
+                json outputVoltagesArray = json::array();
+                json outputCurrentsArray = json::array();
+                
+                for (size_t i = 0; i < origOp.get_output_voltages().size(); i++) {
+                    double frequency = 100000;
+                    double dutyCycle = 0.5;
+                    if (op.contains("excitationsPerWinding") && op["excitationsPerWinding"].size() > 0) {
+                        if (op["excitationsPerWinding"][0].contains("frequency")) {
+                            frequency = op["excitationsPerWinding"][0]["frequency"];
+                        }
+                        if (op["excitationsPerWinding"][0].contains("current") && 
+                            op["excitationsPerWinding"][0]["current"].contains("processed") &&
+                            op["excitationsPerWinding"][0]["current"]["processed"].contains("dutyCycle")) {
+                            dutyCycle = op["excitationsPerWinding"][0]["current"]["processed"]["dutyCycle"];
+                        }
+                    }
+                    
+                    double period = 1.0 / frequency;
+                    double tOn = dutyCycle * period;
+                    int numPoints = 100;
+                    
+                    json voltageWaveform = {{"time", json::array()}, {"data", json::array()}};
+                    json currentWaveform = {{"time", json::array()}, {"data", json::array()}};
+                    
+                    double outputVoltage = origOp.get_output_voltages()[i];
+                    double outputCurrent = origOp.get_output_currents()[i];
+                    double currentRipple = outputCurrent * 0.3;
+                    double minCurrent = outputCurrent - currentRipple / 2;
+                    double maxCurrent = outputCurrent + currentRipple / 2;
+                    
+                    for (int j = 0; j < numPoints; j++) {
+                        double t = (j / double(numPoints)) * period;
+                        voltageWaveform["time"].push_back(t);
+                        voltageWaveform["data"].push_back(outputVoltage);
+                        currentWaveform["time"].push_back(t);
+                        
+                        if (t < tOn) {
+                            double progress = t / tOn;
+                            double current = minCurrent + (maxCurrent - minCurrent) * progress;
+                            currentWaveform["data"].push_back(current);
+                        } else {
+                            double progress = (t - tOn) / (period - tOn);
+                            double current = maxCurrent - (maxCurrent - minCurrent) * progress;
+                            currentWaveform["data"].push_back(current);
+                        }
+                    }
+                    
+                    outputVoltagesArray.push_back({{"waveform", voltageWaveform}});
+                    outputCurrentsArray.push_back({{"waveform", currentWaveform}});
+                }
+                
+                op["outputVoltages"] = outputVoltagesArray;
+                op["outputCurrents"] = outputCurrentsArray;
+                opIdx++;
+            }
+        }
+        
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+// ==========================================
+// Common Mode Choke (CMC) Functions
+// ==========================================
+
+std::string calculate_cmc_inputs(std::string cmcInputsString){
+    try {
+        json cmcInputsJson = json::parse(cmcInputsString);
+
+        OpenMagnetics::CommonModeChoke cmcInputs(cmcInputsJson);
+        auto inputs = cmcInputs.process();
+
+        json result;
+        to_json(result, inputs);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string simulate_cmc_waveforms(std::string cmcInputsString, double inductance) {
+    try {
+        json cmcInputsJson = json::parse(cmcInputsString);
+        OpenMagnetics::CommonModeChoke cmc(cmcInputsJson);
+
+        // Get test frequencies from minimum impedance requirements
+        std::vector<double> frequencies;
+        auto minimumImpedance = cmc.get_minimum_impedance();
+        for (const auto& imp : minimumImpedance) {
+            frequencies.push_back(imp.get_frequency());
+        }
+        
+        // If no impedance points specified, use default EMI test frequencies
+        if (frequencies.empty()) {
+            frequencies = {150000, 500000, 1000000, 10000000, 30000000};
+        }
+
+        auto waveforms = cmc.simulate_and_extract_waveforms(inductance, frequencies);
+
+        json result = json::array();
+        for (const auto& wf : waveforms) {
+            json wfJson;
+            wfJson["time"] = wf.time;
+            wfJson["frequency"] = wf.frequency;
+            wfJson["inputVoltage"] = wf.inputVoltage;
+            wfJson["windingCurrents"] = wf.windingCurrents;
+            wfJson["lisnVoltage"] = wf.lisnVoltage;
+            wfJson["operatingPointName"] = wf.operatingPointName;
+            wfJson["commonModeAttenuation"] = wf.commonModeAttenuation;
+            wfJson["commonModeImpedance"] = wf.commonModeImpedance;
+            wfJson["theoreticalImpedance"] = wf.theoreticalImpedance;
+            result.push_back(wfJson);
+        }
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+// ==========================================
+// Differential Mode Choke (DMC) Functions
+// ==========================================
+
+std::string calculate_dmc_inputs(std::string dmcInputsString){
+    try {
+        json dmcInputsJson = json::parse(dmcInputsString);
+
+        OpenMagnetics::DifferentialModeChoke dmcInputs(dmcInputsJson);
+        auto inputs = dmcInputs.process();
+
+        json result;
+        to_json(result, inputs);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string verify_dmc_attenuation(std::string dmcInputsString, double inductance, double capacitance) {
+    try {
+        json dmcInputsJson = json::parse(dmcInputsString);
+        OpenMagnetics::DifferentialModeChoke dmc(dmcInputsJson);
+
+        std::optional<double> cap = (capacitance > 0) ? std::optional<double>(capacitance) : std::nullopt;
+        auto results = dmc.verify_attenuation(inductance, cap);
+
+        json result = json::array();
+        for (const auto& r : results) {
+            json rJson;
+            rJson["frequency"] = r.frequency;
+            rJson["requiredAttenuation"] = r.requiredAttenuation;
+            rJson["measuredAttenuation"] = r.measuredAttenuation;
+            rJson["theoreticalAttenuation"] = r.theoreticalAttenuation;
+            rJson["passed"] = r.passed;
+            rJson["message"] = r.message;
+            result.push_back(rJson);
+        }
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string propose_dmc_design(std::string dmcInputsString) {
+    try {
+        json dmcInputsJson = json::parse(dmcInputsString);
+        OpenMagnetics::DifferentialModeChoke dmc(dmcInputsJson);
+
+        auto proposal = dmc.propose_design();
+        return proposal.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string simulate_dmc_waveforms(std::string dmcInputsString, double inductance) {
+    try {
+        json dmcInputsJson = json::parse(dmcInputsString);
+        OpenMagnetics::DifferentialModeChoke dmc(dmcInputsJson);
+
+        // Get test frequencies from minimum impedance requirements
+        std::vector<double> frequencies;
+        auto minimumImpedance = dmc.get_minimum_impedance();
+        if (minimumImpedance) {
+            for (const auto& imp : *minimumImpedance) {
+                frequencies.push_back(imp.get_frequency());
+            }
+        }
+        
+        // If no impedance points specified, use default EMI test frequencies
+        if (frequencies.empty()) {
+            frequencies = {150000, 500000, 1000000, 10000000, 30000000};
+        }
+
+        auto waveforms = dmc.simulate_and_extract_waveforms(inductance, frequencies);
+
+        json result = json::array();
+        for (const auto& wf : waveforms) {
+            json wfJson;
+            wfJson["time"] = wf.time;
+            wfJson["frequency"] = wf.frequency;
+            wfJson["inputVoltage"] = wf.inputVoltage;
+            wfJson["outputVoltage"] = wf.outputVoltage;
+            wfJson["inductorCurrent"] = wf.inductorCurrent;
+            wfJson["operatingPointName"] = wf.operatingPointName;
+            wfJson["dmAttenuation"] = wf.dmAttenuation;
+            result.push_back(wfJson);
+        }
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -4883,6 +6070,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("clear_loaded_cores", &clear_loaded_cores);
     function("calculate_leakage_inductance", &calculate_leakage_inductance);
     function("calculate_inductance_matrix", &calculate_inductance_matrix);
+    function("calculate_coupling_coefficient_matrix", &calculate_coupling_coefficient_matrix);
     function("calculate_stray_capacitance", &calculate_stray_capacitance);
     function("calculate_capacitance_matrix", &calculate_capacitance_matrix);
     function("calculate_maxwell_capacitance_matrix", &calculate_maxwell_capacitance_matrix);
@@ -4910,8 +6098,16 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("simulate_forward_ideal_waveforms", &simulate_forward_ideal_waveforms);
     function("calculate_active_clamp_forward_inputs", &calculate_active_clamp_forward_inputs);
     function("calculate_advanced_active_clamp_forward_inputs", &calculate_advanced_active_clamp_forward_inputs);
+    function("simulate_active_clamp_forward_ideal_waveforms", &simulate_active_clamp_forward_ideal_waveforms);
     function("calculate_two_switch_forward_inputs", &calculate_two_switch_forward_inputs);
     function("calculate_advanced_two_switch_forward_inputs", &calculate_advanced_two_switch_forward_inputs);
+    function("simulate_two_switch_forward_ideal_waveforms", &simulate_two_switch_forward_ideal_waveforms);
+    function("calculate_cmc_inputs", &calculate_cmc_inputs);
+    function("simulate_cmc_waveforms", &simulate_cmc_waveforms);
+    function("calculate_dmc_inputs", &calculate_dmc_inputs);
+    function("verify_dmc_attenuation", &verify_dmc_attenuation);
+    function("propose_dmc_design", &propose_dmc_design);
+    function("simulate_dmc_waveforms", &simulate_dmc_waveforms);
     function("get_only_temperature_dependent_indexes", &get_only_temperature_dependent_indexes);
     function("get_only_frequency_dependent_indexes", &get_only_frequency_dependent_indexes);
     function("get_only_magnetic_field_dc_bias_dependent_indexes", &get_only_magnetic_field_dc_bias_dependent_indexes);
