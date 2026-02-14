@@ -38,11 +38,16 @@
 #include "converter_models/Boost.h"
 #include "converter_models/PushPull.h"
 #include "converter_models/SingleSwitchForward.h"
+#include "converter_models/PowerFactorCorrection.h"
 #include "processors/NgspiceRunner.h"
 #include "converter_models/ActiveClampForward.h"
 #include "converter_models/TwoSwitchForward.h"
 #include "converter_models/CommonModeChoke.h"
 #include "converter_models/DifferentialModeChoke.h"
+#include "converter_models/Llc.h"
+#include "converter_models/Cllc.h"
+#include "converter_models/Dab.h"
+#include "converter_models/PhaseShiftedFullBridge.h"
 #include "support/Painter.h"
 #include "support/Utils.h"
 #include "processors/Sweeper.h"
@@ -53,6 +58,11 @@
 using namespace MAS;
 using namespace emscripten;
 using json = nlohmann::json;
+
+// Forward declarations for waveform repetition helpers
+void repeat_waveform_for_periods(std::vector<double>& time, std::vector<double>& data, size_t numberOfPeriods);
+void repeat_operating_points_waveforms(json& operatingPoints, size_t numberOfPeriods);
+void repeat_converter_waveforms_periods(json& converterWaveforms, size_t numberOfPeriods);
 using ordered_json = nlohmann::ordered_json;
 
 std::map<std::string, double> get_constants() {
@@ -403,37 +413,123 @@ std::string get_wire_data_by_standard_name(std::string standardName){
             }
         }
     }
+    return "{}";
+}
 
-    for (auto wire : wires) {
-        if (!wire.get_standard_name()) {
-            continue;
-        }
-        if (wire.get_standard_name().value() == standardName) {
-            if (wire.get_type() == MAS::WireType::PLANAR) {
-                json result;
-                to_json(result, wire);
-                return result.dump(4);
-            }
-
-            auto coating = wire.resolve_coating();
-            if (!coating) {
-                continue;
-            }
-            // if (!coating->get_grade()) {
-            //     continue;
-            // }
-            // // Hardcoded
-            // if (coating->get_grade().value() == 1) {
-                json result;
-                to_json(result, wire);
-                return result.dump(4);
-            // }
+// Helper function to repeat waveform data for multiple periods
+void repeat_waveform_for_periods(std::vector<double>& time, std::vector<double>& data, size_t numberOfPeriods) {
+    if (numberOfPeriods <= 1 || time.empty() || data.empty()) {
+        return;
+    }
+    
+    double period = time.back() - time.front();
+    size_t originalSize = time.size();
+    
+    // Reserve space for repeated data
+    time.reserve(originalSize * numberOfPeriods);
+    data.reserve(originalSize * numberOfPeriods);
+    
+    for (size_t p = 1; p < numberOfPeriods; ++p) {
+        double offset = p * period;
+        for (size_t i = 0; i < originalSize; ++i) {
+            // Skip first point of subsequent periods to avoid duplicates
+            if (i == 0) continue;
+            time.push_back(time[i] + offset);
+            data.push_back(data[i]);
         }
     }
+}
 
-    json result;
-    result["errorMessage"] = "Wire not found by standard name";
-    return result.dump(4);
+// Helper function to repeat all waveforms in operating points
+void repeat_operating_points_waveforms(json& operatingPoints, size_t numberOfPeriods) {
+    if (numberOfPeriods <= 1 || !operatingPoints.is_array()) {
+        return;
+    }
+    
+    for (auto& op : operatingPoints) {
+        if (!op.contains("excitationsPerWinding") || !op["excitationsPerWinding"].is_array()) {
+            continue;
+        }
+        
+        for (auto& excitation : op["excitationsPerWinding"]) {
+            // Repeat voltage waveform
+            if (excitation.contains("voltage") && excitation["voltage"].contains("waveform")) {
+                auto& waveform = excitation["voltage"]["waveform"];
+                if (waveform.contains("time") && waveform.contains("data")) {
+                    auto time = waveform["time"].get<std::vector<double>>();
+                    auto data = waveform["data"].get<std::vector<double>>();
+                    repeat_waveform_for_periods(time, data, numberOfPeriods);
+                    waveform["time"] = time;
+                    waveform["data"] = data;
+                }
+            }
+            
+            // Repeat current waveform
+            if (excitation.contains("current") && excitation["current"].contains("waveform")) {
+                auto& waveform = excitation["current"]["waveform"];
+                if (waveform.contains("time") && waveform.contains("data")) {
+                    auto time = waveform["time"].get<std::vector<double>>();
+                    auto data = waveform["data"].get<std::vector<double>>();
+                    repeat_waveform_for_periods(time, data, numberOfPeriods);
+                    waveform["time"] = time;
+                    waveform["data"] = data;
+                }
+            }
+        }
+    }
+}
+
+// Helper function to repeat all waveforms in converter waveforms
+void repeat_converter_waveforms_periods(json& converterWaveforms, size_t numberOfPeriods) {
+    if (numberOfPeriods <= 1 || !converterWaveforms.is_array()) {
+        return;
+    }
+    
+    for (auto& cw : converterWaveforms) {
+        // Repeat input voltage waveform
+        if (cw.contains("inputVoltage") && cw["inputVoltage"].contains("time") && cw["inputVoltage"].contains("data")) {
+            auto time = cw["inputVoltage"]["time"].get<std::vector<double>>();
+            auto data = cw["inputVoltage"]["data"].get<std::vector<double>>();
+            repeat_waveform_for_periods(time, data, numberOfPeriods);
+            cw["inputVoltage"]["time"] = time;
+            cw["inputVoltage"]["data"] = data;
+        }
+        
+        // Repeat input current waveform
+        if (cw.contains("inputCurrent") && cw["inputCurrent"].contains("time") && cw["inputCurrent"].contains("data")) {
+            auto time = cw["inputCurrent"]["time"].get<std::vector<double>>();
+            auto data = cw["inputCurrent"]["data"].get<std::vector<double>>();
+            repeat_waveform_for_periods(time, data, numberOfPeriods);
+            cw["inputCurrent"]["time"] = time;
+            cw["inputCurrent"]["data"] = data;
+        }
+        
+        // Repeat output voltages
+        if (cw.contains("outputVoltages") && cw["outputVoltages"].is_array()) {
+            for (auto& outV : cw["outputVoltages"]) {
+                if (outV.contains("time") && outV.contains("data")) {
+                    auto time = outV["time"].get<std::vector<double>>();
+                    auto data = outV["data"].get<std::vector<double>>();
+                    repeat_waveform_for_periods(time, data, numberOfPeriods);
+                    outV["time"] = time;
+                    outV["data"] = data;
+                }
+            }
+        }
+        
+        // Repeat output currents
+        if (cw.contains("outputCurrents") && cw["outputCurrents"].is_array()) {
+            for (auto& outI : cw["outputCurrents"]) {
+                if (outI.contains("time") && outI.contains("data")) {
+                    auto time = outI["time"].get<std::vector<double>>();
+                    auto data = outI["data"].get<std::vector<double>>();
+                    repeat_waveform_for_periods(time, data, numberOfPeriods);
+                    outI["time"] = time;
+                    outI["data"] = data;
+                }
+            }
+        }
+    }
 }
 
 double get_wire_outer_width_rectangular(double conductingWidth, int grade, std::string wireStandardString){
@@ -619,6 +715,7 @@ std::string load_core_data(std::string coresString){
             to_json(aux, core);
             result.push_back(aux);
         }
+        
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -1111,7 +1208,7 @@ std::string calculate_core_losses(std::string coreData,
             result["maximumCoreTemperature"] = coreLossesOutput.get_temperature().value();
             result["maximumCoreTemperatureRise"] = coreLossesOutput.get_temperature().value() - operatingPoint.get_conditions().get_ambient_temperature();
         }
-
+        
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -1376,7 +1473,8 @@ std::string calculate_insulation(std::string inputsString){
     {
         result["errorMessage"] = "Unknown failure occurred. Possible memory corruption";
     }
-    return result.dump(4);
+        
+        return result.dump(4);
 }
 
 std::string extract_operating_point(std::string fileString, size_t numberWindings, double frequency, double desiredMagnetizingInductance, std::string mapColumnNamesString){
@@ -1408,6 +1506,7 @@ std::string extract_map_column_names(std::string fileString, size_t numberWindin
             }
             result.push_back(aux);
         }
+        
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -1424,6 +1523,7 @@ std::string extract_column_names(std::string fileString){
         for (auto& columnName : columnNames) {
             result.push_back(columnName);
         }
+        
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -1843,6 +1943,7 @@ std::string get_layers_by_winding_index(std::string coilString, int windingIndex
             to_json(aux, layer);
             result.push_back(aux);
         }
+        
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -1859,6 +1960,7 @@ std::string get_layers_by_section(std::string coilString, std::string sectionNam
             to_json(aux, layer);
             result.push_back(aux);
         }
+        
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -1875,6 +1977,7 @@ std::string get_sections_description_conduction(std::string coilString){
             to_json(aux, section);
             result.push_back(aux);
         }
+        
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -2401,6 +2504,7 @@ std::string calculate_advised_sections(std::string masString, std::string patter
             to_json(aux, section);
             result.push_back(aux);
         }
+        
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -2806,6 +2910,7 @@ std::string calculate_capacitance_matrix(std::string coilString, std::string mod
                 }
             }
         }
+        
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -2836,6 +2941,7 @@ std::string calculate_maxwell_capacitance_matrix(std::string coilString, std::st
                 result.push_back(matrixJson);
             }
         }
+        
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -2984,149 +3090,109 @@ std::string simulate_flyback_ideal_waveforms(std::string flybackInputsString){
         auto topologyWaveforms = flybackPtr->simulate_and_extract_topology_waveforms(turnsRatios, magnetizingInductance, numberOfPeriods);
         
         // Also get the operating points for the magnetic data
-        auto operatingPoints = flybackPtr->simulate_and_extract_operating_points(turnsRatios, magnetizingInductance);
+        auto operatingPoints = flybackPtr->simulate_and_extract_operating_points(turnsRatios, magnetizingInductance, numberOfPeriods);
         
-        // Build the result
+        // Build the result with just two fields: inputs and converterWaveforms
         json result;
-        result["designRequirements"] = json();
-        to_json(result["designRequirements"], designRequirements);
-        result["magnetizingInductance"] = magnetizingInductance;
-        result["turnsRatios"] = turnsRatios;
-        result["simulationMethod"] = "ngspice";
-        result["operatingPoints"] = json::array();
-        result["magneticWaveforms"] = json::array();
+        
+        // inputs: OpenMagnetics::Inputs containing designRequirements and operatingPoints
+        json inputs;
+        inputs["designRequirements"] = json();
+        to_json(inputs["designRequirements"], designRequirements);
+        inputs["operatingPoints"] = json::array();
+        for (const auto& op : operatingPoints) {
+            json opJson;
+            to_json(opJson, op);
+            inputs["operatingPoints"].push_back(opJson);
+        }
+        result["inputs"] = inputs;
+        
+        // converterWaveforms: array of OpenMagnetics::ConverterWaveforms
         result["converterWaveforms"] = json::array();
+        for (const auto& tw : topologyWaveforms) {
+            json cwJson;
+            to_json(cwJson, tw);
+            result["converterWaveforms"].push_back(cwJson);
+        }
+        
+       
+        // magneticWaveforms: array of waveforms per operating point (derived from operating points)
+        // Format matches what the Vue component expects:
+        // { frequency, operatingPointName, waveforms: [{ label, x, y, type, unit }] }
+        result["magneticWaveforms"] = json::array();
+        std::cout << "DEBUG [libMKF Flyback]: Building magneticWaveforms from " << operatingPoints.size() << " operating points" << std::endl;
         
         for (size_t opIdx = 0; opIdx < operatingPoints.size(); ++opIdx) {
             const auto& op = operatingPoints[opIdx];
-            json opJson;
-            to_json(opJson, op);
-            result["operatingPoints"].push_back(opJson);
+            json opWaveforms;
+            opWaveforms["frequency"] = op.get_excitations_per_winding().empty() ? 100000.0 : op.get_excitations_per_winding()[0].get_frequency();
+            opWaveforms["operatingPointName"] = op.get_name().value_or("Operating Point " + std::to_string(opIdx + 1));
+            opWaveforms["waveforms"] = json::array();
+            
+            std::cout << "DEBUG [libMKF Flyback]: OP " << opIdx << " has " << op.get_excitations_per_winding().size() << " excitations" << std::endl;
+            
+            int windingIdx = 0;
+            for (const auto& exc : op.get_excitations_per_winding()) {
+                std::string windingLabel = (windingIdx == 0) ? "Primary" : "Secondary " + std::to_string(windingIdx);
+                
+                std::cout << "DEBUG [libMKF Flyback]:   Excitation " << windingIdx << " - has_voltage: " << (exc.get_voltage() ? "yes" : "no");
+                if (exc.get_voltage() && exc.get_voltage()->get_waveform()) {
+                    std::cout << ", has_waveform: yes, data_size: " << exc.get_voltage()->get_waveform()->get_data().size();
+                } else {
+                    std::cout << ", has_waveform: no";
+                }
+                std::cout << std::endl;
+                
+                if (exc.get_voltage() && exc.get_voltage()->get_waveform()) {
+                    const auto& vWaveform = exc.get_voltage()->get_waveform().value();
+                    const auto& vData = vWaveform.get_data();
+                    auto vTime = vWaveform.get_time();
+                    if (!vData.empty() && vTime && !vTime->empty()) {
+                        json wf;
+                        wf["label"] = windingLabel + " Voltage";
+                        wf["x"] = vTime.value();
+                        wf["y"] = vData;
+                        wf["type"] = "voltage";
+                        wf["unit"] = "V";
+                        opWaveforms["waveforms"].push_back(wf);
+                        std::cout << "DEBUG [libMKF Flyback]:     Added voltage waveform with " << vData.size() << " points" << std::endl;
+                    } else {
+                        std::cout << "DEBUG [libMKF Flyback]:     Voltage waveform empty (data: " << vData.size() << ", time: " << (vTime ? std::to_string(vTime->size()) : "null") << ")" << std::endl;
+                    }
+                }
+                
+                std::cout << "DEBUG [libMKF Flyback]:   Excitation " << windingIdx << " - has_current: " << (exc.get_current() ? "yes" : "no");
+                if (exc.get_current() && exc.get_current()->get_waveform()) {
+                    std::cout << ", has_waveform: yes, data_size: " << exc.get_current()->get_waveform()->get_data().size();
+                } else {
+                    std::cout << ", has_waveform: no";
+                }
+                std::cout << std::endl;
+                
+                if (exc.get_current() && exc.get_current()->get_waveform()) {
+                    const auto& iWaveform = exc.get_current()->get_waveform().value();
+                    const auto& iData = iWaveform.get_data();
+                    auto iTime = iWaveform.get_time();
+                    if (!iData.empty() && iTime && !iTime->empty()) {
+                        json wf;
+                        wf["label"] = windingLabel + " Current";
+                        wf["x"] = iTime.value();
+                        wf["y"] = iData;
+                        wf["type"] = "current";
+                        wf["unit"] = "A";
+                        opWaveforms["waveforms"].push_back(wf);
+                        std::cout << "DEBUG [libMKF Flyback]:     Added current waveform with " << iData.size() << " points" << std::endl;
+                    } else {
+                        std::cout << "DEBUG [libMKF Flyback]:     Current waveform empty (data: " << iData.size() << ", time: " << (iTime ? std::to_string(iTime->size()) : "null") << ")" << std::endl;
+                    }
+                }
+                windingIdx++;
+            }
+            result["magneticWaveforms"].push_back(opWaveforms);
+            std::cout << "DEBUG [libMKF Flyback]: OP " << opIdx << " has " << opWaveforms["waveforms"].size() << " waveforms total" << std::endl;
         }
         
-        // Convert topology waveforms to frontend format
-        for (const auto& tw : topologyWaveforms) {
-            // Magnetic waveforms (primary and secondary currents/voltages)
-            json magneticOp;
-            magneticOp["frequency"] = tw.frequency;
-            magneticOp["operatingPointName"] = tw.operatingPointName;
-            magneticOp["waveforms"] = json::array();
-            
-            // Converter waveforms (switch node, output, etc.)
-            json converterOp;
-            converterOp["frequency"] = tw.frequency;
-            converterOp["operatingPointName"] = tw.operatingPointName;
-            converterOp["inputVoltage"] = tw.inputVoltageValue;
-            // Output voltages - use first value for single output, or array for multiple
-            if (tw.outputVoltageValues.size() == 1) {
-                converterOp["outputVoltage"] = tw.outputVoltageValues[0];
-            } else {
-                converterOp["outputVoltages"] = tw.outputVoltageValues;
-            }
-            converterOp["dutyCycle"] = tw.dutyCycle;
-            converterOp["waveforms"] = json::array();
-            
-            // Primary Voltage (Switch Node)
-            if (!tw.switchNodeVoltage.empty()) {
-                json waveform;
-                waveform["label"] = "Primary Voltage (Switch Node)";
-                waveform["unit"] = "V";
-                waveform["x"] = tw.time;
-                waveform["y"] = tw.switchNodeVoltage;
-                magneticOp["waveforms"].push_back(waveform);
-            }
-            
-            // Secondary Winding Voltages (one per secondary)
-            for (size_t secIdx = 0; secIdx < tw.secondaryWindingVoltages.size(); ++secIdx) {
-                if (!tw.secondaryWindingVoltages[secIdx].empty()) {
-                    json waveform;
-                    if (tw.secondaryWindingVoltages.size() == 1) {
-                        waveform["label"] = "Secondary Voltage";
-                    } else {
-                        waveform["label"] = "Secondary " + std::to_string(secIdx + 1) + " Voltage";
-                    }
-                    waveform["unit"] = "V";
-                    waveform["x"] = tw.time;
-                    waveform["y"] = tw.secondaryWindingVoltages[secIdx];
-                    magneticOp["waveforms"].push_back(waveform);
-                }
-            }
-            
-            // Input Voltage (constant DC for converter view)
-            // Create a constant voltage line at the input voltage level
-            if (!tw.time.empty()) {
-                json waveform;
-                waveform["label"] = "Input Voltage";
-                waveform["unit"] = "V";
-                waveform["x"] = tw.time;
-                std::vector<double> inputVoltageWaveform(tw.time.size(), tw.inputVoltageValue);
-                waveform["y"] = inputVoltageWaveform;
-                converterOp["waveforms"].push_back(waveform);
-            }
-            
-            // Output Voltages (one per secondary)
-            for (size_t secIdx = 0; secIdx < tw.outputVoltages.size(); ++secIdx) {
-                if (!tw.outputVoltages[secIdx].empty()) {
-                    json waveform;
-                    if (tw.outputVoltages.size() == 1) {
-                        waveform["label"] = "Output Voltage";
-                    } else {
-                        waveform["label"] = "Output " + std::to_string(secIdx + 1) + " Voltage";
-                    }
-                    waveform["unit"] = "V";
-                    waveform["x"] = tw.time;
-                    waveform["y"] = tw.outputVoltages[secIdx];
-                    converterOp["waveforms"].push_back(waveform);
-                }
-            }
-            
-            // Primary Current (shown as Input Current in converter view)
-            if (!tw.primaryCurrent.empty()) {
-                json magneticWaveform;
-                magneticWaveform["label"] = "Primary Current";
-                magneticWaveform["unit"] = "A";
-                magneticWaveform["x"] = tw.time;
-                magneticWaveform["y"] = tw.primaryCurrent;
-                magneticOp["waveforms"].push_back(magneticWaveform);
-                
-                json converterWaveform;
-                converterWaveform["label"] = "Input Current";
-                converterWaveform["unit"] = "A";
-                converterWaveform["x"] = tw.time;
-                converterWaveform["y"] = tw.primaryCurrent;
-                converterOp["waveforms"].push_back(converterWaveform);
-            }
-            
-            // Secondary Currents (one per secondary, shown as Output Currents in converter view)
-            for (size_t secIdx = 0; secIdx < tw.secondaryCurrents.size(); ++secIdx) {
-                if (!tw.secondaryCurrents[secIdx].empty()) {
-                    json magneticWaveform;
-                    if (tw.secondaryCurrents.size() == 1) {
-                        magneticWaveform["label"] = "Secondary Current";
-                    } else {
-                        magneticWaveform["label"] = "Secondary " + std::to_string(secIdx + 1) + " Current";
-                    }
-                    magneticWaveform["unit"] = "A";
-                    magneticWaveform["x"] = tw.time;
-                    magneticWaveform["y"] = tw.secondaryCurrents[secIdx];
-                    magneticOp["waveforms"].push_back(magneticWaveform);
-                    
-                    json converterWaveform;
-                    if (tw.secondaryCurrents.size() == 1) {
-                        converterWaveform["label"] = "Output Current";
-                    } else {
-                        converterWaveform["label"] = "Output " + std::to_string(secIdx + 1) + " Current";
-                    }
-                    converterWaveform["unit"] = "A";
-                    converterWaveform["x"] = tw.time;
-                    converterWaveform["y"] = tw.secondaryCurrents[secIdx];
-                    converterOp["waveforms"].push_back(converterWaveform);
-                }
-            }
-            
-            result["magneticWaveforms"].push_back(magneticOp);
-            result["converterWaveforms"].push_back(converterOp);
-        }
+        std::cout << "DEBUG [libMKF Flyback]: magneticWaveforms array has " << result["magneticWaveforms"].size() << " items" << std::endl;
         
         return result.dump(4);
     }
@@ -3150,11 +3216,23 @@ std::string calculate_isolated_buck_inputs(std::string isolatedBuckInputsString)
     try {
         json isolatedBuckInputsJson = json::parse(isolatedBuckInputsString);
 
+        // Read number of periods from input (default to 1 for analytical)
+        size_t numberOfPeriods = 1;
+        if (isolatedBuckInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = isolatedBuckInputsJson["numberOfPeriods"].get<size_t>();
+        }
+
         OpenMagnetics::IsolatedBuck isolatedBuckInputs(isolatedBuckInputsJson);
         auto inputs = isolatedBuckInputs.process();
 
         json result;
         to_json(result, inputs);
+        
+        // Repeat waveforms for the specified number of periods
+        if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+        
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -3166,11 +3244,23 @@ std::string calculate_advanced_isolated_buck_inputs(std::string isolatedBuckInpu
     try {
         json isolatedBuckInputsJson = json::parse(isolatedBuckInputsString);
 
+        // Read number of periods from input (default to 1 for analytical)
+        size_t numberOfPeriods = 1;
+        if (isolatedBuckInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = isolatedBuckInputsJson["numberOfPeriods"].get<size_t>();
+        }
+
         OpenMagnetics::AdvancedIsolatedBuck isolatedBuckInputs(isolatedBuckInputsJson);
         auto inputs = isolatedBuckInputs.process();
 
         json result;
         to_json(result, inputs);
+        
+        // Repeat waveforms for the specified number of periods
+        if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+        
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -3182,11 +3272,22 @@ std::string calculate_isolated_buck_boost_inputs(std::string isolatedBuckBoostIn
     try {
         json isolatedBuckBoostInputsJson = json::parse(isolatedBuckBoostInputsString);
 
+        // Read number of periods from input (default to 1 for analytical)
+        size_t numberOfPeriods = 1;
+        if (isolatedBuckBoostInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = isolatedBuckBoostInputsJson["numberOfPeriods"].get<size_t>();
+        }
+
         OpenMagnetics::IsolatedBuckBoost isolatedBuckBoostInputs(isolatedBuckBoostInputsJson);
         auto inputs = isolatedBuckBoostInputs.process();
 
         json result;
         to_json(result, inputs);
+        
+        // Repeat waveforms for the specified number of periods
+        if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
         
         // Add output voltages/currents to each operating point
         // These come from the original IsolatedBuckBoost operating points
@@ -3301,11 +3402,22 @@ std::string calculate_advanced_isolated_buck_boost_inputs(std::string isolatedBu
     try {
         json isolatedBuckBoostInputsJson = json::parse(isolatedBuckBoostInputsString);
 
+        // Read number of periods from input (default to 1 for analytical)
+        size_t numberOfPeriods = 1;
+        if (isolatedBuckBoostInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = isolatedBuckBoostInputsJson["numberOfPeriods"].get<size_t>();
+        }
+
         OpenMagnetics::AdvancedIsolatedBuckBoost isolatedBuckBoostInputs(isolatedBuckBoostInputsJson);
         auto inputs = isolatedBuckBoostInputs.process();
 
         json result;
         to_json(result, inputs);
+        
+        // Repeat waveforms for the specified number of periods
+        if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
         
         // Add output voltages/currents to each operating point
         if (isolatedBuckBoostInputs.get_operating_points().size() > 0 && result.contains("operatingPoints")) {
@@ -3391,10 +3503,24 @@ std::string calculate_buck_inputs(std::string buckInputsString){
         json buckInputsJson = json::parse(buckInputsString);
 
         OpenMagnetics::Buck buckInputs(buckInputsJson);
+        
+        // Read number of periods from input (default to 1 for analytical)
+        size_t numberOfPeriods = 1;
+        if (buckInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = buckInputsJson["numberOfPeriods"].get<size_t>();
+        }
+        buckInputs.set_num_periods_to_extract(numberOfPeriods);
+        
         auto inputs = buckInputs.process();
 
         json result;
         to_json(result, inputs);
+        
+        // Repeat waveforms for the specified number of periods (analytical generates 1 period)
+        if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+        
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -3407,10 +3533,24 @@ std::string calculate_advanced_buck_inputs(std::string buckInputsString){
         json buckInputsJson = json::parse(buckInputsString);
 
         OpenMagnetics::AdvancedBuck buckInputs(buckInputsJson);
+        
+        // Read number of periods from input (default to 1 for analytical)
+        size_t numberOfPeriods = 1;
+        if (buckInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = buckInputsJson["numberOfPeriods"].get<size_t>();
+        }
+        buckInputs.set_num_periods_to_extract(numberOfPeriods);
+        
         auto inputs = buckInputs.process();
 
         json result;
         to_json(result, inputs);
+        
+        // Repeat waveforms for the specified number of periods (analytical generates 1 period)
+        if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+        
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -3423,10 +3563,24 @@ std::string calculate_boost_inputs(std::string boostInputsString){
         json boostInputsJson = json::parse(boostInputsString);
 
         OpenMagnetics::Boost boostInputs(boostInputsJson);
+        
+        // Read number of periods from input (default to 1 for analytical)
+        size_t numberOfPeriods = 1;
+        if (boostInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = boostInputsJson["numberOfPeriods"].get<size_t>();
+        }
+        boostInputs.set_num_periods_to_extract(numberOfPeriods);
+        
         auto inputs = boostInputs.process();
 
         json result;
         to_json(result, inputs);
+        
+        // Repeat waveforms for the specified number of periods (analytical generates 1 period)
+        if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+        
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -3439,10 +3593,24 @@ std::string calculate_advanced_boost_inputs(std::string boostInputsString){
         json boostInputsJson = json::parse(boostInputsString);
 
         OpenMagnetics::AdvancedBoost boostInputs(boostInputsJson);
+        
+        // Read number of periods from input (default to 1 for analytical)
+        size_t numberOfPeriods = 1;
+        if (boostInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = boostInputsJson["numberOfPeriods"].get<size_t>();
+        }
+        boostInputs.set_num_periods_to_extract(numberOfPeriods);
+        
         auto inputs = boostInputs.process();
 
         json result;
         to_json(result, inputs);
+        
+        // Repeat waveforms for the specified number of periods (analytical generates 1 period)
+        if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+        
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -3499,98 +3667,46 @@ std::string simulate_buck_ideal_waveforms(std::string buckInputsString){
             throw std::runtime_error("ngspice simulation is required but ngspice is not available");
         }
         
-        // Set to extract only 1 period - frontend handles period repetition
-        buckPtr->set_num_periods_to_extract(1);
+        // Read number of periods from input (default to 2)
+        size_t numberOfPeriods = 2;
+        if (buckInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = buckInputsJson["numberOfPeriods"].get<size_t>();
+        }
+        
+        // Read number of steady state periods from input (default to 5)
+        size_t numberOfSteadyStatePeriods = 5;
+        if (buckInputsJson.contains("numberOfSteadyStatePeriods")) {
+            numberOfSteadyStatePeriods = buckInputsJson["numberOfSteadyStatePeriods"].get<size_t>();
+        }
+        
+        // Set the number of periods to extract (not hardcoded to 1)
+        buckPtr->set_num_periods_to_extract(numberOfPeriods);
+        buckPtr->set_num_steady_state_periods(numberOfSteadyStatePeriods);
         
         auto topologyWaveforms = buckPtr->simulate_and_extract_topology_waveforms(inductance);
         auto operatingPoints = buckPtr->simulate_and_extract_operating_points(inductance);
         
-        // Build the result
+        // Build the result with just two fields: inputs and converterWaveforms
         json result;
-        result["designRequirements"] = json();
-        to_json(result["designRequirements"], designRequirements);
-        result["inductance"] = inductance;
-        result["simulationMethod"] = "ngspice";
-        result["operatingPoints"] = json::array();
-        result["magneticWaveforms"] = json::array();
-        result["converterWaveforms"] = json::array();
         
+        // inputs: OpenMagnetics::Inputs containing designRequirements and operatingPoints
+        json inputs;
+        inputs["designRequirements"] = json();
+        to_json(inputs["designRequirements"], designRequirements);
+        inputs["operatingPoints"] = json::array();
         for (const auto& op : operatingPoints) {
             json opJson;
             to_json(opJson, op);
-            result["operatingPoints"].push_back(opJson);
+            inputs["operatingPoints"].push_back(opJson);
         }
+        result["inputs"] = inputs;
         
-        // Convert topology waveforms to frontend format
+        // converterWaveforms: array of OpenMagnetics::ConverterWaveforms
+        result["converterWaveforms"] = json::array();
         for (const auto& tw : topologyWaveforms) {
-            json magneticOp;
-            magneticOp["frequency"] = tw.frequency;
-            magneticOp["operatingPointName"] = tw.operatingPointName;
-            magneticOp["waveforms"] = json::array();
-            
-            json converterOp;
-            converterOp["frequency"] = tw.frequency;
-            converterOp["operatingPointName"] = tw.operatingPointName;
-            converterOp["inputVoltage"] = tw.inputVoltageValue;
-            converterOp["outputVoltage"] = tw.outputVoltageValue;
-            converterOp["dutyCycle"] = tw.dutyCycle;
-            converterOp["waveforms"] = json::array();
-            
-            // Switch Node Voltage
-            if (!tw.switchNodeVoltage.empty()) {
-                json waveform;
-                waveform["label"] = "Switch Node Voltage";
-                waveform["unit"] = "V";
-                waveform["x"] = tw.time;
-                waveform["y"] = tw.switchNodeVoltage;
-                magneticOp["waveforms"].push_back(waveform);
-                converterOp["waveforms"].push_back(waveform);
-            }
-            
-            // Inductor Voltage
-            if (!tw.inductorVoltage.empty()) {
-                json waveform;
-                waveform["label"] = "Inductor Voltage";
-                waveform["unit"] = "V";
-                waveform["x"] = tw.time;
-                waveform["y"] = tw.inductorVoltage;
-                magneticOp["waveforms"].push_back(waveform);
-            }
-            
-            // Input Voltage (constant DC)
-            if (!tw.time.empty()) {
-                json waveform;
-                waveform["label"] = "Input Voltage";
-                waveform["unit"] = "V";
-                waveform["x"] = tw.time;
-                std::vector<double> inputVoltageWaveform(tw.time.size(), tw.inputVoltageValue);
-                waveform["y"] = inputVoltageWaveform;
-                converterOp["waveforms"].push_back(waveform);
-            }
-            
-            // Output Voltage
-            if (!tw.outputVoltage.empty()) {
-                json waveform;
-                waveform["label"] = "Output Voltage";
-                waveform["unit"] = "V";
-                waveform["x"] = tw.time;
-                waveform["y"] = tw.outputVoltage;
-                converterOp["waveforms"].push_back(waveform);
-            }
-            
-            // Inductor Current
-            if (!tw.inductorCurrent.empty()) {
-                json magneticWaveform;
-                magneticWaveform["label"] = "Inductor Current";
-                magneticWaveform["unit"] = "A";
-                magneticWaveform["x"] = tw.time;
-                magneticWaveform["y"] = tw.inductorCurrent;
-                magneticOp["waveforms"].push_back(magneticWaveform);
-                converterOp["waveforms"].push_back(magneticWaveform);
-            }
-            
-            result["magneticWaveforms"].push_back(magneticOp);
-            result["converterWaveforms"].push_back(converterOp);
+            json cwJson;
+            to_json(cwJson, tw);
+            result["converterWaveforms"].push_back(cwJson);
         }
         
         return result.dump(4);
@@ -3649,98 +3765,80 @@ std::string simulate_boost_ideal_waveforms(std::string boostInputsString){
             throw std::runtime_error("ngspice simulation is required but ngspice is not available");
         }
         
-        // Set to extract only 1 period - frontend handles period repetition
-        boostPtr->set_num_periods_to_extract(1);
+        // Read number of periods from input (default to 2)
+        size_t numberOfPeriods = 2;
+        if (boostInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = boostInputsJson["numberOfPeriods"].get<size_t>();
+        }
+        
+        // Read number of steady state periods from input (default to 5)
+        size_t numberOfSteadyStatePeriods = 5;
+        if (boostInputsJson.contains("numberOfSteadyStatePeriods")) {
+            numberOfSteadyStatePeriods = boostInputsJson["numberOfSteadyStatePeriods"].get<size_t>();
+        }
+        
+        // Set the number of periods to extract (not hardcoded to 1)
+        boostPtr->set_num_periods_to_extract(numberOfPeriods);
+        boostPtr->set_num_steady_state_periods(numberOfSteadyStatePeriods);
         
         auto topologyWaveforms = boostPtr->simulate_and_extract_topology_waveforms(inductance);
         auto operatingPoints = boostPtr->simulate_and_extract_operating_points(inductance);
         
-        // Build the result
+        // DEBUG: Log operating point structure
+        std::cerr << "DEBUG [simulate_boost]: Operating points count = " << operatingPoints.size() << std::endl;
+        for (size_t opIdx = 0; opIdx < operatingPoints.size(); ++opIdx) {
+            const auto& op = operatingPoints[opIdx];
+            std::cerr << "  OP " << opIdx << ": excitations count = " << op.get_excitations_per_winding().size() << std::endl;
+            for (size_t excIdx = 0; excIdx < op.get_excitations_per_winding().size(); ++excIdx) {
+                const auto& exc = op.get_excitations_per_winding()[excIdx];
+                std::cerr << "    Excitation " << excIdx << ":";
+                if (exc.get_voltage() && exc.get_voltage()->get_waveform()) {
+                    const auto& vWf = exc.get_voltage()->get_waveform().value();
+                    std::cerr << " voltage=" << vWf.get_data().size() << "pts";
+                    if (!vWf.get_data().empty()) {
+                        double minV = *std::min_element(vWf.get_data().begin(), vWf.get_data().end());
+                        double maxV = *std::max_element(vWf.get_data().begin(), vWf.get_data().end());
+                        std::cerr << " [" << minV << ".." << maxV << "V]";
+                    }
+                } else {
+                    std::cerr << " voltage=none";
+                }
+                if (exc.get_current() && exc.get_current()->get_waveform()) {
+                    const auto& iWf = exc.get_current()->get_waveform().value();
+                    std::cerr << " current=" << iWf.get_data().size() << "pts";
+                    if (!iWf.get_data().empty()) {
+                        double minI = *std::min_element(iWf.get_data().begin(), iWf.get_data().end());
+                        double maxI = *std::max_element(iWf.get_data().begin(), iWf.get_data().end());
+                        std::cerr << " [" << minI << ".." << maxI << "A]";
+                    }
+                } else {
+                    std::cerr << " current=none";
+                }
+                std::cerr << std::endl;
+            }
+        }
+         
+        // Build the result with just two fields: inputs and converterWaveforms
         json result;
-        result["designRequirements"] = json();
-        to_json(result["designRequirements"], designRequirements);
-        result["inductance"] = inductance;
-        result["simulationMethod"] = "ngspice";
-        result["operatingPoints"] = json::array();
-        result["magneticWaveforms"] = json::array();
-        result["converterWaveforms"] = json::array();
         
+        // inputs: OpenMagnetics::Inputs containing designRequirements and operatingPoints
+        json inputs;
+        inputs["designRequirements"] = json();
+        to_json(inputs["designRequirements"], designRequirements);
+        inputs["operatingPoints"] = json::array();
         for (const auto& op : operatingPoints) {
             json opJson;
             to_json(opJson, op);
-            result["operatingPoints"].push_back(opJson);
+            inputs["operatingPoints"].push_back(opJson);
         }
+        result["inputs"] = inputs;
         
-        // Convert topology waveforms to frontend format
+        // converterWaveforms: array of OpenMagnetics::ConverterWaveforms
+        result["converterWaveforms"] = json::array();
         for (const auto& tw : topologyWaveforms) {
-            json magneticOp;
-            magneticOp["frequency"] = tw.frequency;
-            magneticOp["operatingPointName"] = tw.operatingPointName;
-            magneticOp["waveforms"] = json::array();
-            
-            json converterOp;
-            converterOp["frequency"] = tw.frequency;
-            converterOp["operatingPointName"] = tw.operatingPointName;
-            converterOp["inputVoltage"] = tw.inputVoltageValue;
-            converterOp["outputVoltage"] = tw.outputVoltageValue;
-            converterOp["dutyCycle"] = tw.dutyCycle;
-            converterOp["waveforms"] = json::array();
-            
-            // Switch Node Voltage
-            if (!tw.switchNodeVoltage.empty()) {
-                json waveform;
-                waveform["label"] = "Switch Node Voltage";
-                waveform["unit"] = "V";
-                waveform["x"] = tw.time;
-                waveform["y"] = tw.switchNodeVoltage;
-                magneticOp["waveforms"].push_back(waveform);
-                converterOp["waveforms"].push_back(waveform);
-            }
-            
-            // Inductor Voltage
-            if (!tw.inductorVoltage.empty()) {
-                json waveform;
-                waveform["label"] = "Inductor Voltage";
-                waveform["unit"] = "V";
-                waveform["x"] = tw.time;
-                waveform["y"] = tw.inductorVoltage;
-                magneticOp["waveforms"].push_back(waveform);
-            }
-            
-            // Input Voltage (constant DC)
-            if (!tw.time.empty()) {
-                json waveform;
-                waveform["label"] = "Input Voltage";
-                waveform["unit"] = "V";
-                waveform["x"] = tw.time;
-                std::vector<double> inputVoltageWaveform(tw.time.size(), tw.inputVoltageValue);
-                waveform["y"] = inputVoltageWaveform;
-                converterOp["waveforms"].push_back(waveform);
-            }
-            
-            // Output Voltage
-            if (!tw.outputVoltage.empty()) {
-                json waveform;
-                waveform["label"] = "Output Voltage";
-                waveform["unit"] = "V";
-                waveform["x"] = tw.time;
-                waveform["y"] = tw.outputVoltage;
-                converterOp["waveforms"].push_back(waveform);
-            }
-            
-            // Inductor Current
-            if (!tw.inductorCurrent.empty()) {
-                json magneticWaveform;
-                magneticWaveform["label"] = "Inductor Current";
-                magneticWaveform["unit"] = "A";
-                magneticWaveform["x"] = tw.time;
-                magneticWaveform["y"] = tw.inductorCurrent;
-                magneticOp["waveforms"].push_back(magneticWaveform);
-                converterOp["waveforms"].push_back(magneticWaveform);
-            }
-            
-            result["magneticWaveforms"].push_back(magneticOp);
-            result["converterWaveforms"].push_back(converterOp);
+            json cwJson;
+            to_json(cwJson, tw);
+            result["converterWaveforms"].push_back(cwJson);
         }
         
         return result.dump(4);
@@ -3828,113 +3926,27 @@ std::string simulate_forward_ideal_waveforms(std::string forwardInputsString){
         auto topologyWaveforms = forwardPtr->simulate_and_extract_topology_waveforms(turnsRatios, magnetizingInductance);
         auto operatingPoints = forwardPtr->simulate_and_extract_operating_points(turnsRatios, magnetizingInductance);
         
-        // Build the result
+        // Build the result with just two fields: inputs and converterWaveforms
         json result;
-        result["designRequirements"] = json();
-        to_json(result["designRequirements"], designRequirements);
-        result["magnetizingInductance"] = magnetizingInductance;
-        result["turnsRatios"] = turnsRatios;
-        result["simulationMethod"] = "ngspice";
-        result["operatingPoints"] = json::array();
-        result["magneticWaveforms"] = json::array();
-        result["converterWaveforms"] = json::array();
         
+        // inputs: OpenMagnetics::Inputs containing designRequirements and operatingPoints
+        json inputs;
+        inputs["designRequirements"] = json();
+        to_json(inputs["designRequirements"], designRequirements);
+        inputs["operatingPoints"] = json::array();
         for (const auto& op : operatingPoints) {
             json opJson;
             to_json(opJson, op);
-            result["operatingPoints"].push_back(opJson);
+            inputs["operatingPoints"].push_back(opJson);
         }
+        result["inputs"] = inputs;
         
-        // Convert topology waveforms to frontend format
+        // converterWaveforms: array of OpenMagnetics::ConverterWaveforms
+        result["converterWaveforms"] = json::array();
         for (const auto& tw : topologyWaveforms) {
-            json magneticOp;
-            magneticOp["frequency"] = tw.frequency;
-            magneticOp["operatingPointName"] = tw.operatingPointName;
-            magneticOp["waveforms"] = json::array();
-            
-            json converterOp;
-            converterOp["frequency"] = tw.frequency;
-            converterOp["operatingPointName"] = tw.operatingPointName;
-            converterOp["inputVoltage"] = tw.inputVoltageValue;
-            converterOp["dutyCycle"] = tw.dutyCycle;
-            converterOp["waveforms"] = json::array();
-            
-            // Primary Voltage
-            if (!tw.primaryVoltage.empty()) {
-                json waveform;
-                waveform["label"] = "Primary Voltage";
-                waveform["unit"] = "V";
-                waveform["x"] = tw.time;
-                waveform["y"] = tw.primaryVoltage;
-                magneticOp["waveforms"].push_back(waveform);
-                converterOp["waveforms"].push_back(waveform);
-            }
-            
-            // Primary Current
-            if (!tw.primaryCurrent.empty()) {
-                json waveform;
-                waveform["label"] = "Primary Current";
-                waveform["unit"] = "A";
-                waveform["x"] = tw.time;
-                waveform["y"] = tw.primaryCurrent;
-                magneticOp["waveforms"].push_back(waveform);
-                converterOp["waveforms"].push_back(waveform);
-            }
-            
-            // Demagnetization Voltage
-            if (!tw.demagVoltage.empty()) {
-                json waveform;
-                waveform["label"] = "Demag Voltage";
-                waveform["unit"] = "V";
-                waveform["x"] = tw.time;
-                waveform["y"] = tw.demagVoltage;
-                magneticOp["waveforms"].push_back(waveform);
-            }
-            
-            // Demagnetization Current
-            if (!tw.demagCurrent.empty()) {
-                json waveform;
-                waveform["label"] = "Demag Current";
-                waveform["unit"] = "A";
-                waveform["x"] = tw.time;
-                waveform["y"] = tw.demagCurrent;
-                magneticOp["waveforms"].push_back(waveform);
-            }
-            
-            // Secondary waveforms
-            for (size_t secIdx = 0; secIdx < tw.secondaryVoltages.size(); ++secIdx) {
-                if (!tw.secondaryVoltages[secIdx].empty()) {
-                    json waveform;
-                    waveform["label"] = "Secondary " + std::to_string(secIdx) + " Voltage";
-                    waveform["unit"] = "V";
-                    waveform["x"] = tw.time;
-                    waveform["y"] = tw.secondaryVoltages[secIdx];
-                    magneticOp["waveforms"].push_back(waveform);
-                }
-                
-                if (secIdx < tw.secondaryCurrents.size() && !tw.secondaryCurrents[secIdx].empty()) {
-                    json waveform;
-                    waveform["label"] = "Secondary " + std::to_string(secIdx) + " Current";
-                    waveform["unit"] = "A";
-                    waveform["x"] = tw.time;
-                    waveform["y"] = tw.secondaryCurrents[secIdx];
-                    magneticOp["waveforms"].push_back(waveform);
-                    converterOp["waveforms"].push_back(waveform);
-                }
-            }
-            
-            // Output voltage
-            if (!tw.outputVoltage.empty()) {
-                json waveform;
-                waveform["label"] = "Output Voltage";
-                waveform["unit"] = "V";
-                waveform["x"] = tw.time;
-                waveform["y"] = tw.outputVoltage;
-                converterOp["waveforms"].push_back(waveform);
-            }
-            
-            result["magneticWaveforms"].push_back(magneticOp);
-            result["converterWaveforms"].push_back(converterOp);
+            json cwJson;
+            to_json(cwJson, tw);
+            result["converterWaveforms"].push_back(cwJson);
         }
         
         return result.dump(4);
@@ -3962,6 +3974,7 @@ std::string simulate_two_switch_forward_ideal_waveforms(std::string forwardInput
         if (forwardInputsJson.contains("numberOfSteadyStatePeriods")) {
             numberOfSteadyStatePeriods = forwardInputsJson["numberOfSteadyStatePeriods"].get<size_t>();
         }
+        std::cerr << "DEBUG: TwoSwitchForward numberOfSteadyStatePeriods=" << numberOfSteadyStatePeriods << std::endl;
         
         DesignRequirements designRequirements;
         double magnetizingInductance;
@@ -4016,93 +4029,27 @@ std::string simulate_two_switch_forward_ideal_waveforms(std::string forwardInput
         auto topologyWaveforms = forwardPtr->simulate_and_extract_topology_waveforms(turnsRatios, magnetizingInductance);
         auto operatingPoints = forwardPtr->simulate_and_extract_operating_points(turnsRatios, magnetizingInductance);
         
-        // Build the result
+        // Build the result with just two fields: inputs and converterWaveforms
         json result;
-        result["designRequirements"] = json();
-        to_json(result["designRequirements"], designRequirements);
-        result["magnetizingInductance"] = magnetizingInductance;
-        result["turnsRatios"] = turnsRatios;
-        result["simulationMethod"] = "ngspice";
-        result["operatingPoints"] = json::array();
-        result["magneticWaveforms"] = json::array();
-        result["converterWaveforms"] = json::array();
         
+        // inputs: OpenMagnetics::Inputs containing designRequirements and operatingPoints
+        json inputs;
+        inputs["designRequirements"] = json();
+        to_json(inputs["designRequirements"], designRequirements);
+        inputs["operatingPoints"] = json::array();
         for (const auto& op : operatingPoints) {
             json opJson;
             to_json(opJson, op);
-            result["operatingPoints"].push_back(opJson);
+            inputs["operatingPoints"].push_back(opJson);
         }
+        result["inputs"] = inputs;
         
-        // Convert topology waveforms to frontend format
+        // converterWaveforms: array of OpenMagnetics::ConverterWaveforms
+        result["converterWaveforms"] = json::array();
         for (const auto& tw : topologyWaveforms) {
-            json magneticOp;
-            magneticOp["frequency"] = tw.frequency;
-            magneticOp["operatingPointName"] = tw.operatingPointName;
-            magneticOp["waveforms"] = json::array();
-            
-            json converterOp;
-            converterOp["frequency"] = tw.frequency;
-            converterOp["operatingPointName"] = tw.operatingPointName;
-            converterOp["inputVoltage"] = tw.inputVoltageValue;
-            converterOp["dutyCycle"] = tw.dutyCycle;
-            converterOp["waveforms"] = json::array();
-            
-            // Primary Voltage
-            if (!tw.primaryVoltage.empty()) {
-                json waveform;
-                waveform["label"] = "Primary Voltage";
-                waveform["unit"] = "V";
-                waveform["x"] = tw.time;
-                waveform["y"] = tw.primaryVoltage;
-                magneticOp["waveforms"].push_back(waveform);
-                converterOp["waveforms"].push_back(waveform);
-            }
-            
-            // Primary Current
-            if (!tw.primaryCurrent.empty()) {
-                json waveform;
-                waveform["label"] = "Primary Current";
-                waveform["unit"] = "A";
-                waveform["x"] = tw.time;
-                waveform["y"] = tw.primaryCurrent;
-                magneticOp["waveforms"].push_back(waveform);
-                converterOp["waveforms"].push_back(waveform);
-            }
-            
-            // Secondary waveforms
-            for (size_t secIdx = 0; secIdx < tw.secondaryVoltages.size(); ++secIdx) {
-                if (!tw.secondaryVoltages[secIdx].empty()) {
-                    json waveform;
-                    waveform["label"] = "Secondary " + std::to_string(secIdx) + " Voltage";
-                    waveform["unit"] = "V";
-                    waveform["x"] = tw.time;
-                    waveform["y"] = tw.secondaryVoltages[secIdx];
-                    magneticOp["waveforms"].push_back(waveform);
-                }
-                
-                if (secIdx < tw.secondaryCurrents.size() && !tw.secondaryCurrents[secIdx].empty()) {
-                    json waveform;
-                    waveform["label"] = "Secondary " + std::to_string(secIdx) + " Current";
-                    waveform["unit"] = "A";
-                    waveform["x"] = tw.time;
-                    waveform["y"] = tw.secondaryCurrents[secIdx];
-                    magneticOp["waveforms"].push_back(waveform);
-                    converterOp["waveforms"].push_back(waveform);
-                }
-            }
-            
-            // Output voltage
-            if (!tw.outputVoltage.empty()) {
-                json waveform;
-                waveform["label"] = "Output Voltage";
-                waveform["unit"] = "V";
-                waveform["x"] = tw.time;
-                waveform["y"] = tw.outputVoltage;
-                converterOp["waveforms"].push_back(waveform);
-            }
-            
-            result["magneticWaveforms"].push_back(magneticOp);
-            result["converterWaveforms"].push_back(converterOp);
+            json cwJson;
+            to_json(cwJson, tw);
+            result["converterWaveforms"].push_back(cwJson);
         }
         
         return result.dump(4);
@@ -4184,93 +4131,27 @@ std::string simulate_active_clamp_forward_ideal_waveforms(std::string forwardInp
         auto topologyWaveforms = forwardPtr->simulate_and_extract_topology_waveforms(turnsRatios, magnetizingInductance);
         auto operatingPoints = forwardPtr->simulate_and_extract_operating_points(turnsRatios, magnetizingInductance);
         
-        // Build the result
+        // Build the result with just two fields: inputs and converterWaveforms
         json result;
-        result["designRequirements"] = json();
-        to_json(result["designRequirements"], designRequirements);
-        result["magnetizingInductance"] = magnetizingInductance;
-        result["turnsRatios"] = turnsRatios;
-        result["simulationMethod"] = "ngspice";
-        result["operatingPoints"] = json::array();
-        result["magneticWaveforms"] = json::array();
-        result["converterWaveforms"] = json::array();
         
+        // inputs: OpenMagnetics::Inputs containing designRequirements and operatingPoints
+        json inputs;
+        inputs["designRequirements"] = json();
+        to_json(inputs["designRequirements"], designRequirements);
+        inputs["operatingPoints"] = json::array();
         for (const auto& op : operatingPoints) {
             json opJson;
             to_json(opJson, op);
-            result["operatingPoints"].push_back(opJson);
+            inputs["operatingPoints"].push_back(opJson);
         }
+        result["inputs"] = inputs;
         
-        // Convert topology waveforms to frontend format
+        // converterWaveforms: array of OpenMagnetics::ConverterWaveforms
+        result["converterWaveforms"] = json::array();
         for (const auto& tw : topologyWaveforms) {
-            json magneticOp;
-            magneticOp["frequency"] = tw.frequency;
-            magneticOp["operatingPointName"] = tw.operatingPointName;
-            magneticOp["waveforms"] = json::array();
-            
-            json converterOp;
-            converterOp["frequency"] = tw.frequency;
-            converterOp["operatingPointName"] = tw.operatingPointName;
-            converterOp["inputVoltage"] = tw.inputVoltageValue;
-            converterOp["dutyCycle"] = tw.dutyCycle;
-            converterOp["waveforms"] = json::array();
-            
-            // Primary Voltage
-            if (!tw.primaryVoltage.empty()) {
-                json waveform;
-                waveform["label"] = "Primary Voltage";
-                waveform["unit"] = "V";
-                waveform["x"] = tw.time;
-                waveform["y"] = tw.primaryVoltage;
-                magneticOp["waveforms"].push_back(waveform);
-                converterOp["waveforms"].push_back(waveform);
-            }
-            
-            // Primary Current
-            if (!tw.primaryCurrent.empty()) {
-                json waveform;
-                waveform["label"] = "Primary Current";
-                waveform["unit"] = "A";
-                waveform["x"] = tw.time;
-                waveform["y"] = tw.primaryCurrent;
-                magneticOp["waveforms"].push_back(waveform);
-                converterOp["waveforms"].push_back(waveform);
-            }
-            
-            // Secondary waveforms
-            for (size_t secIdx = 0; secIdx < tw.secondaryVoltages.size(); ++secIdx) {
-                if (!tw.secondaryVoltages[secIdx].empty()) {
-                    json waveform;
-                    waveform["label"] = "Secondary " + std::to_string(secIdx) + " Voltage";
-                    waveform["unit"] = "V";
-                    waveform["x"] = tw.time;
-                    waveform["y"] = tw.secondaryVoltages[secIdx];
-                    magneticOp["waveforms"].push_back(waveform);
-                }
-                
-                if (secIdx < tw.secondaryCurrents.size() && !tw.secondaryCurrents[secIdx].empty()) {
-                    json waveform;
-                    waveform["label"] = "Secondary " + std::to_string(secIdx) + " Current";
-                    waveform["unit"] = "A";
-                    waveform["x"] = tw.time;
-                    waveform["y"] = tw.secondaryCurrents[secIdx];
-                    magneticOp["waveforms"].push_back(waveform);
-                    converterOp["waveforms"].push_back(waveform);
-                }
-            }
-            
-            // Output voltage
-            if (!tw.outputVoltage.empty()) {
-                json waveform;
-                waveform["label"] = "Output Voltage";
-                waveform["unit"] = "V";
-                waveform["x"] = tw.time;
-                waveform["y"] = tw.outputVoltage;
-                converterOp["waveforms"].push_back(waveform);
-            }
-            
-            result["magneticWaveforms"].push_back(magneticOp);
-            result["converterWaveforms"].push_back(converterOp);
+            json cwJson;
+            to_json(cwJson, tw);
+            result["converterWaveforms"].push_back(cwJson);
         }
         
         return result.dump(4);
@@ -4286,6 +4167,11 @@ std::string simulate_push_pull_ideal_waveforms(std::string pushPullInputsString)
 
         // Detect if this is an AdvancedPushPull or regular
         bool isAdvanced = pushPullInputsJson.contains("desiredInductance");
+        
+        // Debug: Log what was received for desiredTurnsRatios
+        if (isAdvanced && pushPullInputsJson.contains("desiredTurnsRatios")) {
+            std::cerr << "DEBUG [simulate_push_pull]: desiredTurnsRatios in JSON = " << pushPullInputsJson["desiredTurnsRatios"].dump() << std::endl;
+        }
         
         // Read number of periods from input (default to 1)
         size_t numberOfPeriods = 1;
@@ -4309,6 +4195,14 @@ std::string simulate_push_pull_ideal_waveforms(std::string pushPullInputsString)
             auto advancedPtr = std::make_unique<OpenMagnetics::AdvancedPushPull>(pushPullInputsJson);
             magnetizingInductance = advancedPtr->get_desired_inductance();
             turnsRatios = advancedPtr->get_desired_turns_ratios();
+            
+            // Debug: Log extracted values
+            std::cerr << "DEBUG [simulate_push_pull_ideal_waveforms]: Advanced mode" << std::endl;
+            std::cerr << "  magnetizingInductance = " << magnetizingInductance << std::endl;
+            std::cerr << "  turnsRatios.size() = " << turnsRatios.size() << std::endl;
+            for (size_t i = 0; i < turnsRatios.size(); i++) {
+                std::cerr << "  turnsRatios[" << i << "] = " << turnsRatios[i] << std::endl;
+            }
             
             // Build designRequirements
             designRequirements.get_mutable_turns_ratios().clear();
@@ -4356,113 +4250,48 @@ std::string simulate_push_pull_ideal_waveforms(std::string pushPullInputsString)
             throw std::runtime_error("ngspice simulation is required but ngspice is not available");
         }
         
-        auto topologyWaveforms = pushPullPtr->simulate_and_extract_topology_waveforms(turnsRatios, magnetizingInductance);
-        auto operatingPoints = pushPullPtr->simulate_and_extract_operating_points(turnsRatios, magnetizingInductance);
+        // CRITICAL FIX: Convert turns ratios from user format [N_sec/N_pri] to internal format [1, N_sec/N_pri, N_sec/N_pri, ...]
+        // The ngspice netlist generation expects the internal format where:
+        //   - index 0: second primary (always 1)
+        //   - index 1,2: first and second secondary (same value for main output)
+        //   - index 3+: auxiliary secondaries (if any)
+        std::vector<double> convertedTurnsRatios;
+        convertedTurnsRatios.push_back(1.0);  // Second primary
+        convertedTurnsRatios.push_back(turnsRatios[0]);  // First secondary
+        convertedTurnsRatios.push_back(turnsRatios[0]);  // Second secondary
+        for (size_t i = 1; i < turnsRatios.size(); ++i) {
+            convertedTurnsRatios.push_back(turnsRatios[i]);  // Auxiliary secondaries
+        }
         
-        // Build the result
+        std::cerr << "DEBUG: After convert_turns_ratios, size = " << convertedTurnsRatios.size() << std::endl;
+        for (size_t i = 0; i < convertedTurnsRatios.size(); i++) {
+            std::cerr << "  convertedTurnsRatios[" << i << "] = " << convertedTurnsRatios[i] << std::endl;
+        }
+        
+        auto topologyWaveforms = pushPullPtr->simulate_and_extract_topology_waveforms(convertedTurnsRatios, magnetizingInductance);
+        auto operatingPoints = pushPullPtr->simulate_and_extract_operating_points(convertedTurnsRatios, magnetizingInductance);
+        
+        // Build the result with just two fields: inputs and converterWaveforms
         json result;
-        result["designRequirements"] = json();
-        to_json(result["designRequirements"], designRequirements);
-        result["magnetizingInductance"] = magnetizingInductance;
-        result["turnsRatios"] = turnsRatios;
-        result["simulationMethod"] = "ngspice";
-        result["operatingPoints"] = json::array();
-        result["magneticWaveforms"] = json::array();
-        result["converterWaveforms"] = json::array();
         
+        // inputs: OpenMagnetics::Inputs containing designRequirements and operatingPoints
+        json inputs;
+        inputs["designRequirements"] = json();
+        to_json(inputs["designRequirements"], designRequirements);
+        inputs["operatingPoints"] = json::array();
         for (const auto& op : operatingPoints) {
             json opJson;
             to_json(opJson, op);
-            result["operatingPoints"].push_back(opJson);
+            inputs["operatingPoints"].push_back(opJson);
         }
+        result["inputs"] = inputs;
         
-        // Convert topology waveforms to frontend format
+        // converterWaveforms: array of OpenMagnetics::ConverterWaveforms
+        result["converterWaveforms"] = json::array();
         for (const auto& tw : topologyWaveforms) {
-            json magneticOp;
-            magneticOp["frequency"] = tw.frequency;
-            magneticOp["operatingPointName"] = tw.operatingPointName;
-            magneticOp["waveforms"] = json::array();
-            
-            json converterOp;
-            converterOp["frequency"] = tw.frequency;
-            converterOp["operatingPointName"] = tw.operatingPointName;
-            converterOp["inputVoltage"] = tw.inputVoltageValue;
-            converterOp["dutyCycle"] = tw.dutyCycle;
-            converterOp["waveforms"] = json::array();
-            
-            // Primary Top Voltage
-            if (!tw.primaryTopVoltage.empty()) {
-                json waveform;
-                waveform["label"] = "Primary Top Voltage";
-                waveform["unit"] = "V";
-                waveform["x"] = tw.time;
-                waveform["y"] = tw.primaryTopVoltage;
-                magneticOp["waveforms"].push_back(waveform);
-            }
-            
-            // Primary Bottom Voltage
-            if (!tw.primaryBottomVoltage.empty()) {
-                json waveform;
-                waveform["label"] = "Primary Bottom Voltage";
-                waveform["unit"] = "V";
-                waveform["x"] = tw.time;
-                waveform["y"] = tw.primaryBottomVoltage;
-                magneticOp["waveforms"].push_back(waveform);
-            }
-            
-            // Primary Top Current
-            if (!tw.primaryTopCurrent.empty()) {
-                json waveform;
-                waveform["label"] = "Primary Top Current";
-                waveform["unit"] = "A";
-                waveform["x"] = tw.time;
-                waveform["y"] = tw.primaryTopCurrent;
-                magneticOp["waveforms"].push_back(waveform);
-            }
-            
-            // Primary Bottom Current
-            if (!tw.primaryBottomCurrent.empty()) {
-                json waveform;
-                waveform["label"] = "Primary Bottom Current";
-                waveform["unit"] = "A";
-                waveform["x"] = tw.time;
-                waveform["y"] = tw.primaryBottomCurrent;
-                magneticOp["waveforms"].push_back(waveform);
-            }
-            
-            // Secondary Voltage
-            if (!tw.secondaryVoltage.empty()) {
-                json waveform;
-                waveform["label"] = "Secondary Voltage";
-                waveform["unit"] = "V";
-                waveform["x"] = tw.time;
-                waveform["y"] = tw.secondaryVoltage;
-                magneticOp["waveforms"].push_back(waveform);
-            }
-            
-            // Output Voltage
-            if (!tw.outputVoltage.empty()) {
-                json waveform;
-                waveform["label"] = "Output Voltage";
-                waveform["unit"] = "V";
-                waveform["x"] = tw.time;
-                waveform["y"] = tw.outputVoltage;
-                converterOp["waveforms"].push_back(waveform);
-            }
-            
-            // Secondary Current
-            if (!tw.secondaryCurrent.empty()) {
-                json waveform;
-                waveform["label"] = "Secondary Current";
-                waveform["unit"] = "A";
-                waveform["x"] = tw.time;
-                waveform["y"] = tw.secondaryCurrent;
-                magneticOp["waveforms"].push_back(waveform);
-                converterOp["waveforms"].push_back(waveform);
-            }
-            
-            result["magneticWaveforms"].push_back(magneticOp);
-            result["converterWaveforms"].push_back(converterOp);
+            json cwJson;
+            to_json(cwJson, tw);
+            result["converterWaveforms"].push_back(cwJson);
         }
         
         return result.dump(4);
@@ -4478,6 +4307,12 @@ std::string simulate_isolated_buck_boost_ideal_waveforms(std::string ibbInputsSt
 
         // Detect if this is an AdvancedIsolatedBuckBoost or regular
         bool isAdvanced = ibbInputsJson.contains("desiredInductance");
+        
+        // Read number of periods from input (default to 2)
+        size_t numberOfPeriods = 2;
+        if (ibbInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = ibbInputsJson["numberOfPeriods"].get<size_t>();
+        }
         
         // Read number of steady state periods from input (default to 5)
         size_t numberOfSteadyStatePeriods = 5;
@@ -4529,8 +4364,9 @@ std::string simulate_isolated_buck_boost_ideal_waveforms(std::string ibbInputsSt
             }
         }
         
-        // Set steady state periods after pointer creation
+        // Set steady state periods and extraction periods after pointer creation
         ibbPtr->set_num_steady_state_periods(numberOfSteadyStatePeriods);
+        ibbPtr->set_num_periods_to_extract(numberOfPeriods);
         
 #ifndef ENABLE_NGSPICE
         throw std::runtime_error("ngspice simulation is required but ENABLE_NGSPICE was not defined at compile time");
@@ -4544,107 +4380,178 @@ std::string simulate_isolated_buck_boost_ideal_waveforms(std::string ibbInputsSt
         auto topologyWaveforms = ibbPtr->simulate_and_extract_topology_waveforms(turnsRatios, magnetizingInductance);
         auto operatingPoints = ibbPtr->simulate_and_extract_operating_points(turnsRatios, magnetizingInductance);
         
-        // Build the result
+        // Build the result with just two fields: inputs and converterWaveforms
         json result;
-        result["designRequirements"] = json();
-        to_json(result["designRequirements"], designRequirements);
-        result["magnetizingInductance"] = magnetizingInductance;
-        result["turnsRatios"] = turnsRatios;
-        result["simulationMethod"] = "ngspice";
-        result["operatingPoints"] = json::array();
-        result["magneticWaveforms"] = json::array();
-        result["converterWaveforms"] = json::array();
         
+        // inputs: OpenMagnetics::Inputs containing designRequirements and operatingPoints
+        json inputs;
+        inputs["designRequirements"] = json();
+        to_json(inputs["designRequirements"], designRequirements);
+        inputs["operatingPoints"] = json::array();
         for (const auto& op : operatingPoints) {
             json opJson;
             to_json(opJson, op);
-            result["operatingPoints"].push_back(opJson);
+            inputs["operatingPoints"].push_back(opJson);
+        }
+        result["inputs"] = inputs;
+        
+        // converterWaveforms: array of OpenMagnetics::ConverterWaveforms
+        result["converterWaveforms"] = json::array();
+        for (const auto& tw : topologyWaveforms) {
+            json cwJson;
+            to_json(cwJson, tw);
+            result["converterWaveforms"].push_back(cwJson);
         }
         
-        // Convert topology waveforms to frontend format
-        for (const auto& tw : topologyWaveforms) {
-            json magneticOp;
-            magneticOp["frequency"] = tw.frequency;
-            magneticOp["operatingPointName"] = tw.operatingPointName;
-            magneticOp["waveforms"] = json::array();
-            
-            json converterOp;
-            converterOp["frequency"] = tw.frequency;
-            converterOp["operatingPointName"] = tw.operatingPointName;
-            converterOp["inputVoltage"] = tw.inputVoltageValue;
-            converterOp["dutyCycle"] = tw.dutyCycle;
-            converterOp["waveforms"] = json::array();
-            
-            // Primary Voltage
-            if (!tw.primaryVoltage.empty()) {
-                json waveform;
-                waveform["label"] = "Primary Voltage";
-                waveform["unit"] = "V";
-                waveform["x"] = tw.time;
-                waveform["y"] = tw.primaryVoltage;
-                magneticOp["waveforms"].push_back(waveform);
-                converterOp["waveforms"].push_back(waveform);
-            }
-            
-            // Primary Current
-            if (!tw.primaryCurrent.empty()) {
-                json waveform;
-                waveform["label"] = "Primary Current";
-                waveform["unit"] = "A";
-                waveform["x"] = tw.time;
-                waveform["y"] = tw.primaryCurrent;
-                magneticOp["waveforms"].push_back(waveform);
-                converterOp["waveforms"].push_back(waveform);
-            }
-            
-            // Secondary waveforms (all secondaries)
-            for (size_t secIdx = 0; secIdx < tw.secondaryVoltages.size(); ++secIdx) {
-                if (!tw.secondaryVoltages[secIdx].empty()) {
-                    json waveform;
-                    waveform["label"] = "Secondary " + std::to_string(secIdx + 1) + " Voltage";
-                    waveform["unit"] = "V";
-                    waveform["x"] = tw.time;
-                    waveform["y"] = tw.secondaryVoltages[secIdx];
-                    magneticOp["waveforms"].push_back(waveform);
-                    converterOp["waveforms"].push_back(waveform);
-                }
-                
-                if (secIdx < tw.secondaryCurrents.size() && !tw.secondaryCurrents[secIdx].empty()) {
-                    json waveform;
-                    waveform["label"] = "Secondary " + std::to_string(secIdx + 1) + " Current";
-                    waveform["unit"] = "A";
-                    waveform["x"] = tw.time;
-                    waveform["y"] = tw.secondaryCurrents[secIdx];
-                    magneticOp["waveforms"].push_back(waveform);
-                    converterOp["waveforms"].push_back(waveform);
-                }
-            }
-            
-            // Output voltage (primary buck-boost output) - add to both views
-            if (!tw.outputVoltage.empty()) {
-                json waveform;
-                waveform["label"] = "Primary Output Voltage";
-                waveform["unit"] = "V";
-                waveform["x"] = tw.time;
-                waveform["y"] = tw.outputVoltage;
-                magneticOp["waveforms"].push_back(waveform);
-                converterOp["waveforms"].push_back(waveform);
-            }
-            
-            // Output current (primary buck-boost output) - add to both views
-            if (!tw.outputCurrent.empty()) {
-                json waveform;
-                waveform["label"] = "Primary Output Current";
-                waveform["unit"] = "A";
-                waveform["x"] = tw.time;
-                waveform["y"] = tw.outputCurrent;
-                magneticOp["waveforms"].push_back(waveform);
-                converterOp["waveforms"].push_back(waveform);
-            }
-            
-            result["magneticWaveforms"].push_back(magneticOp);
-            result["converterWaveforms"].push_back(converterOp);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string simulate_isolated_buck_ideal_waveforms(std::string ibInputsString){
+    try {
+        json ibInputsJson = json::parse(ibInputsString);
+
+        // Detect if this is an AdvancedIsolatedBuck or regular
+        bool isAdvanced = ibInputsJson.contains("desiredInductance");
+        
+        // Read number of periods from input (default to 2)
+        size_t numberOfPeriods = 2;
+        if (ibInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = ibInputsJson["numberOfPeriods"].get<size_t>();
         }
+        
+        // Read number of steady state periods from input (default to 5)
+        size_t numberOfSteadyStatePeriods = 5;
+        if (ibInputsJson.contains("numberOfSteadyStatePeriods")) {
+            numberOfSteadyStatePeriods = ibInputsJson["numberOfSteadyStatePeriods"].get<size_t>();
+        }
+        
+        DesignRequirements designRequirements;
+        double magnetizingInductance;
+        std::vector<double> turnsRatios;
+        
+        std::unique_ptr<OpenMagnetics::IsolatedBuck> ibPtr;
+        
+        if (isAdvanced) {
+            auto advancedPtr = std::make_unique<OpenMagnetics::AdvancedIsolatedBuck>(ibInputsJson);
+            magnetizingInductance = advancedPtr->get_desired_inductance();
+            turnsRatios = advancedPtr->get_desired_turns_ratios();
+            
+            // Build designRequirements
+            designRequirements.get_mutable_turns_ratios().clear();
+            for (auto tr : turnsRatios) {
+                DimensionWithTolerance trWithTolerance;
+                trWithTolerance.set_nominal(tr);
+                designRequirements.get_mutable_turns_ratios().push_back(trWithTolerance);
+            }
+            DimensionWithTolerance inductanceWithTolerance;
+            inductanceWithTolerance.set_nominal(magnetizingInductance);
+            designRequirements.set_magnetizing_inductance(inductanceWithTolerance);
+            designRequirements.set_topology(Topologies::ISOLATED_BUCK_CONVERTER);
+            
+            ibPtr = std::move(advancedPtr);
+        } else {
+            ibPtr = std::make_unique<OpenMagnetics::IsolatedBuck>(ibInputsJson);
+            designRequirements = ibPtr->process_design_requirements();
+            
+            // Extract turns ratios from design requirements
+            for (const auto& tr : designRequirements.get_turns_ratios()) {
+                if (tr.get_nominal()) {
+                    turnsRatios.push_back(tr.get_nominal().value());
+                }
+            }
+            
+            if (designRequirements.get_magnetizing_inductance().get_minimum()) {
+                magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
+            } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
+                magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
+            } else {
+                throw std::runtime_error("Unable to calculate inductance");
+            }
+        }
+        
+        // Set the number of periods for extraction
+        ibPtr->set_num_periods_to_extract(numberOfPeriods);
+        ibPtr->set_num_steady_state_periods(numberOfSteadyStatePeriods);
+        
+        // Get operating points from ngspice simulation (already has correct number of periods)
+        auto operatingPoints = ibPtr->simulate_and_extract_operating_points(turnsRatios, magnetizingInductance);
+        
+        // DEBUG: Log operating point structure
+        std::cerr << "DEBUG [simulate_isolated_buck]: Operating points count = " << operatingPoints.size() << std::endl;
+        for (size_t opIdx = 0; opIdx < operatingPoints.size(); ++opIdx) {
+            const auto& op = operatingPoints[opIdx];
+            std::cerr << "  OP " << opIdx << ": excitations count = " << op.get_excitations_per_winding().size() << std::endl;
+            for (size_t excIdx = 0; excIdx < op.get_excitations_per_winding().size(); ++excIdx) {
+                const auto& exc = op.get_excitations_per_winding()[excIdx];
+                std::cerr << "    Excitation " << excIdx << ":";
+                if (exc.get_voltage() && exc.get_voltage()->get_waveform()) {
+                    std::cerr << " voltage=" << exc.get_voltage()->get_waveform()->get_data().size() << "pts";
+                } else {
+                    std::cerr << " voltage=none";
+                }
+                if (exc.get_current() && exc.get_current()->get_waveform()) {
+                    std::cerr << " current=" << exc.get_current()->get_waveform()->get_data().size() << "pts";
+                } else {
+                    std::cerr << " current=none";
+                }
+                std::cerr << std::endl;
+            }
+        }
+        
+        // Note: ngspice already extracted the correct number of periods, no need to repeat
+        
+        // Build the result with just two fields: inputs and converterWaveforms
+        json result;
+        
+        // inputs: OpenMagnetics::Inputs containing designRequirements and operatingPoints
+        json inputs;
+        inputs["designRequirements"] = json();
+        to_json(inputs["designRequirements"], designRequirements);
+        inputs["operatingPoints"] = json::array();
+        for (const auto& op : operatingPoints) {
+            json opJson;
+            to_json(opJson, op);
+            inputs["operatingPoints"].push_back(opJson);
+        }
+        result["inputs"] = inputs;
+        
+        // converterWaveforms: array of OpenMagnetics::ConverterWaveforms
+        auto topologyWaveforms = ibPtr->simulate_and_extract_topology_waveforms(turnsRatios, magnetizingInductance);
+        
+        // DEBUG: Log converter waveforms structure
+        std::cerr << "DEBUG [simulate_isolated_buck]: Topology waveforms count = " << topologyWaveforms.size() << std::endl;
+        for (size_t twIdx = 0; twIdx < topologyWaveforms.size(); ++twIdx) {
+            const auto& tw = topologyWaveforms[twIdx];
+            std::cerr << "  TW " << twIdx << ":";
+            if (tw.get_input_voltage().get_data().size() > 0) {
+                std::cerr << " input_voltage=" << tw.get_input_voltage().get_data().size() << "pts";
+            } else {
+                std::cerr << " input_voltage=none";
+            }
+            std::cerr << " output_voltages=" << tw.get_output_voltages().size();
+            std::cerr << " output_currents=" << tw.get_output_currents().size();
+            std::cerr << std::endl;
+            for (size_t outIdx = 0; outIdx < tw.get_output_voltages().size(); ++outIdx) {
+                std::cerr << "    Output " << outIdx << ": voltage=" << tw.get_output_voltages()[outIdx].get_data().size() << "pts";
+                if (outIdx < tw.get_output_currents().size()) {
+                    std::cerr << " current=" << tw.get_output_currents()[outIdx].get_data().size() << "pts";
+                }
+                std::cerr << std::endl;
+            }
+        }
+        
+        result["converterWaveforms"] = json::array();
+        for (const auto& tw : topologyWaveforms) {
+            json cwJson;
+            to_json(cwJson, tw);
+            result["converterWaveforms"].push_back(cwJson);
+        }
+        
+        // Note: ngspice already extracted the correct number of periods for converter waveforms too
         
         return result.dump(4);
     }
@@ -4657,31 +4564,97 @@ std::string calculate_push_pull_inputs(std::string pushPullInputsString){
     try {
         json pushPullInputsJson = json::parse(pushPullInputsString);
 
+        // Read number of periods from input (default to 1 for analytical)
+        size_t numberOfPeriods = 1;
+        if (pushPullInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = pushPullInputsJson["numberOfPeriods"].get<size_t>();
+        }
+        
+        // Debug: Log current ripple ratio
+        std::cerr << "DEBUG [calculate_push_pull_inputs]: currentRippleRatio = ";
+        if (pushPullInputsJson.contains("currentRippleRatio")) {
+            std::cerr << pushPullInputsJson["currentRippleRatio"].get<double>();
+        } else {
+            std::cerr << "not set";
+        }
+        std::cerr << std::endl;
+
         OpenMagnetics::PushPull pushPullInputs(pushPullInputsJson);
         auto inputs = pushPullInputs.process();
 
         json result;
         to_json(result, inputs);
+        
+        // Repeat waveforms for the specified number of periods (analytical generates 1 period)
+        if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+        
         return result.dump(4);
     }
     catch (const std::exception &exc) {
-        return "Exception: " + std::string{exc.what()};
+        std::cerr << "ERROR [calculate_push_pull_inputs]: " << exc.what() << std::endl;
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
     }
 }
 
 std::string calculate_advanced_push_pull_inputs(std::string pushPullInputsString){
     try {
         json pushPullInputsJson = json::parse(pushPullInputsString);
+        
+        // Read number of periods from input (default to 1 for analytical)
+        size_t numberOfPeriods = 1;
+        if (pushPullInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = pushPullInputsJson["numberOfPeriods"].get<size_t>();
+        }
+        
+        // Debug: Log received parameters
+        std::cerr << "DEBUG [calculate_advanced_push_pull_inputs]: Received JSON with keys: ";
+        for (auto& el : pushPullInputsJson.items()) {
+            std::cerr << el.key() << ", ";
+        }
+        std::cerr << std::endl;
+        
+        // Debug: Log the critical values
+        if (pushPullInputsJson.contains("desiredTurnsRatios")) {
+            std::cerr << "  desiredTurnsRatios = " << pushPullInputsJson["desiredTurnsRatios"].dump() << std::endl;
+        }
+        if (pushPullInputsJson.contains("desiredDutyCycle")) {
+            std::cerr << "  desiredDutyCycle = " << pushPullInputsJson["desiredDutyCycle"].dump() << std::endl;
+        }
+        if (pushPullInputsJson.contains("desiredInductance")) {
+            std::cerr << "  desiredInductance = " << pushPullInputsJson["desiredInductance"] << std::endl;
+        }
+        if (pushPullInputsJson.contains("inputVoltage")) {
+            std::cerr << "  inputVoltage = " << pushPullInputsJson["inputVoltage"].dump() << std::endl;
+        }
+        
+        // IMPORTANT: The analytical process() method expects user-format turns ratios [N]
+        // and internally converts them to [1, N, N, ...] for calculations.
+        // So we do NOT convert here - just pass through as-is.
+        // The JSON already has the correct format from the frontend.
 
         OpenMagnetics::AdvancedPushPull pushPullInputs(pushPullInputsJson);
         auto inputs = pushPullInputs.process();
 
         json result;
         to_json(result, inputs);
+        
+        // Repeat waveforms for the specified number of periods (analytical generates 1 period)
+        if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+        
         return result.dump(4);
     }
     catch (const std::exception &exc) {
-        return "Exception: " + std::string{exc.what()};
+        std::cerr << "ERROR [calculate_advanced_push_pull_inputs]: " << exc.what() << std::endl;
+        json error;
+        error["error"] = true;
+        error["message"] = exc.what();
+        return error.dump(4);
     }
 }
 
@@ -4690,6 +4663,14 @@ std::string calculate_single_switch_forward_inputs(std::string singleSwitchForwa
         json singleSwitchForwardInputsJson = json::parse(singleSwitchForwardInputsString);
 
         OpenMagnetics::SingleSwitchForward singleSwitchForwardInputs(singleSwitchForwardInputsJson);
+
+        // Read number of periods from input
+        size_t numberOfPeriods = 2;
+        if (singleSwitchForwardInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = singleSwitchForwardInputsJson["numberOfPeriods"].get<size_t>();
+        }
+        singleSwitchForwardInputs.set_num_periods_to_extract(numberOfPeriods);
+
         auto inputs = singleSwitchForwardInputs.process();
 
         json result;
@@ -4758,7 +4739,12 @@ std::string calculate_single_switch_forward_inputs(std::string singleSwitchForwa
                 opIdx++;
             }
         }
-        
+
+        // Repeat waveforms for the requested number of periods
+        if (result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -4771,6 +4757,14 @@ std::string calculate_advanced_single_switch_forward_inputs(std::string singleSw
         json singleSwitchForwardInputsJson = json::parse(singleSwitchForwardInputsString);
 
         OpenMagnetics::AdvancedSingleSwitchForward singleSwitchForwardInputs(singleSwitchForwardInputsJson);
+
+        // Read number of periods from input
+        size_t numberOfPeriods = 2;
+        if (singleSwitchForwardInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = singleSwitchForwardInputsJson["numberOfPeriods"].get<size_t>();
+        }
+        singleSwitchForwardInputs.set_num_periods_to_extract(numberOfPeriods);
+
         auto inputs = singleSwitchForwardInputs.process();
 
         json result;
@@ -4839,11 +4833,20 @@ std::string calculate_advanced_single_switch_forward_inputs(std::string singleSw
                 opIdx++;
             }
         }
-        
+
+        // Repeat waveforms for the requested number of periods
+        if (result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+
         return result.dump(4);
     }
     catch (const std::exception &exc) {
-        return "Exception: " + std::string{exc.what()};
+        json error = {
+            {"error", true},
+            {"message", std::string{exc.what()}}
+        };
+        return error.dump(4);
     }
 }
 
@@ -4852,6 +4855,14 @@ std::string calculate_active_clamp_forward_inputs(std::string activeClampForward
         json activeClampForwardInputsJson = json::parse(activeClampForwardInputsString);
 
         OpenMagnetics::ActiveClampForward activeClampForwardInputs(activeClampForwardInputsJson);
+
+        // Read number of periods from input
+        size_t numberOfPeriods = 2;
+        if (activeClampForwardInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = activeClampForwardInputsJson["numberOfPeriods"].get<size_t>();
+        }
+        activeClampForwardInputs.set_num_periods_to_extract(numberOfPeriods);
+
         auto inputs = activeClampForwardInputs.process();
 
         json result;
@@ -4920,7 +4931,12 @@ std::string calculate_active_clamp_forward_inputs(std::string activeClampForward
                 opIdx++;
             }
         }
-        
+
+        // Repeat waveforms for the requested number of periods
+        if (result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -4933,6 +4949,14 @@ std::string calculate_advanced_active_clamp_forward_inputs(std::string activeCla
         json activeClampForwardInputsJson = json::parse(activeClampForwardInputsString);
 
         OpenMagnetics::AdvancedActiveClampForward activeClampForwardInputs(activeClampForwardInputsJson);
+
+        // Read number of periods from input
+        size_t numberOfPeriods = 2;
+        if (activeClampForwardInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = activeClampForwardInputsJson["numberOfPeriods"].get<size_t>();
+        }
+        activeClampForwardInputs.set_num_periods_to_extract(numberOfPeriods);
+
         auto inputs = activeClampForwardInputs.process();
 
         json result;
@@ -5001,11 +5025,20 @@ std::string calculate_advanced_active_clamp_forward_inputs(std::string activeCla
                 opIdx++;
             }
         }
-        
+
+        // Repeat waveforms for the requested number of periods
+        if (result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+
         return result.dump(4);
     }
     catch (const std::exception &exc) {
-        return "Exception: " + std::string{exc.what()};
+        json error = {
+            {"error", true},
+            {"message", std::string{exc.what()}}
+        };
+        return error.dump(4);
     }
 }
 
@@ -5014,6 +5047,14 @@ std::string calculate_two_switch_forward_inputs(std::string twoSwitchForwardInpu
         json twoSwitchForwardInputsJson = json::parse(twoSwitchForwardInputsString);
 
         OpenMagnetics::TwoSwitchForward twoSwitchForwardInputs(twoSwitchForwardInputsJson);
+
+        // Read number of periods from input
+        size_t numberOfPeriods = 2;
+        if (twoSwitchForwardInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = twoSwitchForwardInputsJson["numberOfPeriods"].get<size_t>();
+        }
+        twoSwitchForwardInputs.set_num_periods_to_extract(numberOfPeriods);
+
         auto inputs = twoSwitchForwardInputs.process();
 
         json result;
@@ -5082,7 +5123,12 @@ std::string calculate_two_switch_forward_inputs(std::string twoSwitchForwardInpu
                 opIdx++;
             }
         }
-        
+
+        // Repeat waveforms for the requested number of periods
+        if (result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -5095,6 +5141,14 @@ std::string calculate_advanced_two_switch_forward_inputs(std::string twoSwitchFo
         json twoSwitchForwardInputsJson = json::parse(twoSwitchForwardInputsString);
 
         OpenMagnetics::AdvancedTwoSwitchForward twoSwitchForwardInputs(twoSwitchForwardInputsJson);
+
+        // Read number of periods from input
+        size_t numberOfPeriods = 2;
+        if (twoSwitchForwardInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = twoSwitchForwardInputsJson["numberOfPeriods"].get<size_t>();
+        }
+        twoSwitchForwardInputs.set_num_periods_to_extract(numberOfPeriods);
+
         auto inputs = twoSwitchForwardInputs.process();
 
         json result;
@@ -5163,11 +5217,234 @@ std::string calculate_advanced_two_switch_forward_inputs(std::string twoSwitchFo
                 opIdx++;
             }
         }
+
+        // Repeat waveforms for the requested number of periods
+        if (result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        json error = {
+            {"error", true},
+            {"message", std::string{exc.what()}}
+        };
+        return error.dump(4);
+    }
+}
+
+// ==========================================
+// Power Factor Correction (PFC) Functions
+// ==========================================
+
+EMSCRIPTEN_KEEPALIVE std::string calculate_pfc_inputs(std::string pfcInputsString){
+    try {
+        json pfcInputsJson = json::parse(pfcInputsString);
+
+        OpenMagnetics::PowerFactorCorrection pfcInputs(pfcInputsJson);
+        
+        // Set number of periods for waveform generation
+        int numberOfPeriods = pfcInputsJson.value("numberOfPeriods", 2);
+        // pfcInputs.set_number_of_periods(numberOfPeriods);
+        
+        auto designRequirements = pfcInputs.process_design_requirements();
+        
+        // Calculate inductance based on mode
+        double inductance;
+        if (pfcInputsJson.contains("inductance")) {
+            inductance = pfcInputsJson["inductance"];
+        } else {
+            std::string mode = pfcInputsJson.value("mode", "Continuous Conduction Mode");
+            if (mode == "Continuous Conduction Mode") {
+                inductance = pfcInputs.calculate_inductance_ccm();
+            } else if (mode == "Critical Conduction Mode") {
+                inductance = pfcInputs.calculate_inductance_crcm();
+            } else {
+                inductance = pfcInputs.calculate_inductance_dcm();
+            }
+        }
+        
+        // Get operating points at different AC line phases (single period for MAS)
+        auto operatingPoints = pfcInputs.process_operating_points({}, inductance);
+        
+        // Get full multi-period waveforms for display (respects numberOfPeriods setting)
+        auto displayWaveforms = pfcInputs.simulate_and_extract_waveforms(inductance, 0.1, numberOfPeriods);
+        
+        // Build result with inputs and waveforms
+        json result;
+        to_json(result, designRequirements);
+        result["inductance"] = inductance;
+        result["operatingPoints"] = json::array();
+        
+        for (auto& op : operatingPoints) {
+            json opJson;
+            to_json(opJson, op);
+            result["operatingPoints"].push_back(opJson);
+        }
+        
+        // Build MAS inputs - only include first operating point for magnetic design
+        result["masInputs"] = json::object();
+        to_json(result["masInputs"], designRequirements);
+        // Only export first operating point to magnetic tool to avoid redundant calculations
+        if (!result["operatingPoints"].empty()) {
+            result["masInputs"]["operatingPoints"] = json::array({result["operatingPoints"][0]});
+        } else {
+            result["masInputs"]["operatingPoints"] = json::array();
+        }
+        
+        // Extract magnetic waveforms for display - use full multi-period data
+        result["magneticWaveforms"] = json::array();
+        
+        // We only show waveforms for the first operating point
+        json opWaveforms;
+        opWaveforms["operatingPointName"] = "PFC Inductor Current";
+        opWaveforms["waveforms"] = json::array();
+        
+        // Current waveform (multi-period for display)
+        if (!displayWaveforms.time.empty() && !displayWaveforms.inductorCurrent.empty()) {
+            json currentWf;
+            currentWf["label"] = "Inductor Current";
+            currentWf["unit"] = "A";
+            currentWf["x"] = displayWaveforms.time;
+            currentWf["y"] = displayWaveforms.inductorCurrent;
+            opWaveforms["waveforms"].push_back(currentWf);
+        }
+        
+        // Note: Voltage waveforms removed for PFC - only current is relevant for magnetic design
+        
+        result["magneticWaveforms"].push_back(opWaveforms);
         
         return result.dump(4);
     }
     catch (const std::exception &exc) {
-        return "Exception: " + std::string{exc.what()};
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
+    }
+}
+
+EMSCRIPTEN_KEEPALIVE std::string simulate_pfc_waveforms(std::string pfcInputsString){
+    try {
+        json pfcInputsJson = json::parse(pfcInputsString);
+
+        OpenMagnetics::PowerFactorCorrection pfcInputs(pfcInputsJson);
+        
+        // Calculate inductance if not provided
+        double inductance;
+        if (pfcInputsJson.contains("inductance")) {
+            inductance = pfcInputsJson["inductance"];
+        } else {
+            std::string mode = pfcInputsJson.value("mode", "Continuous Conduction Mode");
+            if (mode == "Continuous Conduction Mode") {
+                inductance = pfcInputs.calculate_inductance_ccm();
+            } else if (mode == "Critical Conduction Mode") {
+                inductance = pfcInputs.calculate_inductance_crcm();
+            } else {
+                inductance = pfcInputs.calculate_inductance_dcm();
+            }
+        }
+        
+        // Get simulation parameters
+        double dcResistance = pfcInputsJson.value("dcResistance", 0.1);
+        int numberOfCycles = pfcInputsJson.value("numberOfPeriods", 2);
+        
+        // Simulate and extract waveforms
+        auto simWaveforms = pfcInputs.simulate_and_extract_waveforms(
+            inductance,
+            dcResistance,
+            numberOfCycles
+        );
+        
+        // Build result
+        json result;
+        result["inductance"] = inductance;
+        result["magneticWaveforms"] = json::array();
+        result["converterWaveforms"] = json::array();
+        
+        // Magnetic waveforms (for inductor design)
+        json magOp;
+        magOp["operatingPointName"] = simWaveforms.operatingPointName;
+        magOp["waveforms"] = json::array();
+        
+        // Inductor current
+        if (!simWaveforms.inductorCurrent.empty()) {
+            json wf;
+            wf["label"] = "Inductor Current";
+            wf["unit"] = "A";
+            wf["x"] = simWaveforms.time;
+            wf["y"] = simWaveforms.inductorCurrent;
+            magOp["waveforms"].push_back(wf);
+        }
+        
+        // Note: Inductor voltage removed for PFC - only current is relevant for magnetic design
+        
+        result["magneticWaveforms"].push_back(magOp);
+        
+        // Converter waveforms (for circuit analysis)
+        json convOp;
+        convOp["operatingPointName"] = simWaveforms.operatingPointName;
+        convOp["waveforms"] = json::array();
+        
+        // Note: Input voltage removed for PFC - only current is relevant for magnetic design
+        
+        // Input current
+        if (!simWaveforms.inputCurrent.empty()) {
+            json wf;
+            wf["label"] = "Input Current";
+            wf["unit"] = "A";
+            wf["x"] = simWaveforms.time;
+            wf["y"] = simWaveforms.inputCurrent;
+            convOp["waveforms"].push_back(wf);
+        }
+        
+        // Note: Output voltage removed for PFC - only current is relevant for magnetic design
+        
+        // Output current
+        if (!simWaveforms.outputCurrent.empty()) {
+            json wf;
+            wf["label"] = "Output Current";
+            wf["unit"] = "A";
+            wf["x"] = simWaveforms.time;
+            wf["y"] = simWaveforms.outputCurrent;
+            convOp["waveforms"].push_back(wf);
+        }
+        
+        result["converterWaveforms"].push_back(convOp);
+        
+        // Add PFC metrics
+        result["powerFactor"] = simWaveforms.powerFactor;
+        result["efficiency"] = simWaveforms.efficiency;
+        result["currentThd"] = simWaveforms.currentThd;
+        
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
+    }
+}
+
+EMSCRIPTEN_KEEPALIVE std::string determine_pfc_mode(std::string pfcInputsString, double inductance){
+    try {
+        json pfcInputsJson = json::parse(pfcInputsString);
+        OpenMagnetics::PowerFactorCorrection pfcInputs(pfcInputsJson);
+        
+        std::string actualMode = pfcInputs.determine_actual_mode(inductance);
+        
+        json result;
+        result["actualMode"] = actualMode;
+        
+        // Also return critical inductance for reference
+        result["criticalInductance"] = pfcInputs.calculate_inductance_crcm();
+        
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
     }
 }
 
@@ -5224,6 +5501,7 @@ std::string simulate_cmc_waveforms(std::string cmcInputsString, double inductanc
             wfJson["theoreticalImpedance"] = wf.theoreticalImpedance;
             result.push_back(wfJson);
         }
+        
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -5270,6 +5548,7 @@ std::string verify_dmc_attenuation(std::string dmcInputsString, double inductanc
             rJson["message"] = r.message;
             result.push_back(rJson);
         }
+        
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -5323,6 +5602,7 @@ std::string simulate_dmc_waveforms(std::string dmcInputsString, double inductanc
             wfJson["dmAttenuation"] = wf.dmAttenuation;
             result.push_back(wfJson);
         }
+        
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -5942,6 +6222,12 @@ std::string load_magnetics_from_string(std::string database, bool expand) {
     }
 }
 
+// Forward declarations for new topology functions
+std::string calculate_llc_inputs(std::string llcInputsString);
+std::string simulate_llc_ideal_waveforms(std::string llcInputsString);
+std::string calculate_cllc_inputs(std::string cllcInputsString);
+std::string calculate_dab_inputs(std::string dabInputsString);
+std::string calculate_psfb_inputs(std::string psfbInputsString);
 
 EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_constants", &get_constants);
@@ -6084,6 +6370,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("calculate_isolated_buck_boost_inputs", &calculate_isolated_buck_boost_inputs);
     function("calculate_advanced_isolated_buck_boost_inputs", &calculate_advanced_isolated_buck_boost_inputs);
     function("simulate_isolated_buck_boost_ideal_waveforms", &simulate_isolated_buck_boost_ideal_waveforms);
+    function("simulate_isolated_buck_ideal_waveforms", &simulate_isolated_buck_ideal_waveforms);
     function("calculate_buck_inputs", &calculate_buck_inputs);
     function("calculate_advanced_buck_inputs", &calculate_advanced_buck_inputs);
     function("simulate_buck_ideal_waveforms", &simulate_buck_ideal_waveforms);
@@ -6093,6 +6380,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("calculate_push_pull_inputs", &calculate_push_pull_inputs);
     function("calculate_advanced_push_pull_inputs", &calculate_advanced_push_pull_inputs);
     function("simulate_push_pull_ideal_waveforms", &simulate_push_pull_ideal_waveforms);
+    // Forward converter functions
     function("calculate_single_switch_forward_inputs", &calculate_single_switch_forward_inputs);
     function("calculate_advanced_single_switch_forward_inputs", &calculate_advanced_single_switch_forward_inputs);
     function("simulate_forward_ideal_waveforms", &simulate_forward_ideal_waveforms);
@@ -6102,6 +6390,9 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("calculate_two_switch_forward_inputs", &calculate_two_switch_forward_inputs);
     function("calculate_advanced_two_switch_forward_inputs", &calculate_advanced_two_switch_forward_inputs);
     function("simulate_two_switch_forward_ideal_waveforms", &simulate_two_switch_forward_ideal_waveforms);
+    function("calculate_pfc_inputs", &calculate_pfc_inputs);
+    function("simulate_pfc_waveforms", &simulate_pfc_waveforms);
+    function("determine_pfc_mode", &determine_pfc_mode);
     function("calculate_cmc_inputs", &calculate_cmc_inputs);
     function("simulate_cmc_waveforms", &simulate_cmc_waveforms);
     function("calculate_dmc_inputs", &calculate_dmc_inputs);
@@ -6139,6 +6430,13 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("load_magnetics_from_file", &load_magnetics_from_file);
     function("load_magnetics_from_string", &load_magnetics_from_string);
     
+    // New topology wizard functions
+    function("calculate_llc_inputs", &calculate_llc_inputs);
+    function("simulate_llc_ideal_waveforms", &simulate_llc_ideal_waveforms);
+    function("calculate_cllc_inputs", &calculate_cllc_inputs);
+    function("calculate_dab_inputs", &calculate_dab_inputs);
+    function("calculate_psfb_inputs", &calculate_psfb_inputs);
+    
     register_map<std::string, double>("map<string, double>");
     register_map<std::string, std::string>("map<string, string>");
     // register_map<std::string, std::map<std::string, std::string>>("map<string, map<string, string>>");
@@ -6146,4 +6444,457 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     register_vector<int>("vector<int>");
     register_vector<double>("vector<double>");
     register_vector<size_t>("vector<size_t>");
+
+};
+
+// New topology functions - DAB, LLC, CLLC, PSFB
+
+std::string calculate_dab_inputs(std::string dabInputsString) {
+    try {
+        json dabInputsJson = json::parse(dabInputsString);
+        
+        // Check for multi-output request (not yet supported for DAB)
+        if (dabInputsJson.contains("operatingPoints") && dabInputsJson["operatingPoints"].is_array()) {
+            for (const auto& op : dabInputsJson["operatingPoints"]) {
+                if (op.contains("outputVoltages") && op["outputVoltages"].is_array() && op["outputVoltages"].size() > 1) {
+                    throw std::runtime_error("Multi-output configuration is not yet supported for DAB converter. Please use a single output (outputVoltages array with one element).");
+                }
+                if (op.contains("outputCurrents") && op["outputCurrents"].is_array() && op["outputCurrents"].size() > 1) {
+                    throw std::runtime_error("Multi-output configuration is not yet supported for DAB converter. Please use a single output (outputCurrents array with one element).");
+                }
+            }
+        }
+        
+        OpenMagnetics::Dab dabInputs(dabInputsJson);
+        
+        auto designRequirements = dabInputs.process_design_requirements();
+        
+        double magnetizingInductance = dabInputsJson.value("magnetizingInductance", 1e-3);
+        
+        auto operatingPoints = dabInputs.process_operating_points({}, magnetizingInductance);
+        
+        json result;
+        to_json(result, designRequirements);
+        result["operatingPoints"] = json::array();
+        
+        for (auto& op : operatingPoints) {
+            json opJson;
+            to_json(opJson, op);
+            result["operatingPoints"].push_back(opJson);
+        }
+        
+        result["masInputs"] = json::object();
+        to_json(result["masInputs"], designRequirements);
+        if (!result["operatingPoints"].empty()) {
+            result["masInputs"]["operatingPoints"] = json::array({result["operatingPoints"][0]});
+        } else {
+            result["masInputs"]["operatingPoints"] = json::array();
+        }
+        
+        result["magneticWaveforms"] = json::array();
+        
+        json opWaveforms;
+        opWaveforms["operatingPointName"] = "DAB Waveforms";
+        opWaveforms["waveforms"] = json::array();
+        
+        if (!result["operatingPoints"].empty() && 
+            !result["operatingPoints"][0]["excitationsPerWinding"].empty()) {
+            auto& excitations = result["operatingPoints"][0]["excitationsPerWinding"];
+            
+            // Helper lambda to check if waveform data is valid
+            auto hasValidWaveform = [](const json& excitation, const std::string& signalType) -> bool {
+                if (!excitation.contains(signalType)) return false;
+                if (!excitation[signalType].contains("waveform")) return false;
+                auto& waveform = excitation[signalType]["waveform"];
+                if (!waveform.contains("time") || !waveform.contains("data")) return false;
+                if (waveform["time"].is_null() || waveform["data"].is_null()) return false;
+                if (waveform["time"].empty() || waveform["data"].empty()) return false;
+                return true;
+            };
+            
+            // Primary Voltage
+            if (excitations.size() > 0 && hasValidWaveform(excitations[0], "voltage")) {
+                json voltageWf;
+                voltageWf["label"] = "Primary Voltage";
+                voltageWf["unit"] = "V";
+                voltageWf["color"] = "#4CAF50";
+                voltageWf["x"] = excitations[0]["voltage"]["waveform"]["time"];
+                voltageWf["y"] = excitations[0]["voltage"]["waveform"]["data"];
+                opWaveforms["waveforms"].push_back(voltageWf);
+            }
+            
+            // Primary Current
+            if (excitations.size() > 0 && hasValidWaveform(excitations[0], "current")) {
+                json currentWf;
+                currentWf["label"] = "Primary Current";
+                currentWf["unit"] = "A";
+                currentWf["color"] = "#2196F3";
+                currentWf["x"] = excitations[0]["current"]["waveform"]["time"];
+                currentWf["y"] = excitations[0]["current"]["waveform"]["data"];
+                opWaveforms["waveforms"].push_back(currentWf);
+            }
+            
+            // Secondary Voltage
+            if (excitations.size() > 1 && hasValidWaveform(excitations[1], "voltage")) {
+                json voltageWf;
+                voltageWf["label"] = "Secondary Voltage";
+                voltageWf["unit"] = "V";
+                voltageWf["color"] = "#FF9800";
+                voltageWf["x"] = excitations[1]["voltage"]["waveform"]["time"];
+                voltageWf["y"] = excitations[1]["voltage"]["waveform"]["data"];
+                opWaveforms["waveforms"].push_back(voltageWf);
+            }
+            
+            // Secondary Current
+            if (excitations.size() > 1 && hasValidWaveform(excitations[1], "current")) {
+                json currentWf;
+                currentWf["label"] = "Secondary Current";
+                currentWf["unit"] = "A";
+                currentWf["color"] = "#b18aea";
+                currentWf["x"] = excitations[1]["current"]["waveform"]["time"];
+                currentWf["y"] = excitations[1]["current"]["waveform"]["data"];
+                opWaveforms["waveforms"].push_back(currentWf);
+            }
+        }
+        
+        result["magneticWaveforms"].push_back(opWaveforms);
+        
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
+    }
+}
+
+EMSCRIPTEN_KEEPALIVE std::string calculate_llc_inputs(std::string llcInputsString){
+    try {
+        json llcInputsJson = json::parse(llcInputsString);
+        
+        // Check for multi-output request (not yet supported for LLC)
+        if (llcInputsJson.contains("operatingPoints") && llcInputsJson["operatingPoints"].is_array()) {
+            for (const auto& op : llcInputsJson["operatingPoints"]) {
+                if (op.contains("outputVoltages") && op["outputVoltages"].is_array() && op["outputVoltages"].size() > 1) {
+                    throw std::runtime_error("Multi-output configuration is not yet supported for LLC converter. Please use a single output (outputVoltages array with one element).");
+                }
+                if (op.contains("outputCurrents") && op["outputCurrents"].is_array() && op["outputCurrents"].size() > 1) {
+                    throw std::runtime_error("Multi-output configuration is not yet supported for LLC converter. Please use a single output (outputCurrents array with one element).");
+                }
+            }
+        }
+        
+        OpenMagnetics::Llc llcInputs(llcInputsJson);
+        
+        auto designRequirements = llcInputs.process_design_requirements();
+        
+        double magnetizingInductance = llcInputsJson.value("magnetizingInductance", 200e-6);
+        
+        auto operatingPoints = llcInputs.process_operating_points({}, magnetizingInductance);
+        
+        double lr = 0.0, cr = 0.0, lm = magnetizingInductance;
+        // Commented out due to missing calculate_resonant_tank method
+        // if (!llcInputsJson.contains("resonantInductance") || !llcInputsJson.contains("resonantCapacitance")) {
+        //     double fr = (llcInputs.get_min_switching_frequency() + llcInputs.get_max_switching_frequency()) / 2.0;
+        //     llcInputs.calculate_resonant_tank(fr, llcInputs.get_quality_factor().value_or(0.4), lr, cr, lm);
+        // }
+        
+        json result;
+        to_json(result, designRequirements);
+        result["operatingPoints"] = json::array();
+        
+        for (auto& op : operatingPoints) {
+            json opJson;
+            to_json(opJson, op);
+            result["operatingPoints"].push_back(opJson);
+        }
+        
+        result["resonantInductance"] = lr;
+        result["resonantCapacitance"] = cr;
+        result["magnetizingInductance"] = lm;
+        result["resonantFrequency"] = llcInputs.get_resonant_frequency();
+        
+        result["masInputs"] = json::object();
+        to_json(result["masInputs"], designRequirements);
+        if (!result["operatingPoints"].empty()) {
+            result["masInputs"]["operatingPoints"] = json::array({result["operatingPoints"][0]});
+        } else {
+            result["masInputs"]["operatingPoints"] = json::array();
+        }
+        
+        result["magneticWaveforms"] = json::array();
+        
+        json opWaveforms;
+        opWaveforms["operatingPointName"] = "LLC Waveforms";
+        opWaveforms["waveforms"] = json::array();
+        
+        if (!result["operatingPoints"].empty() && 
+            !result["operatingPoints"][0]["excitationsPerWinding"].empty()) {
+            auto& excitations = result["operatingPoints"][0]["excitationsPerWinding"];
+            
+            if (excitations.size() > 0 && excitations[0].contains("current") && 
+                excitations[0]["current"].contains("waveform")) {
+                json currentWf;
+                currentWf["label"] = "Resonant Current";
+                currentWf["unit"] = "A";
+                currentWf["x"] = excitations[0]["current"]["waveform"]["time"];
+                currentWf["y"] = excitations[0]["current"]["waveform"]["data"];
+                opWaveforms["waveforms"].push_back(currentWf);
+            }
+            
+            if (excitations.size() > 1 && excitations[1].contains("current") && 
+                excitations[1]["current"].contains("waveform")) {
+                json currentWf;
+                currentWf["label"] = "Secondary Current";
+                currentWf["unit"] = "A";
+                currentWf["x"] = excitations[1]["current"]["waveform"]["time"];
+                currentWf["y"] = excitations[1]["current"]["waveform"]["data"];
+                opWaveforms["waveforms"].push_back(currentWf);
+            }
+        }
+        
+        result["magneticWaveforms"].push_back(opWaveforms);
+        
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
+    }
+}
+
+std::string simulate_llc_ideal_waveforms(std::string llcInputsString) {
+    try {
+        json llcInputsJson = json::parse(llcInputsString);
+
+        // Check for multi-output request (not yet supported for LLC)
+        if (llcInputsJson.contains("operatingPoints") && llcInputsJson["operatingPoints"].is_array()) {
+            for (const auto& op : llcInputsJson["operatingPoints"]) {
+                if (op.contains("outputVoltages") && op["outputVoltages"].is_array() && op["outputVoltages"].size() > 1) {
+                    throw std::runtime_error("Multi-output configuration is not yet supported for LLC converter.");
+                }
+                if (op.contains("outputCurrents") && op["outputCurrents"].is_array() && op["outputCurrents"].size() > 1) {
+                    throw std::runtime_error("Multi-output configuration is not yet supported for LLC converter.");
+                }
+            }
+        }
+
+        OpenMagnetics::Llc llcInputs(llcInputsJson);
+
+        auto designRequirements = llcInputs.process_design_requirements();
+        double magnetizingInductance = llcInputsJson.value("magnetizingInductance", 200e-6);
+
+        // Get turns ratios from design requirements
+        std::vector<double> turnsRatios;
+        for (const auto& tr : designRequirements.get_turns_ratios()) {
+            if (tr.get_nominal()) {
+                turnsRatios.push_back(tr.get_nominal().value());
+            }
+        }
+
+#ifndef ENABLE_NGSPICE
+        throw std::runtime_error("ngspice simulation is required but ENABLE_NGSPICE was not defined at compile time");
+#endif
+
+        OpenMagnetics::NgspiceRunner runner;
+        if (!runner.is_available()) {
+            throw std::runtime_error("ngspice simulation is required but ngspice is not available");
+        }
+
+        auto topologyWaveforms = llcInputs.simulate_and_extract_topology_waveforms(turnsRatios, magnetizingInductance);
+
+        // Build the result with just two fields: inputs and converterWaveforms
+        json result;
+
+        // inputs: OpenMagnetics::Inputs containing designRequirements and operatingPoints
+        json inputsJson;
+        inputsJson["designRequirements"] = json();
+        to_json(inputsJson["designRequirements"], designRequirements);
+        inputsJson["operatingPoints"] = json::array();
+
+        result["inputs"] = inputsJson;
+
+        // converterWaveforms: array of OpenMagnetics::ConverterWaveforms
+        result["converterWaveforms"] = json::array();
+        for (const auto& tw : topologyWaveforms) {
+            json cwJson;
+            to_json(cwJson, tw);
+            result["converterWaveforms"].push_back(cwJson);
+        }
+        
+        return result.dump(4);
+    }
+    catch (const std::exception& exc) {
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
+    }
+}
+
+std::string calculate_cllc_inputs(std::string cllcInputsString) {
+    try {
+        json cllcInputsJson = json::parse(cllcInputsString);
+        
+        // Check for multi-output request (not yet supported for CLLC)
+        if (cllcInputsJson.contains("operatingPoints") && cllcInputsJson["operatingPoints"].is_array()) {
+            for (const auto& op : cllcInputsJson["operatingPoints"]) {
+                if (op.contains("outputVoltages") && op["outputVoltages"].is_array() && op["outputVoltages"].size() > 1) {
+                    throw std::runtime_error("Multi-output configuration is not yet supported for CLLC converter. Please use a single output (outputVoltages array with one element).");
+                }
+                if (op.contains("outputCurrents") && op["outputCurrents"].is_array() && op["outputCurrents"].size() > 1) {
+                    throw std::runtime_error("Multi-output configuration is not yet supported for CLLC converter. Please use a single output (outputCurrents array with one element).");
+                }
+            }
+        }
+        
+        OpenMagnetics::CllcConverter cllcInputs(cllcInputsJson);
+        
+        auto designRequirements = cllcInputs.process_design_requirements();
+        
+        double magnetizingInductance = cllcInputsJson.value("magnetizingInductance", 100e-6);
+        
+        auto operatingPoints = cllcInputs.process_operating_points({}, magnetizingInductance);
+        
+        // Commented out due to missing calculate_resonant_tank method
+        // if (!cllcInputsJson.contains("primaryResonantInductance")) {
+        //     double ls1, cs1, ls2, cs2, lm;
+        //     double fr = (cllcInputs.get_min_switching_frequency() + cllcInputs.get_max_switching_frequency()) / 2.0;
+        //     cllcInputs.calculate_resonant_tank(fr, cllcInputs.get_quality_factor().value_or(0.4), ls1, cs1, ls2, cs2, lm);
+        // }
+        
+        json result;
+        to_json(result, designRequirements);
+        result["operatingPoints"] = json::array();
+        
+        for (auto& op : operatingPoints) {
+            json opJson;
+            to_json(opJson, op);
+            result["operatingPoints"].push_back(opJson);
+        }
+        
+        result["magneticWaveforms"] = json::array();
+        
+        json opWaveforms;
+        opWaveforms["operatingPointName"] = "CLLC Waveforms";
+        opWaveforms["waveforms"] = json::array();
+        
+        if (!result["operatingPoints"].empty() && 
+            !result["operatingPoints"][0]["excitationsPerWinding"].empty()) {
+            auto& excitations = result["operatingPoints"][0]["excitationsPerWinding"];
+            
+            if (excitations.size() > 0 && excitations[0].contains("current") && 
+                excitations[0]["current"].contains("waveform")) {
+                json currentWf;
+                currentWf["label"] = "Primary Resonant Current";
+                currentWf["unit"] = "A";
+                currentWf["x"] = excitations[0]["current"]["waveform"]["time"];
+                currentWf["y"] = excitations[0]["current"]["waveform"]["data"];
+                opWaveforms["waveforms"].push_back(currentWf);
+            }
+            
+            if (excitations.size() > 1 && excitations[1].contains("current") && 
+                excitations[1]["current"].contains("waveform")) {
+                json currentWf;
+                currentWf["label"] = "Secondary Resonant Current";
+                currentWf["unit"] = "A";
+                currentWf["x"] = excitations[1]["current"]["waveform"]["time"];
+                currentWf["y"] = excitations[1]["current"]["waveform"]["data"];
+                opWaveforms["waveforms"].push_back(currentWf);
+            }
+        }
+        
+        result["magneticWaveforms"].push_back(opWaveforms);
+        
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
+    }
+}
+
+std::string calculate_psfb_inputs(std::string psfbInputsString) {
+    try {
+        json psfbInputsJson = json::parse(psfbInputsString);
+        
+        // Check for multi-output request (not yet supported for PSFB)
+        if (psfbInputsJson.contains("operatingPoints") && psfbInputsJson["operatingPoints"].is_array()) {
+            for (const auto& op : psfbInputsJson["operatingPoints"]) {
+                if (op.contains("outputVoltages") && op["outputVoltages"].is_array() && op["outputVoltages"].size() > 1) {
+                    throw std::runtime_error("Multi-output configuration is not yet supported for PSFB converter. Please use a single output (outputVoltages array with one element).");
+                }
+                if (op.contains("outputCurrents") && op["outputCurrents"].is_array() && op["outputCurrents"].size() > 1) {
+                    throw std::runtime_error("Multi-output configuration is not yet supported for PSFB converter. Please use a single output (outputCurrents array with one element).");
+                }
+            }
+        }
+        
+        OpenMagnetics::Psfb psfbInputs(psfbInputsJson);
+        
+        auto designRequirements = psfbInputs.process_design_requirements();
+        
+        double magnetizingInductance = psfbInputsJson.value("magnetizingInductance", 1e-3);
+        
+        auto operatingPoints = psfbInputs.process_operating_points({}, magnetizingInductance);
+        
+        json result;
+        to_json(result, designRequirements);
+        result["operatingPoints"] = json::array();
+        
+        for (auto& op : operatingPoints) {
+            json opJson;
+            to_json(opJson, op);
+            result["operatingPoints"].push_back(opJson);
+        }
+        
+        result["masInputs"] = json::object();
+        to_json(result["masInputs"], designRequirements);
+        if (!result["operatingPoints"].empty()) {
+            result["masInputs"]["operatingPoints"] = json::array({result["operatingPoints"][0]});
+        } else {
+            result["masInputs"]["operatingPoints"] = json::array();
+        }
+        
+        result["magneticWaveforms"] = json::array();
+        
+        json opWaveforms;
+        opWaveforms["operatingPointName"] = "PSFB Waveforms";
+        opWaveforms["waveforms"] = json::array();
+        
+        if (!result["operatingPoints"].empty() && 
+            !result["operatingPoints"][0]["excitationsPerWinding"].empty()) {
+            auto& excitations = result["operatingPoints"][0]["excitationsPerWinding"];
+            
+            if (excitations.size() > 0 && excitations[0].contains("current") && 
+                excitations[0]["current"].contains("waveform")) {
+                json currentWf;
+                currentWf["label"] = "Primary Current";
+                currentWf["unit"] = "A";
+                currentWf["x"] = excitations[0]["current"]["waveform"]["time"];
+                currentWf["y"] = excitations[0]["current"]["waveform"]["data"];
+                opWaveforms["waveforms"].push_back(currentWf);
+            }
+            
+            if (excitations.size() > 1 && excitations[1].contains("current") && 
+                excitations[1]["current"].contains("waveform")) {
+                json currentWf;
+                currentWf["label"] = "Secondary Current";
+                currentWf["unit"] = "A";
+                currentWf["x"] = excitations[1]["current"]["waveform"]["time"];
+                currentWf["y"] = excitations[1]["current"]["waveform"]["data"];
+                opWaveforms["waveforms"].push_back(currentWf);
+            }
+        }
+        
+        result["magneticWaveforms"].push_back(opWaveforms);
+        
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
+    }
 }

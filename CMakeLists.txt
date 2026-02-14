@@ -67,7 +67,8 @@ set(ENABLE_NGSPICE ON CACHE BOOL "" FORCE)
 
 # Use local MKF (has ngspice WASM patches for Emscripten compatibility)
 FetchContent_Declare(MKF
-    SOURCE_DIR ${CMAKE_SOURCE_DIR}/../MKF
+    GIT_REPOSITORY https://github.com/OpenMagnetics/MKF.git
+    GIT_TAG main
 )
 
 FetchContent_Declare(magic-enum
