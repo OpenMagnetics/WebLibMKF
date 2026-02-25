@@ -18,6 +18,7 @@ option(BUILD_EXAMPLES "Build examples" OFF)
 option(INCLUDE_MKF_TESTS "Build MKF tests" OFF)
 option(UTPP_INCLUDE_TESTS_IN_BUILD "Build UnitTest++ tests" OFF)
 option(HAVE_LAPACK "Enable LAPACK support" OFF)
+option(ENABLE_MATPLOTPP "Enable matplotplusplus for AdvancedPainter" OFF)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
@@ -65,7 +66,6 @@ set(MATPLOTPP_BUILD_EXPERIMENTAL_OPENGL_BACKEND OFF CACHE BOOL "" FORCE)
 # Based on ngspice patch #96: https://sourceforge.net/p/ngspice/patches/96/
 set(ENABLE_NGSPICE ON CACHE BOOL "" FORCE)
 
-# Use local MKF (has ngspice WASM patches for Emscripten compatibility)
 FetchContent_Declare(MKF
     GIT_REPOSITORY https://github.com/OpenMagnetics/MKF.git
     GIT_TAG main
@@ -123,7 +123,9 @@ foreach(target libMKF libInsulationCoordinator libCrossReferencers)
     target_include_directories(${target} PRIVATE ${COMMON_INCLUDE_DIRS})
     target_link_libraries(${target} PRIVATE MKF)
     # Add ENABLE_NGSPICE compile definition so libMKF.cpp knows ngspice is available
-    target_compile_definitions(${target} PRIVATE ENABLE_NGSPICE)
+    if(ENABLE_NGSPICE)
+        target_compile_definitions(${target} PRIVATE ENABLE_NGSPICE)
+    endif()
 endforeach()
 
 # =============================================================================
