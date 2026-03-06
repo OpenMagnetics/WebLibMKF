@@ -16,6 +16,7 @@
 #include "physical_models/WindingOhmicLosses.h"
 #include "physical_models/WindingSkinEffectLosses.h"
 #include "physical_models/WindingLosses.h"
+#include "physical_models/Temperature.h"
 #include "advisers/WireAdviser.h"
 #include "advisers/CoilAdviser.h"
 #include "advisers/CoreAdviser.h"
@@ -31,6 +32,7 @@
 #include "physical_models/Inductance.h"
 #include "physical_models/StrayCapacitance.h"
 #include "physical_models/Reluctance.h"
+#include "converter_models/CommonModeChoke.h"
 #include "converter_models/Flyback.h"
 #include "converter_models/IsolatedBuck.h"
 #include "converter_models/IsolatedBuckBoost.h"
@@ -64,6 +66,12 @@ void repeat_waveform_for_periods(std::vector<double>& time, std::vector<double>&
 void repeat_operating_points_waveforms(json& operatingPoints, size_t numberOfPeriods);
 void repeat_converter_waveforms_periods(json& converterWaveforms, size_t numberOfPeriods);
 using ordered_json = nlohmann::ordered_json;
+
+// Forward declarations for new converter processing functions
+std::string process_converter(std::string topologyName, std::string converterJson, bool useNgspice);
+std::string design_magnetics_from_converter(std::string topologyName, std::string converterJson, 
+                                             int maxResults, std::string coreModeString, 
+                                             bool useNgspice, std::string weightsString);
 
 std::map<std::string, double> get_constants() {
     std::map<std::string, double> constantsMap;
@@ -414,6 +422,34 @@ std::string get_wire_data_by_standard_name(std::string standardName){
         }
     }
     return "{}";
+}
+
+std::string get_planar_wire_by_standard_name(std::string standardName){
+    try {
+        // Normalize input: add period if missing (e.g., "2 oz" -> "2 oz.")
+        std::string normalizedName = standardName;
+        if (!normalizedName.empty() && normalizedName.back() != '.') {
+            normalizedName += '.';
+        }
+        
+        auto wires = OpenMagnetics::get_wires(WireType::PLANAR);
+        for (auto wire : wires) {
+            if (!wire.get_standard_name()) {
+                continue;
+            }
+            std::string wireStandardName = wire.get_standard_name().value();
+            // Try matching both normalized and original
+            if (wireStandardName == standardName || wireStandardName == normalizedName) {
+                json result;
+                to_json(result, wire);
+                return result.dump(4);
+            }
+        }
+        return "{}";
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
 }
 
 // Helper function to repeat waveform data for multiple periods
@@ -1961,6 +1997,12 @@ std::string delimit_and_compact(std::string coilString) {
         coil.set_layers_description(coilLayersDescription);
         coil.set_turns_description(coilTurnsDescription);
         
+        // Preserve groupsDescription if it exists
+        if (coilJson.contains("groupsDescription") && !coilJson["groupsDescription"].is_null()) {
+            auto groupsDescription = std::vector<OpenMagnetics::Group>(coilJson["groupsDescription"]);
+            coil.set_groups_description(groupsDescription);
+        }
+        
         OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(true);
         OpenMagnetics::Settings::GetInstance().set_coil_include_additional_coordinates(true);
         
@@ -2445,6 +2487,10 @@ std::string calculate_advised_cores(std::string inputsString, std::string weight
     try {
         OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(true);
 
+        std::cout << "=== DEBUG calculate_advised_cores ===" << std::endl;
+        std::cout << "weightsString: " << weightsString << std::endl;
+        std::cout << "coreModeString: " << coreModeString << std::endl;
+
         OpenMagnetics::Inputs inputs(json::parse(inputsString));
         OpenMagnetics::CoreAdviser::CoreAdviserModes coreMode;
         from_json(coreModeString, coreMode);
@@ -2464,15 +2510,24 @@ std::string calculate_advised_cores(std::string inputsString, std::string weight
             externalSum += pair.second;
         }
 
+        std::cout << "Parsed weights:" << std::endl;
         for (auto const& [filterName, weight] : weightsKeysString) {
             OpenMagnetics::CoreAdviser::CoreAdviserFilters filter;
             OpenMagnetics::from_json(filterName, filter);
             weights[filter] = weight / externalSum;
+            std::cout << "  " << filterName << " -> " << (weight / externalSum) << std::endl;
         }
 
         OpenMagnetics::CoreAdviser coreAdviser;
         coreAdviser.set_mode(coreMode);
         auto masMagnetics = coreAdviser.get_advised_core(inputs, weights, maximumNumberResults);
+        
+        std::cout << "Results count: " << masMagnetics.size() << std::endl;
+        for (size_t i = 0; i < masMagnetics.size() && i < 5; ++i) {
+            auto& magnetic = masMagnetics[i].first.get_magnetic();
+            std::string coreName = magnetic.get_core().get_name() ? magnetic.get_core().get_name().value() : "unnamed";
+            std::cout << i << ". " << coreName << " - Score: " << masMagnetics[i].second << std::endl;
+        }
         auto log = OpenMagnetics::read_log();
         auto scoring = coreAdviser.get_scorings();
         std::map<std::string, std::map<std::string, double>> filteredScoring;
@@ -2563,6 +2618,11 @@ std::string calculate_advised_sections(std::string masString, std::string patter
 
 std::string calculate_advised_coil(std::string masString){
     try {
+        // Log the raw input string for debugging
+        std::cout << "=== INPUT_JSON_START ===" << std::endl;
+        std::cout << masString << std::endl;
+        std::cout << "=== INPUT_JSON_END ===" << std::endl;
+        
         OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(true);
         OpenMagnetics::Mas mas(json::parse(masString));
 
@@ -2580,6 +2640,9 @@ std::string calculate_advised_coil(std::string masString){
         if (masMagneticsWithCoil.size() > 0) {
             json result = json();
             to_json(result, masMagneticsWithCoil[0]);
+        std::cout << "=== OUTPUT_JSON_START ===" << std::endl;
+        std::cout << result << std::endl;
+        std::cout << "=== OUTPUT_JSON_END ===" << std::endl;
             return result.dump(4);
         }
         else{
@@ -2945,7 +3008,7 @@ std::string calculate_stray_capacitance(std::string coilString, std::string oper
         }
 
         OpenMagnetics::StrayCapacitance strayCapacitance(strayCapacitanceModelName);
-        auto strayCapacitanceOutput = strayCapacitance.calculate_capacitance(coil);
+        auto strayCapacitanceOutput = strayCapacitance.calculate_capacitance(coil, operatingPoint);
 
         json result;
         to_json(result, strayCapacitanceOutput);
@@ -3422,6 +3485,286 @@ std::string simulate_flyback_ideal_waveforms(std::string flybackInputsString){
 std::string simulate_flyback_with_magnetic(std::string flybackInputsString, std::string magneticString){
     try {
         return "Exception: ngspice-based simulation is not available in browser WASM. Use native PyMKF for real magnetic simulation.";
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+// SPICE Code Generation Functions - Returns the ngspice netlist for a converter
+EMSCRIPTEN_KEEPALIVE std::string generate_flyback_ngspice_circuit(std::string flybackInputsString, size_t inputVoltageIndex, size_t operatingPointIndex){
+    try {
+        json flybackInputsJson = json::parse(flybackInputsString);
+        
+        bool isAdvancedFlyback = flybackInputsJson.contains("desiredInductance");
+        
+        std::unique_ptr<OpenMagnetics::Flyback> flybackPtr;
+        std::vector<double> turnsRatios;
+        double magnetizingInductance;
+        
+        if (isAdvancedFlyback) {
+            auto advancedFlybackPtr = std::make_unique<OpenMagnetics::AdvancedFlyback>(flybackInputsJson);
+            magnetizingInductance = advancedFlybackPtr->get_desired_inductance();
+            turnsRatios = advancedFlybackPtr->get_desired_turns_ratios();
+            flybackPtr = std::move(advancedFlybackPtr);
+        } else {
+            flybackPtr = std::make_unique<OpenMagnetics::Flyback>(flybackInputsJson);
+            auto designRequirements = flybackPtr->process_design_requirements();
+            
+            for (const auto& tr : designRequirements.get_turns_ratios()) {
+                turnsRatios.push_back(tr.get_nominal().value());
+            }
+            
+            if (designRequirements.get_magnetizing_inductance().get_minimum()) {
+                magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
+            } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
+                magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
+            } else {
+                throw std::runtime_error("Unable to calculate magnetizing inductance");
+            }
+        }
+        
+        std::string netlist = flybackPtr->generate_ngspice_circuit(turnsRatios, magnetizingInductance, inputVoltageIndex, operatingPointIndex);
+        return netlist;
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+// Generic template for converters with turnsRatios and magnetizingInductance
+template<typename ConverterType, typename AdvancedConverterType>
+std::string generate_converter_ngspice_circuit_helper(std::string inputsString, size_t inputVoltageIndex, size_t operatingPointIndex, const std::string& desiredFieldName) {
+    try {
+        json inputsJson = json::parse(inputsString);
+        
+        bool isAdvanced = inputsJson.contains(desiredFieldName);
+        
+        std::vector<double> turnsRatios;
+        double magnetizingInductance;
+        
+        std::string netlist;
+        if (isAdvanced) {
+            AdvancedConverterType converter(inputsJson);
+            magnetizingInductance = converter.get_desired_inductance();
+            turnsRatios = converter.get_desired_turns_ratios();
+            netlist = converter.generate_ngspice_circuit(turnsRatios, magnetizingInductance, inputVoltageIndex, operatingPointIndex);
+        } else {
+            ConverterType converter(inputsJson);
+            auto designRequirements = converter.process_design_requirements();
+            
+            for (const auto& tr : designRequirements.get_turns_ratios()) {
+                turnsRatios.push_back(tr.get_nominal().value());
+            }
+            
+            if (designRequirements.get_magnetizing_inductance().get_minimum()) {
+                magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
+            } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
+                magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
+            } else {
+                throw std::runtime_error("Unable to calculate magnetizing inductance");
+            }
+            
+            netlist = converter.generate_ngspice_circuit(turnsRatios, magnetizingInductance, inputVoltageIndex, operatingPointIndex);
+        }
+        
+        return netlist;
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+// Buck SPICE generation (uses inductance directly, not turns ratios)
+EMSCRIPTEN_KEEPALIVE std::string generate_buck_ngspice_circuit(std::string buckInputsString, size_t inputVoltageIndex, size_t operatingPointIndex){
+    try {
+        json buckInputsJson = json::parse(buckInputsString);
+        
+        bool isAdvancedBuck = buckInputsJson.contains("desiredInductance");
+        
+        double inductance;
+        
+        std::string netlist;
+        if (isAdvancedBuck) {
+            OpenMagnetics::AdvancedBuck buck(buckInputsJson);
+            inductance = buck.get_desired_inductance();
+            netlist = buck.generate_ngspice_circuit(inductance, inputVoltageIndex, operatingPointIndex);
+        } else {
+            OpenMagnetics::Buck buck(buckInputsJson);
+            auto designRequirements = buck.process_design_requirements();
+            
+            if (designRequirements.get_magnetizing_inductance().get_minimum()) {
+                inductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
+            } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
+                inductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
+            } else {
+                throw std::runtime_error("Unable to calculate inductance");
+            }
+            
+            netlist = buck.generate_ngspice_circuit(inductance, inputVoltageIndex, operatingPointIndex);
+        }
+        
+        return netlist;
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+// Boost SPICE generation (uses inductance directly)
+EMSCRIPTEN_KEEPALIVE std::string generate_boost_ngspice_circuit(std::string boostInputsString, size_t inputVoltageIndex, size_t operatingPointIndex){
+    try {
+        json boostInputsJson = json::parse(boostInputsString);
+        
+        bool isAdvancedBoost = boostInputsJson.contains("desiredInductance");
+        
+        double inductance;
+        
+        std::string netlist;
+        if (isAdvancedBoost) {
+            OpenMagnetics::AdvancedBoost boost(boostInputsJson);
+            inductance = boost.get_desired_inductance();
+            netlist = boost.generate_ngspice_circuit(inductance, inputVoltageIndex, operatingPointIndex);
+        } else {
+            OpenMagnetics::Boost boost(boostInputsJson);
+            auto designRequirements = boost.process_design_requirements();
+            
+            if (designRequirements.get_magnetizing_inductance().get_minimum()) {
+                inductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
+            } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
+                inductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
+            } else {
+                throw std::runtime_error("Unable to calculate inductance");
+            }
+            
+            netlist = boost.generate_ngspice_circuit(inductance, inputVoltageIndex, operatingPointIndex);
+        }
+        
+        return netlist;
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+// PushPull SPICE generation
+EMSCRIPTEN_KEEPALIVE std::string generate_push_pull_ngspice_circuit(std::string pushPullInputsString, size_t inputVoltageIndex, size_t operatingPointIndex){
+    return generate_converter_ngspice_circuit_helper<OpenMagnetics::PushPull, OpenMagnetics::AdvancedPushPull>(pushPullInputsString, inputVoltageIndex, operatingPointIndex, "desiredInductance");
+}
+
+// Forward SPICE generation (Single Switch)
+EMSCRIPTEN_KEEPALIVE std::string generate_forward_ngspice_circuit(std::string forwardInputsString, size_t inputVoltageIndex, size_t operatingPointIndex){
+    return generate_converter_ngspice_circuit_helper<OpenMagnetics::SingleSwitchForward, OpenMagnetics::AdvancedSingleSwitchForward>(forwardInputsString, inputVoltageIndex, operatingPointIndex, "desiredInductance");
+}
+
+// Two Switch Forward SPICE generation
+EMSCRIPTEN_KEEPALIVE std::string generate_two_switch_forward_ngspice_circuit(std::string forwardInputsString, size_t inputVoltageIndex, size_t operatingPointIndex){
+    return generate_converter_ngspice_circuit_helper<OpenMagnetics::TwoSwitchForward, OpenMagnetics::AdvancedTwoSwitchForward>(forwardInputsString, inputVoltageIndex, operatingPointIndex, "desiredInductance");
+}
+
+// Active Clamp Forward SPICE generation
+EMSCRIPTEN_KEEPALIVE std::string generate_active_clamp_forward_ngspice_circuit(std::string forwardInputsString, size_t inputVoltageIndex, size_t operatingPointIndex){
+    return generate_converter_ngspice_circuit_helper<OpenMagnetics::ActiveClampForward, OpenMagnetics::AdvancedActiveClampForward>(forwardInputsString, inputVoltageIndex, operatingPointIndex, "desiredInductance");
+}
+
+// Isolated Buck SPICE generation
+EMSCRIPTEN_KEEPALIVE std::string generate_isolated_buck_ngspice_circuit(std::string isolatedBuckInputsString, size_t inputVoltageIndex, size_t operatingPointIndex){
+    return generate_converter_ngspice_circuit_helper<OpenMagnetics::IsolatedBuck, OpenMagnetics::AdvancedIsolatedBuck>(isolatedBuckInputsString, inputVoltageIndex, operatingPointIndex, "desiredInductance");
+}
+
+// Isolated Buck Boost SPICE generation
+EMSCRIPTEN_KEEPALIVE std::string generate_isolated_buck_boost_ngspice_circuit(std::string isolatedBuckBoostInputsString, size_t inputVoltageIndex, size_t operatingPointIndex){
+    return generate_converter_ngspice_circuit_helper<OpenMagnetics::IsolatedBuckBoost, OpenMagnetics::AdvancedIsolatedBuckBoost>(isolatedBuckBoostInputsString, inputVoltageIndex, operatingPointIndex, "desiredInductance");
+}
+
+// LLC SPICE generation
+EMSCRIPTEN_KEEPALIVE std::string generate_llc_ngspice_circuit(std::string llcInputsString, size_t inputVoltageIndex, size_t operatingPointIndex){
+    try {
+        json llcInputsJson = json::parse(llcInputsString);
+        OpenMagnetics::Llc llc(llcInputsJson);
+        
+        // For LLC, we need to extract from functional description or design requirements
+        auto designRequirements = llc.process_design_requirements();
+        std::vector<double> turnsRatios;
+        for (const auto& tr : designRequirements.get_turns_ratios()) {
+            turnsRatios.push_back(tr.get_nominal().value());
+        }
+        
+        double magnetizingInductance;
+        if (designRequirements.get_magnetizing_inductance().get_minimum()) {
+            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
+        } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
+            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
+        } else {
+            throw std::runtime_error("Unable to calculate magnetizing inductance");
+        }
+        
+        std::string netlist = llc.generate_ngspice_circuit(turnsRatios, magnetizingInductance, inputVoltageIndex, operatingPointIndex);
+        return netlist;
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+// CLLC SPICE generation - Note: CLLC has a different signature, skipping for now
+// EMSCRIPTEN_KEEPALIVE std::string generate_cllc_ngspice_circuit(std::string cllcInputsString, size_t inputVoltageIndex, size_t operatingPointIndex){
+//     // CLLC requires CllcResonantParameters, different from other converters
+//     return "Exception: CLLC SPICE generation not yet implemented";
+// }
+
+// DAB SPICE generation
+EMSCRIPTEN_KEEPALIVE std::string generate_dab_ngspice_circuit(std::string dabInputsString, size_t inputVoltageIndex, size_t operatingPointIndex){
+    try {
+        json dabInputsJson = json::parse(dabInputsString);
+        OpenMagnetics::Dab dab(dabInputsJson);
+        
+        auto designRequirements = dab.process_design_requirements();
+        std::vector<double> turnsRatios;
+        for (const auto& tr : designRequirements.get_turns_ratios()) {
+            turnsRatios.push_back(tr.get_nominal().value());
+        }
+        
+        double magnetizingInductance;
+        if (designRequirements.get_magnetizing_inductance().get_minimum()) {
+            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
+        } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
+            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
+        } else {
+            throw std::runtime_error("Unable to calculate magnetizing inductance");
+        }
+        
+        std::string netlist = dab.generate_ngspice_circuit(turnsRatios, magnetizingInductance, inputVoltageIndex, operatingPointIndex);
+        return netlist;
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+// Phase Shifted Full Bridge SPICE generation
+EMSCRIPTEN_KEEPALIVE std::string generate_psfb_ngspice_circuit(std::string psfbInputsString, size_t inputVoltageIndex, size_t operatingPointIndex){
+    try {
+        json psfbInputsJson = json::parse(psfbInputsString);
+        OpenMagnetics::Psfb psfb(psfbInputsJson);
+        
+        auto designRequirements = psfb.process_design_requirements();
+        std::vector<double> turnsRatios;
+        for (const auto& tr : designRequirements.get_turns_ratios()) {
+            turnsRatios.push_back(tr.get_nominal().value());
+        }
+        
+        double magnetizingInductance;
+        if (designRequirements.get_magnetizing_inductance().get_minimum()) {
+            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
+        } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
+            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
+        } else {
+            throw std::runtime_error("Unable to calculate magnetizing inductance");
+        }
+        
+        std::string netlist = psfb.generate_ngspice_circuit(turnsRatios, magnetizingInductance, inputVoltageIndex, operatingPointIndex);
+        return netlist;
     }
     catch (const std::exception &exc) {
         return "Exception: " + std::string{exc.what()};
@@ -5655,10 +5998,22 @@ std::string calculate_cmc_inputs(std::string cmcInputsString){
         json cmcInputsJson = json::parse(cmcInputsString);
 
         OpenMagnetics::CommonModeChoke cmcInputs(cmcInputsJson);
+
+        size_t numberOfPeriods = 1;
+        if (cmcInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = cmcInputsJson["numberOfPeriods"].get<size_t>();
+        }
+        cmcInputs.set_num_periods_to_extract(numberOfPeriods);
+
         auto inputs = cmcInputs.process();
 
         json result;
         to_json(result, inputs);
+
+        if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -5666,39 +6021,170 @@ std::string calculate_cmc_inputs(std::string cmcInputsString){
     }
 }
 
-std::string simulate_cmc_waveforms(std::string cmcInputsString, double inductance) {
+std::string calculate_advanced_cmc_inputs(std::string cmcInputsString){
     try {
         json cmcInputsJson = json::parse(cmcInputsString);
-        OpenMagnetics::CommonModeChoke cmc(cmcInputsJson);
 
-        // Get test frequencies from minimum impedance requirements
-        std::vector<double> frequencies;
-        auto minimumImpedance = cmc.get_minimum_impedance();
-        for (const auto& imp : minimumImpedance) {
-            frequencies.push_back(imp.get_frequency());
+        OpenMagnetics::AdvancedCommonModeChoke cmcInputs(cmcInputsJson);
+
+        size_t numberOfPeriods = 1;
+        if (cmcInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = cmcInputsJson["numberOfPeriods"].get<size_t>();
+        }
+        cmcInputs.set_num_periods_to_extract(numberOfPeriods);
+
+        auto inputs = cmcInputs.process();
+
+        json result;
+        to_json(result, inputs);
+
+        if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+// CMC SPICE Circuit Generation
+EMSCRIPTEN_KEEPALIVE std::string generate_cmc_ngspice_circuit(std::string cmcInputsString, size_t inputVoltageIndex, size_t operatingPointIndex){
+    try {
+        json cmcInputsJson = json::parse(cmcInputsString);
+        
+        bool isAdvancedCmc = cmcInputsJson.contains("desiredInductance");
+        
+        std::unique_ptr<OpenMagnetics::CommonModeChoke> cmcPtr;
+        double inductance;
+        double frequency = 150000; // Default frequency for CMC
+        
+        if (isAdvancedCmc) {
+            auto advancedCmcPtr = std::make_unique<OpenMagnetics::AdvancedCommonModeChoke>(cmcInputsJson);
+            inductance = advancedCmcPtr->get_desired_inductance();
+            cmcPtr = std::move(advancedCmcPtr);
+        } else {
+            cmcPtr = std::make_unique<OpenMagnetics::CommonModeChoke>(cmcInputsJson);
+            auto designRequirements = cmcPtr->process_design_requirements();
+            
+            if (designRequirements.get_magnetizing_inductance().get_minimum()) {
+                inductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
+            } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
+                inductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
+            } else {
+                throw std::runtime_error("Unable to calculate CMC inductance");
+            }
         }
         
-        // If no impedance points specified, use default EMI test frequencies
+        // CMC generate_ngspice_circuit takes (inductance, frequency) - ignore indices
+        std::string netlist = cmcPtr->generate_ngspice_circuit(inductance, frequency);
+        return netlist;
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+// CMC LISN Test - runs ngspice with standardized CISPR test circuit
+EMSCRIPTEN_KEEPALIVE std::string simulate_cmc_lisn_waveforms(std::string cmcInputsString, double inductance) {
+    try {
+        json cmcInputsJson = json::parse(cmcInputsString);
+        
+        OpenMagnetics::CommonModeChoke cmc(cmcInputsJson);
+        
+        // Get design requirements
+        auto designRequirements = cmc.process_design_requirements();
+        
+        // Get test frequencies from impedance points
+        std::vector<double> frequencies;
+        if (cmcInputsJson.contains("impedancePoints") && cmcInputsJson["impedancePoints"].is_array()) {
+            for (const auto& point : cmcInputsJson["impedancePoints"]) {
+                if (point.contains("frequency")) {
+                    frequencies.push_back(point["frequency"].get<double>());
+                }
+            }
+        }
+        
+        // If no frequencies specified, use default
         if (frequencies.empty()) {
-            frequencies = {150000, 500000, 1000000, 10000000, 30000000};
+            frequencies.push_back(150000); // 150 kHz default
         }
-
+        
+        // Run simulation
         auto waveforms = cmc.simulate_and_extract_waveforms(inductance, frequencies);
-
-        json result = json::array();
-        for (const auto& wf : waveforms) {
-            json wfJson;
-            wfJson["time"] = wf.time;
-            wfJson["frequency"] = wf.frequency;
-            wfJson["inputVoltage"] = wf.inputVoltage;
-            wfJson["windingCurrents"] = wf.windingCurrents;
-            wfJson["lisnVoltage"] = wf.lisnVoltage;
-            wfJson["operatingPointName"] = wf.operatingPointName;
-            wfJson["commonModeAttenuation"] = wf.commonModeAttenuation;
-            wfJson["commonModeImpedance"] = wf.commonModeImpedance;
-            wfJson["theoreticalImpedance"] = wf.theoreticalImpedance;
-            result.push_back(wfJson);
+        
+        // Also get operating points for the magnetic data
+        auto operatingPoints = cmc.simulate_and_extract_operating_points(inductance);
+        
+        // Build the result with inputs and converterWaveforms (same format as other wizards)
+        json result;
+        
+        // inputs: OpenMagnetics::Inputs containing designRequirements and operatingPoints
+        json inputs;
+        inputs["designRequirements"] = json();
+        to_json(inputs["designRequirements"], designRequirements);
+        inputs["operatingPoints"] = json::array();
+        for (const auto& op : operatingPoints) {
+            json opJson;
+            to_json(opJson, op);
+            inputs["operatingPoints"].push_back(opJson);
         }
+        result["inputs"] = inputs;
+        
+        // converterWaveforms: array of CMC test waveforms for visualization
+        result["converterWaveforms"] = json::array();
+        for (const auto& wf : waveforms) {
+            json cwJson;
+            cwJson["frequency"] = wf.frequency;
+            cwJson["time"] = wf.time;
+            cwJson["inputVoltage"] = wf.inputVoltage;
+            cwJson["windingCurrents"] = wf.windingCurrents;
+            cwJson["lisnVoltage"] = wf.lisnVoltage;
+            cwJson["operatingPointName"] = wf.operatingPointName;
+            cwJson["commonModeAttenuation"] = wf.commonModeAttenuation;
+            cwJson["commonModeImpedance"] = wf.commonModeImpedance;
+            cwJson["theoreticalImpedance"] = wf.theoreticalImpedance;
+            result["converterWaveforms"].push_back(cwJson);
+        }
+        
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+// CMC Ideal Waveforms - realistic line voltage + switching noise for design
+EMSCRIPTEN_KEEPALIVE std::string simulate_cmc_ideal_waveforms(std::string cmcInputsString, double inductance, double parasiticCap_pF, double dvdt_V_ns) {
+    try {
+        json cmcInputsJson = json::parse(cmcInputsString);
+        
+        OpenMagnetics::CommonModeChoke cmc(cmcInputsJson);
+        
+        // Get design requirements
+        auto designRequirements = cmc.process_design_requirements();
+        
+        // Run realistic simulation with line + noise
+        auto operatingPoints = cmc.simulate_realistic_cmc(inductance, parasiticCap_pF, dvdt_V_ns);
+        
+        // Build the result with inputs and converterWaveforms (same format as other wizards)
+        json result;
+        
+        // inputs: OpenMagnetics::Inputs containing designRequirements and operatingPoints
+        json inputs;
+        inputs["designRequirements"] = json();
+        to_json(inputs["designRequirements"], designRequirements);
+        inputs["operatingPoints"] = json::array();
+        for (const auto& op : operatingPoints) {
+            json opJson;
+            to_json(opJson, op);
+            inputs["operatingPoints"].push_back(opJson);
+        }
+        result["inputs"] = inputs;
+        
+        // converterWaveforms: empty array for CMC (realistic simulation doesn't generate converter-style waveforms)
+        result["converterWaveforms"] = json::array();
         
         return result.dump(4);
     }
@@ -6014,7 +6500,11 @@ std::string plot_turns(std::string magneticString) {
         OpenMagnetics::Settings::GetInstance().set_painter_simple_litz(true);
         OpenMagnetics::Settings::GetInstance().set_painter_advanced_litz(false);
         std::filesystem::path emptyFilepath;
-        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
+        
+        auto magneticJson = json::parse(magneticString);
+        
+        OpenMagnetics::Magnetic magnetic(magneticJson);
+        
         OpenMagnetics::Painter painter(emptyFilepath, false, false, false);
         painter.paint_core(magnetic);
         painter.paint_bobbin(magnetic);
@@ -6165,6 +6655,89 @@ std::string plot_wire(std::string wireString) {
         OpenMagnetics::Wire wire(json::parse(wireString));
         OpenMagnetics::Painter painter(emptyFilepath, false, false, false);
         painter.paint_wire(wire);
+        auto result = painter.export_svg();
+        return result;
+    }
+    catch(const std::runtime_error& re)
+    {
+        return re.what();
+    }
+    catch(const std::exception& ex)
+    {
+        return ex.what();
+    }
+    catch(...)
+    {
+        return "Unknown failure occurred. Possible memory corruption";
+    }
+}
+
+std::string plot_temperature_field(std::string magneticString, std::string operatingPointString, std::string textColor = "#000000", std::string bgColor = "#FFFFFF") {
+    try {
+        OpenMagnetics::Settings::GetInstance().set_painter_simple_litz(true);
+        OpenMagnetics::Settings::GetInstance().set_painter_advanced_litz(false);
+        std::filesystem::path emptyFilepath;
+        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
+        OperatingPoint operatingPoint(json::parse(operatingPointString));
+        
+        // For toroidal cores, ensure the coil is wound
+        auto coil = magnetic.get_mutable_coil();
+        auto core = magnetic.get_mutable_core();
+        if (core.get_shape_family() == OpenMagnetics::CoreShapeFamily::T) {
+            if (!coil.get_turns_description() || coil.get_turns_description()->empty()) {
+                coil.wind();
+                magnetic.set_coil(coil);
+            }
+        }
+        
+        // Get ambient temperature from operating point
+        double ambientTemperature = operatingPoint.get_conditions().get_ambient_temperature();
+        
+        // Run magnetic simulation to get losses
+        OpenMagnetics::MagneticSimulator magneticSimulator;
+        OpenMagnetics::Mas mas;
+        mas.set_magnetic(magnetic);
+        mas.get_mutable_inputs().set_operating_points({operatingPoint});  // Set the operating point for simulation
+        auto simulatedMas = magneticSimulator.simulate(mas);
+        
+        double coreLosses = 0.0;
+        double windingLosses = 0.0;
+        std::optional<OpenMagnetics::WindingLossesOutput> windingLossesOutput;
+        
+        if (!simulatedMas.get_outputs().empty()) {
+            auto outputs = simulatedMas.get_outputs()[0];
+            if (outputs.get_core_losses().has_value()) {
+                coreLosses = outputs.get_core_losses().value().get_core_losses();
+            }
+            if (outputs.get_winding_losses().has_value()) {
+                windingLosses = outputs.get_winding_losses().value().get_winding_losses();
+                // Also get the detailed per-turn losses (required for toroidal cores)
+                windingLossesOutput = outputs.get_winding_losses().value();
+            }
+        }
+        
+        // Create temperature configuration
+        OpenMagnetics::TemperatureConfig config;
+        config.ambientTemperature = ambientTemperature;
+        config.coreLosses = coreLosses;
+        config.windingLosses = windingLosses;
+        // Set per-turn losses (required for toroidal core thermal analysis)
+        if (windingLossesOutput) {
+            config.windingLossesOutput = windingLossesOutput;
+        }
+        
+        // Create temperature model and calculate temperatures
+        OpenMagnetics::Temperature temperature(magnetic, config);
+        auto thermalResult = temperature.calculateTemperatures();
+        
+        // Use Painter class (same as magnetic field)
+        OpenMagnetics::Painter painter(emptyFilepath, false, false, false);
+        painter.paint_temperature_field(magnetic, thermalResult.nodeTemperatures, true, OpenMagnetics::ColorPalette::BLUE_TO_RED, ambientTemperature, textColor, bgColor);
+        // Note: paint_core and paint_coil_turns are NOT called here because they would draw
+        // the standard ferrite/copper geometry on top of the temperature visualization,
+        // hiding the temperature colors. The temperature field function already draws
+        // the core and turns with their temperature colors.
+        
         auto result = painter.export_svg();
         return result;
     }
@@ -6496,6 +7069,24 @@ std::string calculate_cllc_inputs(std::string cllcInputsString);
 std::string calculate_dab_inputs(std::string dabInputsString);
 std::string calculate_psfb_inputs(std::string psfbInputsString);
 
+// SPICE Code Generation forward declarations
+EMSCRIPTEN_KEEPALIVE std::string generate_flyback_ngspice_circuit(std::string flybackInputsString, size_t inputVoltageIndex, size_t operatingPointIndex);
+EMSCRIPTEN_KEEPALIVE std::string generate_buck_ngspice_circuit(std::string buckInputsString, size_t inputVoltageIndex, size_t operatingPointIndex);
+EMSCRIPTEN_KEEPALIVE std::string generate_boost_ngspice_circuit(std::string boostInputsString, size_t inputVoltageIndex, size_t operatingPointIndex);
+EMSCRIPTEN_KEEPALIVE std::string generate_push_pull_ngspice_circuit(std::string pushPullInputsString, size_t inputVoltageIndex, size_t operatingPointIndex);
+EMSCRIPTEN_KEEPALIVE std::string generate_forward_ngspice_circuit(std::string forwardInputsString, size_t inputVoltageIndex, size_t operatingPointIndex);
+EMSCRIPTEN_KEEPALIVE std::string generate_two_switch_forward_ngspice_circuit(std::string forwardInputsString, size_t inputVoltageIndex, size_t operatingPointIndex);
+EMSCRIPTEN_KEEPALIVE std::string generate_active_clamp_forward_ngspice_circuit(std::string forwardInputsString, size_t inputVoltageIndex, size_t operatingPointIndex);
+EMSCRIPTEN_KEEPALIVE std::string generate_isolated_buck_ngspice_circuit(std::string isolatedBuckInputsString, size_t inputVoltageIndex, size_t operatingPointIndex);
+EMSCRIPTEN_KEEPALIVE std::string generate_isolated_buck_boost_ngspice_circuit(std::string isolatedBuckBoostInputsString, size_t inputVoltageIndex, size_t operatingPointIndex);
+EMSCRIPTEN_KEEPALIVE std::string generate_llc_ngspice_circuit(std::string llcInputsString, size_t inputVoltageIndex, size_t operatingPointIndex);
+EMSCRIPTEN_KEEPALIVE std::string generate_cllc_ngspice_circuit(std::string cllcInputsString, size_t inputVoltageIndex, size_t operatingPointIndex);
+EMSCRIPTEN_KEEPALIVE std::string generate_dab_ngspice_circuit(std::string dabInputsString, size_t inputVoltageIndex, size_t operatingPointIndex);
+EMSCRIPTEN_KEEPALIVE std::string generate_psfb_ngspice_circuit(std::string psfbInputsString, size_t inputVoltageIndex, size_t operatingPointIndex);
+EMSCRIPTEN_KEEPALIVE std::string generate_cmc_ngspice_circuit(std::string cmcInputsString, size_t inputVoltageIndex, size_t operatingPointIndex);
+EMSCRIPTEN_KEEPALIVE std::string simulate_cmc_lisn_waveforms(std::string cmcInputsString, double inductance);
+EMSCRIPTEN_KEEPALIVE std::string simulate_cmc_ideal_waveforms(std::string cmcInputsString, double inductance, double parasiticCap_pF, double dvdt_V_ns);
+
 EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_constants", &get_constants);
     function("get_defaults", &get_defaults);
@@ -6540,6 +7131,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_available_wires", &get_available_wires);
     function("get_unique_wire_diameters", &get_unique_wire_diameters);
     function("get_planar_thicknesses", &get_planar_thicknesses);
+    function("get_planar_wire_by_standard_name", &get_planar_wire_by_standard_name);
     function("get_available_wire_types", &get_available_wire_types);
     function("get_available_wire_standards", &get_available_wire_standards);
     function("calculate_gap_reluctance", &calculate_gap_reluctance);
@@ -6666,11 +7258,30 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("calculate_two_switch_forward_inputs", &calculate_two_switch_forward_inputs);
     function("calculate_advanced_two_switch_forward_inputs", &calculate_advanced_two_switch_forward_inputs);
     function("simulate_two_switch_forward_ideal_waveforms", &simulate_two_switch_forward_ideal_waveforms);
+    
+    // SPICE Code Generation functions
+    function("generate_flyback_ngspice_circuit", &generate_flyback_ngspice_circuit);
+    function("generate_buck_ngspice_circuit", &generate_buck_ngspice_circuit);
+    function("generate_boost_ngspice_circuit", &generate_boost_ngspice_circuit);
+    function("generate_push_pull_ngspice_circuit", &generate_push_pull_ngspice_circuit);
+    function("generate_forward_ngspice_circuit", &generate_forward_ngspice_circuit);
+    function("generate_two_switch_forward_ngspice_circuit", &generate_two_switch_forward_ngspice_circuit);
+    function("generate_active_clamp_forward_ngspice_circuit", &generate_active_clamp_forward_ngspice_circuit);
+    function("generate_isolated_buck_ngspice_circuit", &generate_isolated_buck_ngspice_circuit);
+    function("generate_isolated_buck_boost_ngspice_circuit", &generate_isolated_buck_boost_ngspice_circuit);
+    function("generate_llc_ngspice_circuit", &generate_llc_ngspice_circuit);
+    // function("generate_cllc_ngspice_circuit", &generate_cllc_ngspice_circuit);  // Different signature - requires CllcResonantParameters
+    function("generate_dab_ngspice_circuit", &generate_dab_ngspice_circuit);
+    function("generate_psfb_ngspice_circuit", &generate_psfb_ngspice_circuit);
+    function("generate_cmc_ngspice_circuit", &generate_cmc_ngspice_circuit);
+
     function("calculate_pfc_inputs", &calculate_pfc_inputs);
     function("simulate_pfc_waveforms", &simulate_pfc_waveforms);
     function("determine_pfc_mode", &determine_pfc_mode);
     function("calculate_cmc_inputs", &calculate_cmc_inputs);
-    function("simulate_cmc_waveforms", &simulate_cmc_waveforms);
+    function("calculate_advanced_cmc_inputs", &calculate_advanced_cmc_inputs);
+    function("simulate_cmc_lisn_waveforms", &simulate_cmc_lisn_waveforms);
+    function("simulate_cmc_ideal_waveforms", &simulate_cmc_ideal_waveforms);
     function("calculate_dmc_inputs", &calculate_dmc_inputs);
     function("verify_dmc_attenuation", &verify_dmc_attenuation);
     function("propose_dmc_design", &propose_dmc_design);
@@ -6692,6 +7303,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("plot_turns", &plot_turns);
     function("plot_magnetic_field", &plot_magnetic_field);
     function("plot_electric_field", &plot_electric_field);
+    function("plot_temperature_field", &plot_temperature_field);
     function("plot_wire_losses", &plot_wire_losses);
     function("plot_wire", &plot_wire);
     function("set_interlayer_insulation", &set_interlayer_insulation);
@@ -6712,6 +7324,10 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("calculate_cllc_inputs", &calculate_cllc_inputs);
     function("calculate_dab_inputs", &calculate_dab_inputs);
     function("calculate_psfb_inputs", &calculate_psfb_inputs);
+    
+    // New integrated converter processing functions
+    function("process_converter", &process_converter);
+    function("design_magnetics_from_converter", &design_magnetics_from_converter);
     
     register_map<std::string, double>("map<string, double>");
     register_map<std::string, std::string>("map<string, string>");
@@ -7062,6 +7678,238 @@ std::string calculate_psfb_inputs(std::string psfbInputsString) {
         }
         
         return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
+    }
+}
+
+// New integrated functions for topology processing and magnetic advising
+
+std::string process_converter(std::string topologyName, std::string converterJson, bool useNgspice) {
+    try {
+        json converterData = json::parse(converterJson);
+        json result;
+        
+        // Normalize topology name to lowercase
+        std::string topology = topologyName;
+        std::transform(topology.begin(), topology.end(), topology.begin(), ::tolower);
+        
+        if (topology == "flyback" || topology == "advanced_flyback") {
+            bool isAdvanced = converterData.contains("desiredInductance");
+            if (useNgspice) {
+                // simulate_flyback_ideal_waveforms handles both regular and advanced internally
+                return simulate_flyback_ideal_waveforms(converterJson);
+            } else {
+                if (isAdvanced) {
+                    return calculate_advanced_flyback_inputs(converterJson);
+                } else {
+                    return calculate_flyback_inputs(converterJson);
+                }
+            }
+        }
+        else if (topology == "buck" || topology == "advanced_buck") {
+            if (useNgspice) {
+                return simulate_buck_ideal_waveforms(converterJson);
+            } else {
+                if (converterData.contains("desiredInductance")) {
+                    return calculate_advanced_buck_inputs(converterJson);
+                } else {
+                    return calculate_buck_inputs(converterJson);
+                }
+            }
+        }
+        else if (topology == "boost" || topology == "advanced_boost") {
+            if (useNgspice) {
+                return simulate_boost_ideal_waveforms(converterJson);
+            } else {
+                if (converterData.contains("desiredInductance")) {
+                    return calculate_advanced_boost_inputs(converterJson);
+                } else {
+                    return calculate_boost_inputs(converterJson);
+                }
+            }
+        }
+        else if (topology == "isolated_buck" || topology == "advanced_isolated_buck") {
+            if (useNgspice) {
+                return simulate_isolated_buck_ideal_waveforms(converterJson);
+            } else {
+                if (converterData.contains("desiredInductance")) {
+                    return calculate_advanced_isolated_buck_inputs(converterJson);
+                } else {
+                    return calculate_isolated_buck_inputs(converterJson);
+                }
+            }
+        }
+        else if (topology == "isolated_buck_boost" || topology == "advanced_isolated_buck_boost") {
+            if (useNgspice) {
+                return simulate_isolated_buck_boost_ideal_waveforms(converterJson);
+            } else {
+                if (converterData.contains("desiredInductance")) {
+                    return calculate_advanced_isolated_buck_boost_inputs(converterJson);
+                } else {
+                    return calculate_isolated_buck_boost_inputs(converterJson);
+                }
+            }
+        }
+        else if (topology == "push_pull" || topology == "advanced_push_pull") {
+            if (useNgspice) {
+                return simulate_push_pull_ideal_waveforms(converterJson);
+            } else {
+                if (converterData.contains("desiredInductance")) {
+                    return calculate_advanced_push_pull_inputs(converterJson);
+                } else {
+                    return calculate_push_pull_inputs(converterJson);
+                }
+            }
+        }
+        else if (topology == "single_switch_forward" || topology == "advanced_single_switch_forward") {
+            if (useNgspice) {
+                return simulate_forward_ideal_waveforms(converterJson);
+            } else {
+                if (converterData.contains("desiredInductance")) {
+                    return calculate_advanced_single_switch_forward_inputs(converterJson);
+                } else {
+                    return calculate_single_switch_forward_inputs(converterJson);
+                }
+            }
+        }
+        else if (topology == "two_switch_forward" || topology == "advanced_two_switch_forward") {
+            if (useNgspice) {
+                return simulate_two_switch_forward_ideal_waveforms(converterJson);
+            } else {
+                if (converterData.contains("desiredInductance")) {
+                    return calculate_advanced_two_switch_forward_inputs(converterJson);
+                } else {
+                    return calculate_two_switch_forward_inputs(converterJson);
+                }
+            }
+        }
+        else if (topology == "active_clamp_forward" || topology == "advanced_active_clamp_forward") {
+            if (useNgspice) {
+                return simulate_active_clamp_forward_ideal_waveforms(converterJson);
+            } else {
+                if (converterData.contains("desiredInductance")) {
+                    return calculate_advanced_active_clamp_forward_inputs(converterJson);
+                } else {
+                    return calculate_active_clamp_forward_inputs(converterJson);
+                }
+            }
+        }
+        else if (topology == "llc" || topology == "advanced_llc") {
+            if (useNgspice) {
+                return simulate_llc_ideal_waveforms(converterJson);
+            } else {
+                return calculate_llc_inputs(converterJson);
+            }
+        }
+        else if (topology == "cllc" || topology == "advanced_cllc") {
+            return calculate_cllc_inputs(converterJson);
+        }
+        else if (topology == "dab" || topology == "advanced_dab") {
+            return calculate_dab_inputs(converterJson);
+        }
+        else if (topology == "psfb" || topology == "phase_shifted_full_bridge" || 
+                 topology == "advanced_psfb" || topology == "advanced_phase_shifted_full_bridge") {
+            return calculate_psfb_inputs(converterJson);
+        }
+        else {
+            json error;
+            error["error"] = "Unknown topology: " + topologyName;
+            return error.dump(4);
+        }
+    }
+    catch (const std::exception &exc) {
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
+    }
+}
+
+std::string design_magnetics_from_converter(std::string topologyName, std::string converterJson, 
+                                             int maxResults, std::string coreModeString, 
+                                             bool useNgspice, std::string weightsString) {
+    try {
+        // Step 1: Process the converter to get Inputs
+        std::string inputsResult = process_converter(topologyName, converterJson, useNgspice);
+        json inputsJson = json::parse(inputsResult);
+        
+        if (inputsJson.contains("error")) {
+            return inputsResult;  // Return the error
+        }
+        
+        // Step 2: Process inputs to ensure they're properly formatted
+        OpenMagnetics::Inputs inputs(inputsJson, true);
+        
+        // Step 3: Set up magnetic adviser
+        OpenMagnetics::MagneticAdviser magneticAdviser;
+        
+        // Parse core mode
+        OpenMagnetics::CoreAdviser::CoreAdviserModes coreMode;
+        OpenMagnetics::from_json(coreModeString, coreMode);
+        magneticAdviser.set_core_mode(coreMode);
+        
+        // Parse weights if provided
+        std::map<OpenMagnetics::MagneticFilters, double> weights;
+        if (!weightsString.empty() && weightsString != "{}") {
+            std::map<std::string, double> weightsKeysString = json::parse(weightsString);
+            double externalSum = 0;
+            for (const auto& pair : weightsKeysString) {
+                externalSum += pair.second;
+            }
+            for (const auto& [filterName, weight] : weightsKeysString) {
+                OpenMagnetics::MagneticFilters filter;
+                OpenMagnetics::from_json(filterName, filter);
+                weights[filter] = weight / externalSum;
+            }
+        }
+        
+        // Step 4: Get advised magnetics
+        std::vector<std::pair<OpenMagnetics::Mas, double>> masMagnetics;
+        if (weights.empty()) {
+            masMagnetics = magneticAdviser.get_advised_magnetic(inputs, maxResults);
+        } else {
+            masMagnetics = magneticAdviser.get_advised_magnetic(inputs, weights, maxResults);
+        }
+        
+        // Step 5: Build result
+        auto scorings = magneticAdviser.get_scorings();
+        json results;
+        results["data"] = json::array();
+        
+        for (auto& [masMagnetic, scoring] : masMagnetics) {
+            std::string name = masMagnetic.get_magnetic().get_manufacturer_info().value().get_reference().value();
+            
+            json result;
+            json masJson;
+            to_json(masJson, masMagnetic);
+            result["mas"] = masJson;
+            result["scoring"] = scoring;
+            
+            // Add scoring per filter if available
+            if (scorings.count(name)) {
+                result["scoringPerFilter"] = json();
+                for (size_t index = 0; index < magic_enum::enum_count<OpenMagnetics::MagneticFilters>(); ++index) {
+                    auto filter = static_cast<OpenMagnetics::MagneticFilters>(index);
+                    auto filterString = OpenMagnetics::to_string(filter);
+                    if (scorings[name].count(filter)) {
+                        result["scoringPerFilter"][filterString] = scorings[name][filter];
+                    }
+                }
+            }
+            
+            results["data"].push_back(result);
+        }
+        
+        // Sort by scoring
+        std::sort(results["data"].begin(), results["data"].end(), 
+                  [](json& b1, json& b2) {
+                      return b1["scoring"] > b2["scoring"];
+                  });
+        
+        return results.dump(4);
     }
     catch (const std::exception &exc) {
         json error;

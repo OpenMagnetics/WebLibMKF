@@ -116,6 +116,7 @@ set(COMMON_INCLUDE_DIRS
     ${DEPS_DIR}/json-src/include/nlohmann
     ${DEPS_DIR}/svg-src/src
     ${DEPS_DIR}/spline-src/src
+    ${DEPS_DIR}/eigen-src
     ${MAS_DIRECTORY}
 )
 
