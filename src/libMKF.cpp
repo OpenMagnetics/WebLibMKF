@@ -2728,11 +2728,13 @@ std::string get_solid_insulation_requirements_for_wires(std::string inputsString
 
 std::string calculate_advised_magnetics(std::string inputsString, std::string weightsString, int maximumNumberResults, std::string coreModeString){
     try {
+        std::cerr << "[DEBUG WASM calculate_advised_magnetics] coreModeString: " << coreModeString << std::endl;
         OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(true);
         OpenMagnetics::Inputs inputs(json::parse(inputsString));
 
         OpenMagnetics::CoreAdviser::CoreAdviserModes coreMode;
         from_json(coreModeString, coreMode);
+        std::cerr << "[DEBUG WASM calculate_advised_magnetics] coreMode enum value set" << std::endl;
 
         std::map<std::string, double> weightsKeysString = json::parse(weightsString);
         std::map<OpenMagnetics::MagneticFilters, double> weights;
