@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/mas-subbuild/CMakeFiles/mas-populate"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/mas-subbuild/CMakeFiles/mas-populate.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/mas-subbuild/CMakeFiles/mas-populate-complete.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/mas-subbuild/mas-populate-prefix/src/mas-populate-stamp/mas-populate-build.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/mas-subbuild/mas-populate-prefix/src/mas-populate-stamp/mas-populate-configure.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/mas-subbuild/mas-populate-prefix/src/mas-populate-stamp/mas-populate-download.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/mas-subbuild/mas-populate-prefix/src/mas-populate-stamp/mas-populate-install.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/mas-subbuild/mas-populate-prefix/src/mas-populate-stamp/mas-populate-mkdir.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/mas-subbuild/mas-populate-prefix/src/mas-populate-stamp/mas-populate-patch.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/mas-subbuild/mas-populate-prefix/src/mas-populate-stamp/mas-populate-test.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/mas-subbuild/mas-populate-prefix/src/mas-populate-stamp/mas-populate-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"mas-populate"
+		],
+		"name" : "mas-populate"
+	}
+}

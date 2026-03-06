@@ -1,0 +1,1513 @@
+
+---
+events:
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/CMakeDetermineSystem.cmake:200 (message)"
+      - "CMakeLists.txt:5 (project)"
+    message: |
+      The target system is: Emscripten - 1 - x86
+      The host system is: Linux - 6.6.87.2-microsoft-standard-WSL2 - x86_64
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:77 (check_cxx_compiler_flag)"
+    checks:
+      - "Performing Test EIGEN_COMPILER_SUPPORT_CPP11"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-BzeG2c"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-BzeG2c"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "EIGEN_COMPILER_SUPPORT_CPP11"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-BzeG2c'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_8a06a
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DEIGEN_COMPILER_SUPPORT_CPP11  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation  -fPIE   -std=c++11 -MD -MT CMakeFiles/cmTC_8a06a.dir/src.cxx.o -MF CMakeFiles/cmTC_8a06a.dir/src.cxx.o.d -o CMakeFiles/cmTC_8a06a.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-BzeG2c/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -pg CMakeFiles/cmTC_8a06a.dir/src.cxx.o -o cmTC_8a06a.js   && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:88 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_std=cpp03"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-REdfLL"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-REdfLL"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_std=cpp03"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-REdfLL'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_8e745
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_std=cpp03  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation  -fPIE   -std=c++03 -MD -MT CMakeFiles/cmTC_8e745.dir/src.cxx.o -MF CMakeFiles/cmTC_8e745.dir/src.cxx.o.d -o CMakeFiles/cmTC_8e745.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-REdfLL/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -pg CMakeFiles/cmTC_8e745.dir/src.cxx.o -o cmTC_8e745.js   && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXSourceCompiles.cmake:52 (cmake_check_source_compiles)"
+      - "build/_deps/eigen-src/cmake/FindStandardMathLibrary.cmake:35 (CHECK_CXX_SOURCE_COMPILES)"
+      - "build/_deps/eigen-src/CMakeLists.txt:98 (find_package)"
+    checks:
+      - "Performing Test standard_math_library_linked_to_automatically"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-8pnc3r"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-8pnc3r"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "standard_math_library_linked_to_automatically"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-8pnc3r'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_58589
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -Dstandard_math_library_linked_to_automatically  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03  -fPIE -MD -MT CMakeFiles/cmTC_58589.dir/src.cxx.o -MF CMakeFiles/cmTC_58589.dir/src.cxx.o.d -o CMakeFiles/cmTC_58589.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-8pnc3r/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pg CMakeFiles/cmTC_58589.dir/src.cxx.o -o cmTC_58589.js   && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:150 (check_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_WERROR"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-igkIpf"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-igkIpf"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_WERROR"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-igkIpf'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_d0bdf
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_WERROR  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03  -fPIE   -Werror -MD -MT CMakeFiles/cmTC_d0bdf.dir/src.cxx.o -MF CMakeFiles/cmTC_d0bdf.dir/src.cxx.o.d -o CMakeFiles/cmTC_d0bdf.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-igkIpf/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pg CMakeFiles/cmTC_d0bdf.dir/src.cxx.o -o cmTC_d0bdf.js   && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:154 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_pedantic"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-yoqFv3"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-yoqFv3"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_pedantic"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-yoqFv3'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_e63c8
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_pedantic  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -Werror -fPIE   -pedantic -MD -MT CMakeFiles/cmTC_e63c8.dir/src.cxx.o -MF CMakeFiles/cmTC_e63c8.dir/src.cxx.o.d -o CMakeFiles/cmTC_e63c8.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-yoqFv3/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -Werror -pg CMakeFiles/cmTC_e63c8.dir/src.cxx.o -o cmTC_e63c8.js   && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:155 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_Wall"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-4ZNTOR"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-4ZNTOR"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_Wall"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-4ZNTOR'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_65846
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_Wall  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Werror -fPIE   -Wall -MD -MT CMakeFiles/cmTC_65846.dir/src.cxx.o -MF CMakeFiles/cmTC_65846.dir/src.cxx.o.d -o CMakeFiles/cmTC_65846.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-4ZNTOR/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Werror -pg CMakeFiles/cmTC_65846.dir/src.cxx.o -o cmTC_65846.js   && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:156 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_Wextra"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-qOICW3"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-qOICW3"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_Wextra"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-qOICW3'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_b2b63
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_Wextra  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Werror -fPIE   -Wextra -MD -MT CMakeFiles/cmTC_b2b63.dir/src.cxx.o -MF CMakeFiles/cmTC_b2b63.dir/src.cxx.o.d -o CMakeFiles/cmTC_b2b63.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-qOICW3/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Werror -pg CMakeFiles/cmTC_b2b63.dir/src.cxx.o -o cmTC_b2b63.js   && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:159 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_Wundef"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-CZKgPH"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-CZKgPH"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_Wundef"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-CZKgPH'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_70ba0
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_Wundef  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Werror -fPIE   -Wundef -MD -MT CMakeFiles/cmTC_70ba0.dir/src.cxx.o -MF CMakeFiles/cmTC_70ba0.dir/src.cxx.o.d -o CMakeFiles/cmTC_70ba0.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-CZKgPH/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Werror -pg CMakeFiles/cmTC_70ba0.dir/src.cxx.o -o cmTC_70ba0.js   && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:160 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_Wcastalign"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-BRlWpM"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-BRlWpM"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_Wcastalign"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-BRlWpM'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_c344d
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_Wcastalign  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Werror -fPIE   -Wcast-align -MD -MT CMakeFiles/cmTC_c344d.dir/src.cxx.o -MF CMakeFiles/cmTC_c344d.dir/src.cxx.o.d -o CMakeFiles/cmTC_c344d.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-BRlWpM/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Werror -pg CMakeFiles/cmTC_c344d.dir/src.cxx.o -o cmTC_c344d.js   && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:161 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_Wcharsubscripts"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-BdTz7Q"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-BdTz7Q"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_Wcharsubscripts"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-BdTz7Q'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_8c9f7
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_Wcharsubscripts  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Werror -fPIE   -Wchar-subscripts -MD -MT CMakeFiles/cmTC_8c9f7.dir/src.cxx.o -MF CMakeFiles/cmTC_8c9f7.dir/src.cxx.o.d -o CMakeFiles/cmTC_8c9f7.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-BdTz7Q/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Werror -pg CMakeFiles/cmTC_8c9f7.dir/src.cxx.o -o cmTC_8c9f7.js   && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:162 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_Wnonvirtualdtor"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-wHr3o5"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-wHr3o5"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_Wnonvirtualdtor"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-wHr3o5'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_f8390
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_Wnonvirtualdtor  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Werror -fPIE   -Wnon-virtual-dtor -MD -MT CMakeFiles/cmTC_f8390.dir/src.cxx.o -MF CMakeFiles/cmTC_f8390.dir/src.cxx.o.d -o CMakeFiles/cmTC_f8390.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-wHr3o5/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Werror -pg CMakeFiles/cmTC_f8390.dir/src.cxx.o -o cmTC_f8390.js   && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:163 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_Wunusedlocaltypedefs"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-irpcrY"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-irpcrY"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_Wunusedlocaltypedefs"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-irpcrY'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_ae1d8
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_Wunusedlocaltypedefs  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Werror -fPIE   -Wunused-local-typedefs -MD -MT CMakeFiles/cmTC_ae1d8.dir/src.cxx.o -MF CMakeFiles/cmTC_ae1d8.dir/src.cxx.o.d -o CMakeFiles/cmTC_ae1d8.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-irpcrY/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Werror -pg CMakeFiles/cmTC_ae1d8.dir/src.cxx.o -o cmTC_ae1d8.js   && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:164 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_Wpointerarith"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-RCY0ca"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-RCY0ca"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_Wpointerarith"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-RCY0ca'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_c3e38
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_Wpointerarith  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Werror -fPIE   -Wpointer-arith -MD -MT CMakeFiles/cmTC_c3e38.dir/src.cxx.o -MF CMakeFiles/cmTC_c3e38.dir/src.cxx.o.d -o CMakeFiles/cmTC_c3e38.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-RCY0ca/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Werror -pg CMakeFiles/cmTC_c3e38.dir/src.cxx.o -o cmTC_c3e38.js   && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:165 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_Wwritestrings"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-yyyxGd"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-yyyxGd"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_Wwritestrings"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-yyyxGd'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_850db
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_Wwritestrings  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Werror -fPIE   -Wwrite-strings -MD -MT CMakeFiles/cmTC_850db.dir/src.cxx.o -MF CMakeFiles/cmTC_850db.dir/src.cxx.o.d -o CMakeFiles/cmTC_850db.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-yyyxGd/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Werror -pg CMakeFiles/cmTC_850db.dir/src.cxx.o -o cmTC_850db.js   && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:166 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_Wformatsecurity"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-JqDQc8"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-JqDQc8"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_Wformatsecurity"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-JqDQc8'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_d6101
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_Wformatsecurity  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Werror -fPIE   -Wformat-security -MD -MT CMakeFiles/cmTC_d6101.dir/src.cxx.o -MF CMakeFiles/cmTC_d6101.dir/src.cxx.o.d -o CMakeFiles/cmTC_d6101.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-JqDQc8/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Werror -pg CMakeFiles/cmTC_d6101.dir/src.cxx.o -o cmTC_d6101.js   && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:167 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_Wshorten64to32"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-vJTiJE"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-vJTiJE"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_Wshorten64to32"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-vJTiJE'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_1d0b6
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_Wshorten64to32  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Werror -fPIE   -Wshorten-64-to-32 -MD -MT CMakeFiles/cmTC_1d0b6.dir/src.cxx.o -MF CMakeFiles/cmTC_1d0b6.dir/src.cxx.o.d -o CMakeFiles/cmTC_1d0b6.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-vJTiJE/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Werror -pg CMakeFiles/cmTC_1d0b6.dir/src.cxx.o -o cmTC_1d0b6.js   && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:168 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_Wlogicalop"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-2iILe6"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-2iILe6"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_Wlogicalop"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-2iILe6'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_dbe50
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_Wlogicalop  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Werror -fPIE   -Wlogical-op -MD -MT CMakeFiles/cmTC_dbe50.dir/src.cxx.o -MF CMakeFiles/cmTC_dbe50.dir/src.cxx.o.d -o CMakeFiles/cmTC_dbe50.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-2iILe6/src.cxx
+        FAILED: CMakeFiles/cmTC_dbe50.dir/src.cxx.o 
+        /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_Wlogicalop  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Werror -fPIE   -Wlogical-op -MD -MT CMakeFiles/cmTC_dbe50.dir/src.cxx.o -MF CMakeFiles/cmTC_dbe50.dir/src.cxx.o.d -o CMakeFiles/cmTC_dbe50.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-2iILe6/src.cxx
+        error: unknown warning option '-Wlogical-op'; did you mean '-Wlong-long'? [-Werror,-Wunknown-warning-option]
+        ninja: build stopped: subcommand failed.
+        
+      exitCode: 1
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:169 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_Wenumconversion"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-dV1iLg"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-dV1iLg"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_Wenumconversion"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-dV1iLg'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_2e2bd
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_Wenumconversion  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Werror -fPIE   -Wenum-conversion -MD -MT CMakeFiles/cmTC_2e2bd.dir/src.cxx.o -MF CMakeFiles/cmTC_2e2bd.dir/src.cxx.o.d -o CMakeFiles/cmTC_2e2bd.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-dV1iLg/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Werror -pg CMakeFiles/cmTC_2e2bd.dir/src.cxx.o -o cmTC_2e2bd.js   && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:170 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_Wcpp11extensions"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-ElUSQ4"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-ElUSQ4"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_Wcpp11extensions"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-ElUSQ4'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_1bcb4
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_Wcpp11extensions  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Werror -fPIE   -Wc++11-extensions -MD -MT CMakeFiles/cmTC_1bcb4.dir/src.cxx.o -MF CMakeFiles/cmTC_1bcb4.dir/src.cxx.o.d -o CMakeFiles/cmTC_1bcb4.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-ElUSQ4/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Werror -pg CMakeFiles/cmTC_1bcb4.dir/src.cxx.o -o cmTC_1bcb4.js   && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:171 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_Wdoublepromotion"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-1y2e09"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-1y2e09"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_Wdoublepromotion"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-1y2e09'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_d9b3d
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_Wdoublepromotion  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Werror -fPIE   -Wdouble-promotion -MD -MT CMakeFiles/cmTC_d9b3d.dir/src.cxx.o -MF CMakeFiles/cmTC_d9b3d.dir/src.cxx.o.d -o CMakeFiles/cmTC_d9b3d.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-1y2e09/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Werror -pg CMakeFiles/cmTC_d9b3d.dir/src.cxx.o -o cmTC_d9b3d.js   && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:174 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_Wshadow"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-ebU942"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-ebU942"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_Wshadow"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-ebU942'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_d8ff1
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_Wshadow  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Werror -fPIE   -Wshadow -MD -MT CMakeFiles/cmTC_d8ff1.dir/src.cxx.o -MF CMakeFiles/cmTC_d8ff1.dir/src.cxx.o.d -o CMakeFiles/cmTC_d8ff1.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-ebU942/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Werror -pg CMakeFiles/cmTC_d8ff1.dir/src.cxx.o -o cmTC_d8ff1.js   && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:176 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_Wnopsabi"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-Fpuahc"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-Fpuahc"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_Wnopsabi"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-Fpuahc'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_9e244
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_Wnopsabi  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Werror -fPIE   -Wno-psabi -MD -MT CMakeFiles/cmTC_9e244.dir/src.cxx.o -MF CMakeFiles/cmTC_9e244.dir/src.cxx.o.d -o CMakeFiles/cmTC_9e244.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-Fpuahc/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Werror -pg CMakeFiles/cmTC_9e244.dir/src.cxx.o -o cmTC_9e244.js   && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:177 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_Wnovariadicmacros"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-Pvy78t"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-Pvy78t"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_Wnovariadicmacros"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-Pvy78t'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_6b8d9
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_Wnovariadicmacros  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Werror -fPIE   -Wno-variadic-macros -MD -MT CMakeFiles/cmTC_6b8d9.dir/src.cxx.o -MF CMakeFiles/cmTC_6b8d9.dir/src.cxx.o.d -o CMakeFiles/cmTC_6b8d9.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-Pvy78t/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Werror -pg CMakeFiles/cmTC_6b8d9.dir/src.cxx.o -o cmTC_6b8d9.js   && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:178 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_Wnolonglong"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-delJHS"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-delJHS"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Wno-variadic-macros"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_Wnolonglong"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-delJHS'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_c2989
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_Wnolonglong  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Wno-variadic-macros -Werror -fPIE   -Wno-long-long -MD -MT CMakeFiles/cmTC_c2989.dir/src.cxx.o -MF CMakeFiles/cmTC_c2989.dir/src.cxx.o.d -o CMakeFiles/cmTC_c2989.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-delJHS/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Wno-variadic-macros -Werror -pg CMakeFiles/cmTC_c2989.dir/src.cxx.o -o cmTC_c2989.js   && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:180 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_fnochecknew"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-bPROON"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-bPROON"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Wno-variadic-macros -Wno-long-long"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_fnochecknew"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-bPROON'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_ec282
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_fnochecknew  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Wno-variadic-macros -Wno-long-long -Werror -fPIE   -fno-check-new -MD -MT CMakeFiles/cmTC_ec282.dir/src.cxx.o -MF CMakeFiles/cmTC_ec282.dir/src.cxx.o.d -o CMakeFiles/cmTC_ec282.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-bPROON/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Wno-variadic-macros -Wno-long-long -Werror -pg CMakeFiles/cmTC_ec282.dir/src.cxx.o -o cmTC_ec282.js   && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:181 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_fnocommon"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-znsBd6"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-znsBd6"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Wno-variadic-macros -Wno-long-long -fno-check-new"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_fnocommon"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-znsBd6'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_459e8
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_fnocommon  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Wno-variadic-macros -Wno-long-long -fno-check-new -Werror -fPIE   -fno-common -MD -MT CMakeFiles/cmTC_459e8.dir/src.cxx.o -MF CMakeFiles/cmTC_459e8.dir/src.cxx.o.d -o CMakeFiles/cmTC_459e8.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-znsBd6/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Wno-variadic-macros -Wno-long-long -fno-check-new -Werror -pg CMakeFiles/cmTC_459e8.dir/src.cxx.o -o cmTC_459e8.js   && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:182 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_fstrictaliasing"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-HDrDVj"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-HDrDVj"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Wno-variadic-macros -Wno-long-long -fno-check-new -fno-common"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_fstrictaliasing"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-HDrDVj'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_ee2af
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_fstrictaliasing  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Wno-variadic-macros -Wno-long-long -fno-check-new -fno-common -Werror -fPIE   -fstrict-aliasing -MD -MT CMakeFiles/cmTC_ee2af.dir/src.cxx.o -MF CMakeFiles/cmTC_ee2af.dir/src.cxx.o.d -o CMakeFiles/cmTC_ee2af.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-HDrDVj/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Wno-variadic-macros -Wno-long-long -fno-check-new -fno-common -Werror -pg CMakeFiles/cmTC_ee2af.dir/src.cxx.o -o cmTC_ee2af.js   && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:183 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_wd981"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-ypd05Y"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-ypd05Y"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Wno-variadic-macros -Wno-long-long -fno-check-new -fno-common -fstrict-aliasing"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_wd981"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-ypd05Y'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_0182a
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_wd981  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Wno-variadic-macros -Wno-long-long -fno-check-new -fno-common -fstrict-aliasing -Werror -fPIE   -wd981 -MD -MT CMakeFiles/cmTC_0182a.dir/src.cxx.o -MF CMakeFiles/cmTC_0182a.dir/src.cxx.o.d -o CMakeFiles/cmTC_0182a.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-ypd05Y/src.cxx
+        FAILED: CMakeFiles/cmTC_0182a.dir/src.cxx.o 
+        /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_wd981  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Wno-variadic-macros -Wno-long-long -fno-check-new -fno-common -fstrict-aliasing -Werror -fPIE   -wd981 -MD -MT CMakeFiles/cmTC_0182a.dir/src.cxx.o -MF CMakeFiles/cmTC_0182a.dir/src.cxx.o.d -o CMakeFiles/cmTC_0182a.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-ypd05Y/src.cxx
+        clang++: error: unknown argument: '-wd981'
+        ninja: build stopped: subcommand failed.
+        
+      exitCode: 1
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:184 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_wd2304"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-pAIhtB"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-pAIhtB"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Wno-variadic-macros -Wno-long-long -fno-check-new -fno-common -fstrict-aliasing"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_wd2304"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-pAIhtB'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_86d64
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_wd2304  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Wno-variadic-macros -Wno-long-long -fno-check-new -fno-common -fstrict-aliasing -Werror -fPIE   -wd2304 -MD -MT CMakeFiles/cmTC_86d64.dir/src.cxx.o -MF CMakeFiles/cmTC_86d64.dir/src.cxx.o.d -o CMakeFiles/cmTC_86d64.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-pAIhtB/src.cxx
+        FAILED: CMakeFiles/cmTC_86d64.dir/src.cxx.o 
+        /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_wd2304  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Wno-variadic-macros -Wno-long-long -fno-check-new -fno-common -fstrict-aliasing -Werror -fPIE   -wd2304 -MD -MT CMakeFiles/cmTC_86d64.dir/src.cxx.o -MF CMakeFiles/cmTC_86d64.dir/src.cxx.o.d -o CMakeFiles/cmTC_86d64.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-pAIhtB/src.cxx
+        clang++: error: unknown argument: '-wd2304'
+        ninja: build stopped: subcommand failed.
+        
+      exitCode: 1
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:189 (check_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_STRICTANSI"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-6xIIp2"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-6xIIp2"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Wno-variadic-macros -Wno-long-long -fno-check-new -fno-common -fstrict-aliasing"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_STRICTANSI"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-6xIIp2'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_5084b
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_STRICTANSI  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Wno-variadic-macros -Wno-long-long -fno-check-new -fno-common -fstrict-aliasing -Werror -fPIE   -strict-ansi -MD -MT CMakeFiles/cmTC_5084b.dir/src.cxx.o -MF CMakeFiles/cmTC_5084b.dir/src.cxx.o.d -o CMakeFiles/cmTC_5084b.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-6xIIp2/src.cxx
+        FAILED: CMakeFiles/cmTC_5084b.dir/src.cxx.o 
+        /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_STRICTANSI  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Wno-variadic-macros -Wno-long-long -fno-check-new -fno-common -fstrict-aliasing -Werror -fPIE   -strict-ansi -MD -MT CMakeFiles/cmTC_5084b.dir/src.cxx.o -MF CMakeFiles/cmTC_5084b.dir/src.cxx.o.d -o CMakeFiles/cmTC_5084b.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-6xIIp2/src.cxx
+        clang++: error: unknown argument: '-strict-ansi'
+        ninja: build stopped: subcommand failed.
+        
+      exitCode: 1
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:190 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_Qunusedarguments"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-fBLQB7"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-fBLQB7"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Wno-variadic-macros -Wno-long-long -fno-check-new -fno-common -fstrict-aliasing"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_Qunusedarguments"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-fBLQB7'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_a42ff
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_Qunusedarguments  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Wno-variadic-macros -Wno-long-long -fno-check-new -fno-common -fstrict-aliasing -Werror -fPIE   -Qunused-arguments -MD -MT CMakeFiles/cmTC_a42ff.dir/src.cxx.o -MF CMakeFiles/cmTC_a42ff.dir/src.cxx.o.d -o CMakeFiles/cmTC_a42ff.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-fBLQB7/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Wno-variadic-macros -Wno-long-long -fno-check-new -fno-common -fstrict-aliasing -Werror -pg CMakeFiles/cmTC_a42ff.dir/src.cxx.o -o cmTC_a42ff.js   && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:195 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_ansi"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-Mu2f3T"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-Mu2f3T"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Wno-variadic-macros -Wno-long-long -fno-check-new -fno-common -fstrict-aliasing -Qunused-arguments"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_ansi"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-Mu2f3T'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_e63f1
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_ansi  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Wno-variadic-macros -Wno-long-long -fno-check-new -fno-common -fstrict-aliasing -Qunused-arguments -Werror -fPIE   -ansi -MD -MT CMakeFiles/cmTC_e63f1.dir/src.cxx.o -MF CMakeFiles/cmTC_e63f1.dir/src.cxx.o.d -o CMakeFiles/cmTC_e63f1.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-Mu2f3T/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Wno-variadic-macros -Wno-long-long -fno-check-new -fno-common -fstrict-aliasing -Qunused-arguments -Werror -pg CMakeFiles/cmTC_e63f1.dir/src.cxx.o -o cmTC_e63f1.js   && :
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:324 (check_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_OPENMP"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-aJQXon"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-aJQXon"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Wno-variadic-macros -Wno-long-long -fno-check-new -fno-common -fstrict-aliasing -Qunused-arguments -ansi"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_OPENMP"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-aJQXon'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_5a54a
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_OPENMP  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Wno-variadic-macros -Wno-long-long -fno-check-new -fno-common -fstrict-aliasing -Qunused-arguments -ansi  -fPIE   -fopenmp -MD -MT CMakeFiles/cmTC_5a54a.dir/src.cxx.o -MF CMakeFiles/cmTC_5a54a.dir/src.cxx.o.d -o CMakeFiles/cmTC_5a54a.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-aJQXon/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -std=c++03 -pedantic -Wall -Wextra -Wundef -Wcast-align -Wchar-subscripts -Wnon-virtual-dtor -Wunused-local-typedefs -Wpointer-arith -Wwrite-strings -Wformat-security -Wshorten-64-to-32 -Wenum-conversion -Wc++11-extensions -Wdouble-promotion -Wshadow -Wno-psabi -Wno-variadic-macros -Wno-long-long -fno-check-new -fno-common -fstrict-aliasing -Qunused-arguments -ansi -pg CMakeFiles/cmTC_5a54a.dir/src.cxx.o -o cmTC_5a54a.js   && :
+        
+      exitCode: 0
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/CheckLanguage.cmake:140 (message)"
+      - "build/_deps/eigen-src/blas/CMakeLists.txt:5 (check_language)"
+    checks:
+      - "Looking for a Fortran compiler"
+    message: |
+      Looking for a Fortran compiler failed with the following output:
+      -- The Fortran compiler identification is unknown
+      CMake Error at CMakeLists.txt:3 (project):
+        No CMAKE_Fortran_COMPILER could be found.
+      
+        Tell CMake where to find the compiler by setting either the environment
+        variable "FC" or the CMake cache entry CMAKE_Fortran_COMPILER to the full
+        path to the compiler, or to the compiler name if it is in the PATH.
+      
+      
+      -- Configuring incomplete, errors occurred!
+      
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCSourceCompiles.cmake:52 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/FindThreads.cmake:97 (CHECK_C_SOURCE_COMPILES)"
+      - "/usr/local/share/cmake-3.30/Modules/FindThreads.cmake:163 (_threads_check_libc)"
+      - "/usr/local/share/cmake-3.30/Modules/CMakeFindDependencyMacro.cmake:76 (find_package)"
+      - "build/_deps/eigen-src/cmake/FindPASTIX.cmake:143 (find_dependency)"
+      - "build/_deps/eigen-src/bench/spbench/CMakeLists.txt:48 (find_package)"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-3aE6zK"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-3aE6zK"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_C_FLAGS: " -Wno-cpp"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "CMAKE_HAVE_LIBC_PTHREAD"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-3aE6zK'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_20446
+        [1/2] /home/alf/emsdk/upstream/emscripten/emcc -DCMAKE_HAVE_LIBC_PTHREAD  -Wno-cpp  -fPIE -MD -MT CMakeFiles/cmTC_20446.dir/src.c.o -MF CMakeFiles/cmTC_20446.dir/src.c.o.d -o CMakeFiles/cmTC_20446.dir/src.c.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-3aE6zK/src.c
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/emcc -Wno-cpp -pg CMakeFiles/cmTC_20446.dir/src.c.o -o cmTC_20446.js   && :
+        
+      exitCode: 0
+...
+
+---
+events:
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:88 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_std=cpp03"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-ic0YSQ"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-ic0YSQ"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_std=cpp03"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-ic0YSQ'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_40943
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_std=cpp03  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation  -fPIE   -std=c++03 -MD -MT CMakeFiles/cmTC_40943.dir/src.cxx.o -MF CMakeFiles/cmTC_40943.dir/src.cxx.o.d -o CMakeFiles/cmTC_40943.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-ic0YSQ/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -pg CMakeFiles/cmTC_40943.dir/src.cxx.o -o cmTC_40943.js   && :
+        
+      exitCode: 0
+...
+
+---
+events:
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:88 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_std=cpp03"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-4QFJCh"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-4QFJCh"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_std=cpp03"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-4QFJCh'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_c36cc
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_std=cpp03  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation  -fPIE   -std=c++03 -MD -MT CMakeFiles/cmTC_c36cc.dir/src.cxx.o -MF CMakeFiles/cmTC_c36cc.dir/src.cxx.o.d -o CMakeFiles/cmTC_c36cc.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-4QFJCh/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -pg CMakeFiles/cmTC_c36cc.dir/src.cxx.o -o cmTC_c36cc.js   && :
+        
+      exitCode: 0
+...
+
+---
+events:
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:88 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_std=cpp03"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-5KqQGb"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-5KqQGb"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_std=cpp03"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-5KqQGb'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_30316
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_std=cpp03  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation  -fPIE   -std=c++03 -MD -MT CMakeFiles/cmTC_30316.dir/src.cxx.o -MF CMakeFiles/cmTC_30316.dir/src.cxx.o.d -o CMakeFiles/cmTC_30316.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-5KqQGb/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -pg CMakeFiles/cmTC_30316.dir/src.cxx.o -o cmTC_30316.js   && :
+        
+      exitCode: 0
+...
+
+---
+events:
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:88 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_std=cpp03"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-wVv4ub"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-wVv4ub"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_std=cpp03"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-wVv4ub'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_ffb2f
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_std=cpp03  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation  -fPIE   -std=c++03 -MD -MT CMakeFiles/cmTC_ffb2f.dir/src.cxx.o -MF CMakeFiles/cmTC_ffb2f.dir/src.cxx.o.d -o CMakeFiles/cmTC_ffb2f.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-wVv4ub/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -pg CMakeFiles/cmTC_ffb2f.dir/src.cxx.o -o cmTC_ffb2f.js   && :
+        
+      exitCode: 0
+...
+
+---
+events:
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:88 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_std=cpp03"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-TFnoHG"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-TFnoHG"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_std=cpp03"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-TFnoHG'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_7e7c3
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_std=cpp03  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation  -fPIE   -std=c++03 -MD -MT CMakeFiles/cmTC_7e7c3.dir/src.cxx.o -MF CMakeFiles/cmTC_7e7c3.dir/src.cxx.o.d -o CMakeFiles/cmTC_7e7c3.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-TFnoHG/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -pg CMakeFiles/cmTC_7e7c3.dir/src.cxx.o -o cmTC_7e7c3.js   && :
+        
+      exitCode: 0
+...
+
+---
+events:
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:88 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_std=cpp03"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-8ace0y"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-8ace0y"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_std=cpp03"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-8ace0y'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_92351
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_std=cpp03  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation  -fPIE   -std=c++03 -MD -MT CMakeFiles/cmTC_92351.dir/src.cxx.o -MF CMakeFiles/cmTC_92351.dir/src.cxx.o.d -o CMakeFiles/cmTC_92351.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-8ace0y/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -pg CMakeFiles/cmTC_92351.dir/src.cxx.o -o cmTC_92351.js   && :
+        
+      exitCode: 0
+...
+
+---
+events:
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:88 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_std=cpp03"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-6Zz1R1"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-6Zz1R1"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_std=cpp03"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-6Zz1R1'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_9c4d4
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_std=cpp03  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation  -fPIE   -std=c++03 -MD -MT CMakeFiles/cmTC_9c4d4.dir/src.cxx.o -MF CMakeFiles/cmTC_9c4d4.dir/src.cxx.o.d -o CMakeFiles/cmTC_9c4d4.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-6Zz1R1/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -pg CMakeFiles/cmTC_9c4d4.dir/src.cxx.o -o cmTC_9c4d4.js   && :
+        
+      exitCode: 0
+...
+
+---
+events:
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:88 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_std=cpp03"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-MxTh5i"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-MxTh5i"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_std=cpp03"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-MxTh5i'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_ba897
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_std=cpp03  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation  -fPIE   -std=c++03 -MD -MT CMakeFiles/cmTC_ba897.dir/src.cxx.o -MF CMakeFiles/cmTC_ba897.dir/src.cxx.o.d -o CMakeFiles/cmTC_ba897.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-MxTh5i/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -pg CMakeFiles/cmTC_ba897.dir/src.cxx.o -o cmTC_ba897.js   && :
+        
+      exitCode: 0
+...
+
+---
+events:
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:88 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_std=cpp03"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-kEHlBx"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-kEHlBx"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_std=cpp03"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-kEHlBx'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_733e5
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_std=cpp03  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation  -fPIE   -std=c++03 -MD -MT CMakeFiles/cmTC_733e5.dir/src.cxx.o -MF CMakeFiles/cmTC_733e5.dir/src.cxx.o.d -o CMakeFiles/cmTC_733e5.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-kEHlBx/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -pg CMakeFiles/cmTC_733e5.dir/src.cxx.o -o cmTC_733e5.js   && :
+        
+      exitCode: 0
+...
+
+---
+events:
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:88 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_std=cpp03"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-lIOTU4"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-lIOTU4"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_std=cpp03"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-lIOTU4'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_f34ae
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_std=cpp03  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation  -fPIE   -std=c++03 -MD -MT CMakeFiles/cmTC_f34ae.dir/src.cxx.o -MF CMakeFiles/cmTC_f34ae.dir/src.cxx.o.d -o CMakeFiles/cmTC_f34ae.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-lIOTU4/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -pg CMakeFiles/cmTC_f34ae.dir/src.cxx.o -o cmTC_f34ae.js   && :
+        
+      exitCode: 0
+...
+
+---
+events:
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:88 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_std=cpp03"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-YxWBgi"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-YxWBgi"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_std=cpp03"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-YxWBgi'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_bae95
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_std=cpp03  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation  -fPIE   -std=c++03 -MD -MT CMakeFiles/cmTC_bae95.dir/src.cxx.o -MF CMakeFiles/cmTC_bae95.dir/src.cxx.o.d -o CMakeFiles/cmTC_bae95.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-YxWBgi/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -pg CMakeFiles/cmTC_bae95.dir/src.cxx.o -o cmTC_bae95.js   && :
+        
+      exitCode: 0
+...
+
+---
+events:
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/local/share/cmake-3.30/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-3.30/Modules/CheckCXXCompilerFlag.cmake:34 (cmake_check_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:71 (check_cxx_compiler_flag)"
+      - "build/_deps/eigen-src/CMakeLists.txt:88 (ei_add_cxx_compiler_flag)"
+    checks:
+      - "Performing Test COMPILER_SUPPORT_std=cpp03"
+    directories:
+      source: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-Wm3EWX"
+      binary: "/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-Wm3EWX"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND"
+      CMAKE_CXX_FLAGS: " -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation"
+      CMAKE_EXE_LINKER_FLAGS: " -pg"
+      CMAKE_MODULE_PATH: "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/eigen-src/cmake"
+      CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+      CMAKE_POSITION_INDEPENDENT_CODE: "ON"
+    buildResult:
+      variable: "COMPILER_SUPPORT_std=cpp03"
+      cached: true
+      stdout: |
+        Change Dir: '/home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-Wm3EWX'
+        
+        Run Build Command(s): /home/alf/.local/bin/ninja -v cmTC_149a7
+        [1/2] /home/alf/emsdk/upstream/emscripten/em++ -DCOMPILER_SUPPORT_std=cpp03  -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation  -fPIE   -std=c++03 -MD -MT CMakeFiles/cmTC_149a7.dir/src.cxx.o -MF CMakeFiles/cmTC_149a7.dir/src.cxx.o.d -o CMakeFiles/cmTC_149a7.dir/src.cxx.o -c /home/alf/OpenMagnetics/WebLibMKF/build/CMakeFiles/CMakeScratch/TryCompile-Wm3EWX/src.cxx
+        [2/2] : && /home/alf/emsdk/upstream/emscripten/em++ -Wall -Wextra -fwasm-exceptions -Wall -Wextra -Wno-deprecated-declarations -Wno-unused-parameter -Wno-switch -Wno-format-truncation -pg CMakeFiles/cmTC_149a7.dir/src.cxx.o -o cmTC_149a7.js   && :
+        
+      exitCode: 0
+...

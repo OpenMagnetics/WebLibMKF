@@ -1,0 +1,3 @@
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/svg-subbuild/CMakeFiles/svg-populate.dir
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/svg-subbuild/CMakeFiles/edit_cache.dir
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/svg-subbuild/CMakeFiles/rebuild_cache.dir

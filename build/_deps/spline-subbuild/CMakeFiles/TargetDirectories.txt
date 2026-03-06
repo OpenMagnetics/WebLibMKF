@@ -1,0 +1,3 @@
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/spline-subbuild/CMakeFiles/spline-populate.dir
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/spline-subbuild/CMakeFiles/edit_cache.dir
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/spline-subbuild/CMakeFiles/rebuild_cache.dir

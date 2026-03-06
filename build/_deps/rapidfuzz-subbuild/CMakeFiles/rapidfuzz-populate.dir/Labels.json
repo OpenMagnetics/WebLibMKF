@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/rapidfuzz-subbuild/CMakeFiles/rapidfuzz-populate"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/rapidfuzz-subbuild/CMakeFiles/rapidfuzz-populate.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/rapidfuzz-subbuild/CMakeFiles/rapidfuzz-populate-complete.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/rapidfuzz-subbuild/rapidfuzz-populate-prefix/src/rapidfuzz-populate-stamp/rapidfuzz-populate-build.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/rapidfuzz-subbuild/rapidfuzz-populate-prefix/src/rapidfuzz-populate-stamp/rapidfuzz-populate-configure.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/rapidfuzz-subbuild/rapidfuzz-populate-prefix/src/rapidfuzz-populate-stamp/rapidfuzz-populate-download.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/rapidfuzz-subbuild/rapidfuzz-populate-prefix/src/rapidfuzz-populate-stamp/rapidfuzz-populate-install.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/rapidfuzz-subbuild/rapidfuzz-populate-prefix/src/rapidfuzz-populate-stamp/rapidfuzz-populate-mkdir.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/rapidfuzz-subbuild/rapidfuzz-populate-prefix/src/rapidfuzz-populate-stamp/rapidfuzz-populate-patch.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/rapidfuzz-subbuild/rapidfuzz-populate-prefix/src/rapidfuzz-populate-stamp/rapidfuzz-populate-test.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/rapidfuzz-subbuild/rapidfuzz-populate-prefix/src/rapidfuzz-populate-stamp/rapidfuzz-populate-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"rapidfuzz-populate"
+		],
+		"name" : "rapidfuzz-populate"
+	}
+}

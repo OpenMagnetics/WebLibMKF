@@ -1,0 +1,6 @@
+libngspice_la-conf.lo: \
+  /home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/conf.c \
+  ../src/include/ngspice/config.h \
+  /home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/conf.h
+../src/include/ngspice/config.h:
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/conf.h:

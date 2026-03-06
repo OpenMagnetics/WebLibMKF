@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/magic-enum-subbuild/CMakeFiles/magic-enum-populate"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/magic-enum-subbuild/CMakeFiles/magic-enum-populate.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/magic-enum-subbuild/CMakeFiles/magic-enum-populate-complete.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/magic-enum-subbuild/magic-enum-populate-prefix/src/magic-enum-populate-stamp/magic-enum-populate-build.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/magic-enum-subbuild/magic-enum-populate-prefix/src/magic-enum-populate-stamp/magic-enum-populate-configure.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/magic-enum-subbuild/magic-enum-populate-prefix/src/magic-enum-populate-stamp/magic-enum-populate-download.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/magic-enum-subbuild/magic-enum-populate-prefix/src/magic-enum-populate-stamp/magic-enum-populate-install.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/magic-enum-subbuild/magic-enum-populate-prefix/src/magic-enum-populate-stamp/magic-enum-populate-mkdir.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/magic-enum-subbuild/magic-enum-populate-prefix/src/magic-enum-populate-stamp/magic-enum-populate-patch.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/magic-enum-subbuild/magic-enum-populate-prefix/src/magic-enum-populate-stamp/magic-enum-populate-test.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/magic-enum-subbuild/magic-enum-populate-prefix/src/magic-enum-populate-stamp/magic-enum-populate-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"magic-enum-populate"
+		],
+		"name" : "magic-enum-populate"
+	}
+}

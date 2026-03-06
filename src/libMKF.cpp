@@ -2493,7 +2493,9 @@ std::string calculate_advised_cores(std::string inputsString, std::string weight
 
         OpenMagnetics::Inputs inputs(json::parse(inputsString));
         OpenMagnetics::CoreAdviser::CoreAdviserModes coreMode;
+        std::cout << "[DEBUG] About to parse coreModeString: '" << coreModeString << "'" << std::endl;
         from_json(coreModeString, coreMode);
+        std::cout << "[DEBUG] After from_json, coreMode = " << (int)coreMode << std::endl;
         std::map<std::string, double> weightsKeysString = json::parse(weightsString);
         std::map<OpenMagnetics::CoreAdviser::CoreAdviserFilters, double> weights;
 
@@ -2521,14 +2523,16 @@ std::string calculate_advised_cores(std::string inputsString, std::string weight
         OpenMagnetics::CoreAdviser coreAdviser;
         coreAdviser.set_mode(coreMode);
         std::cout << "[DEBUG] CoreAdviser mode set to: " << (int)coreMode << " (0=STANDARD, 1=AVAILABLE, 2=CUSTOM)" << std::endl;
+        std::cout << "[DEBUG] Requesting " << maximumNumberResults << " results" << std::endl;
         auto masMagnetics = coreAdviser.get_advised_core(inputs, weights, maximumNumberResults);
+        auto log = OpenMagnetics::read_log();
+        std::cout << "[DEBUG] MKF Log:\n" << log << std::endl;
         std::cout << "[DEBUG] Results count: " << masMagnetics.size() << std::endl;
-        for (size_t i = 0; i < masMagnetics.size() && i < 5; ++i) {
+        for (size_t i = 0; i < masMagnetics.size() && i < 10; ++i) {
             auto& magnetic = masMagnetics[i].first.get_magnetic();
             std::string coreName = magnetic.get_core().get_name() ? magnetic.get_core().get_name().value() : "unnamed";
             std::cout << "[DEBUG] Result " << i << ": " << coreName << " - Score: " << masMagnetics[i].second << std::endl;
         }
-        auto log = OpenMagnetics::read_log();
         auto scoring = coreAdviser.get_scorings();
         std::map<std::string, std::map<std::string, double>> filteredScoring;
 

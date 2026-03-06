@@ -1,0 +1,14 @@
+# Target labels
+ svg-populate
+# Source files and their labels
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/svg-subbuild/CMakeFiles/svg-populate
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/svg-subbuild/CMakeFiles/svg-populate.rule
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/svg-subbuild/CMakeFiles/svg-populate-complete.rule
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/svg-subbuild/svg-populate-prefix/src/svg-populate-stamp/svg-populate-build.rule
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/svg-subbuild/svg-populate-prefix/src/svg-populate-stamp/svg-populate-configure.rule
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/svg-subbuild/svg-populate-prefix/src/svg-populate-stamp/svg-populate-download.rule
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/svg-subbuild/svg-populate-prefix/src/svg-populate-stamp/svg-populate-install.rule
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/svg-subbuild/svg-populate-prefix/src/svg-populate-stamp/svg-populate-mkdir.rule
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/svg-subbuild/svg-populate-prefix/src/svg-populate-stamp/svg-populate-patch.rule
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/svg-subbuild/svg-populate-prefix/src/svg-populate-stamp/svg-populate-test.rule
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/svg-subbuild/svg-populate-prefix/src/svg-populate-stamp/svg-populate-update.rule

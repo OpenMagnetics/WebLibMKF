@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/mkf-subbuild/CMakeFiles/mkf-populate"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/mkf-subbuild/CMakeFiles/mkf-populate.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/mkf-subbuild/CMakeFiles/mkf-populate-complete.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/mkf-subbuild/mkf-populate-prefix/src/mkf-populate-stamp/mkf-populate-build.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/mkf-subbuild/mkf-populate-prefix/src/mkf-populate-stamp/mkf-populate-configure.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/mkf-subbuild/mkf-populate-prefix/src/mkf-populate-stamp/mkf-populate-download.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/mkf-subbuild/mkf-populate-prefix/src/mkf-populate-stamp/mkf-populate-install.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/mkf-subbuild/mkf-populate-prefix/src/mkf-populate-stamp/mkf-populate-mkdir.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/mkf-subbuild/mkf-populate-prefix/src/mkf-populate-stamp/mkf-populate-patch.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/mkf-subbuild/mkf-populate-prefix/src/mkf-populate-stamp/mkf-populate-test.rule"
+		},
+		{
+			"file" : "/home/alf/OpenMagnetics/WebLibMKF/build/_deps/mkf-subbuild/mkf-populate-prefix/src/mkf-populate-stamp/mkf-populate-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"mkf-populate"
+		],
+		"name" : "mkf-populate"
+	}
+}

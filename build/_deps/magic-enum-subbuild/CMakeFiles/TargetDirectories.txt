@@ -1,0 +1,3 @@
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/magic-enum-subbuild/CMakeFiles/magic-enum-populate.dir
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/magic-enum-subbuild/CMakeFiles/edit_cache.dir
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/magic-enum-subbuild/CMakeFiles/rebuild_cache.dir

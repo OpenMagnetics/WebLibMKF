@@ -1,0 +1,180 @@
+inpptree.lo: \
+  /home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/spicelib/parser/inpptree.c \
+  /home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/ngspice.h \
+  ../../../src/include/ngspice/config.h \
+  /home/alf/emsdk/upstream/lib/clang/18/include/stddef.h \
+  /home/alf/emsdk/upstream/lib/clang/18/include/__stddef_ptrdiff_t.h \
+  /home/alf/emsdk/upstream/lib/clang/18/include/__stddef_size_t.h \
+  /home/alf/emsdk/upstream/lib/clang/18/include/__stddef_wchar_t.h \
+  /home/alf/emsdk/upstream/lib/clang/18/include/__stddef_null.h \
+  /home/alf/emsdk/upstream/lib/clang/18/include/__stddef_max_align_t.h \
+  /home/alf/emsdk/upstream/lib/clang/18/include/__stddef_offsetof.h \
+  /home/alf/emsdk/upstream/lib/clang/18/include/limits.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/limits.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/features.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/bits/alltypes.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/bits/limits.h \
+  /home/alf/emsdk/upstream/lib/clang/18/include/float.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/float.h \
+  /home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/memory.h \
+  /home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/stringutil.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/compat/stdarg.h \
+  /home/alf/emsdk/upstream/lib/clang/18/include/stdarg.h \
+  /home/alf/emsdk/upstream/lib/clang/18/include/__stdarg___gnuc_va_list.h \
+  /home/alf/emsdk/upstream/lib/clang/18/include/__stdarg_va_list.h \
+  /home/alf/emsdk/upstream/lib/clang/18/include/__stdarg_va_arg.h \
+  /home/alf/emsdk/upstream/lib/clang/18/include/__stdarg___va_copy.h \
+  /home/alf/emsdk/upstream/lib/clang/18/include/__stdarg_va_copy.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/compat/string.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/string.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/strings.h \
+  /home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/bool.h \
+  /home/alf/emsdk/upstream/lib/clang/18/include/stdbool.h \
+  /home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/defines.h \
+  /home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/const.h \
+  /home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/macros.h \
+  /home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/complex.h \
+  /home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/typedefs.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/compat/math.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/math.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/stdio.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/wasi/api.h \
+  /home/alf/emsdk/upstream/lib/clang/18/include/stdint.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/stdint.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/bits/stdint.h \
+  /home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/missing_math.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/compat/stdlib.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/stdlib.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/alloca.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/compat/ctype.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/ctype.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/fcntl.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/bits/fcntl.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/pwd.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/netinet/in.h \
+  /home/alf/emsdk/upstream/lib/clang/18/include/inttypes.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/inttypes.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/sys/socket.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/bits/socket.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/compat/netdb.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/netdb.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/sys/wait.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/signal.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/bits/signal.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/sys/resource.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/sys/time.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/sys/select.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/bits/resource.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/sys/types.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/endian.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/dirent.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/bits/dirent.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/sys/times.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/sys/param.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/compat/sys/timeb.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/unistd.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/bits/posix.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/compat/time.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/time.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/errno.h \
+  /home/alf/emsdk/upstream/emscripten/cache/sysroot/include/bits/errno.h \
+  /home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/compatmode.h \
+  /home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/ifsim.h \
+  /home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/iferrmsg.h \
+  /home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/inpdefs.h \
+  /home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/gendefs.h \
+  /home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/inpptree.h \
+  /home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/randnumb.h \
+  /home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/wordlist.h \
+  /home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/spicelib/parser/inpxx.h \
+  /home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/spicelib/parser/inpptree-parser.h \
+  /home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/spicelib/parser/inpptree-parser-y.h
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/ngspice.h:
+../../../src/include/ngspice/config.h:
+/home/alf/emsdk/upstream/lib/clang/18/include/stddef.h:
+/home/alf/emsdk/upstream/lib/clang/18/include/__stddef_ptrdiff_t.h:
+/home/alf/emsdk/upstream/lib/clang/18/include/__stddef_size_t.h:
+/home/alf/emsdk/upstream/lib/clang/18/include/__stddef_wchar_t.h:
+/home/alf/emsdk/upstream/lib/clang/18/include/__stddef_null.h:
+/home/alf/emsdk/upstream/lib/clang/18/include/__stddef_max_align_t.h:
+/home/alf/emsdk/upstream/lib/clang/18/include/__stddef_offsetof.h:
+/home/alf/emsdk/upstream/lib/clang/18/include/limits.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/limits.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/features.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/bits/alltypes.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/bits/limits.h:
+/home/alf/emsdk/upstream/lib/clang/18/include/float.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/float.h:
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/memory.h:
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/stringutil.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/compat/stdarg.h:
+/home/alf/emsdk/upstream/lib/clang/18/include/stdarg.h:
+/home/alf/emsdk/upstream/lib/clang/18/include/__stdarg___gnuc_va_list.h:
+/home/alf/emsdk/upstream/lib/clang/18/include/__stdarg_va_list.h:
+/home/alf/emsdk/upstream/lib/clang/18/include/__stdarg_va_arg.h:
+/home/alf/emsdk/upstream/lib/clang/18/include/__stdarg___va_copy.h:
+/home/alf/emsdk/upstream/lib/clang/18/include/__stdarg_va_copy.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/compat/string.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/string.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/strings.h:
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/bool.h:
+/home/alf/emsdk/upstream/lib/clang/18/include/stdbool.h:
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/defines.h:
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/const.h:
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/macros.h:
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/complex.h:
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/typedefs.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/compat/math.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/math.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/stdio.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/wasi/api.h:
+/home/alf/emsdk/upstream/lib/clang/18/include/stdint.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/stdint.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/bits/stdint.h:
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/missing_math.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/compat/stdlib.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/stdlib.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/alloca.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/compat/ctype.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/ctype.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/fcntl.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/bits/fcntl.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/pwd.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/netinet/in.h:
+/home/alf/emsdk/upstream/lib/clang/18/include/inttypes.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/inttypes.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/sys/socket.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/bits/socket.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/compat/netdb.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/netdb.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/sys/wait.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/signal.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/bits/signal.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/sys/resource.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/sys/time.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/sys/select.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/bits/resource.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/sys/types.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/endian.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/dirent.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/bits/dirent.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/sys/times.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/sys/param.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/compat/sys/timeb.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/unistd.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/bits/posix.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/compat/time.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/time.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/errno.h:
+/home/alf/emsdk/upstream/emscripten/cache/sysroot/include/bits/errno.h:
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/compatmode.h:
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/ifsim.h:
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/iferrmsg.h:
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/inpdefs.h:
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/gendefs.h:
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/inpptree.h:
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/randnumb.h:
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/include/ngspice/wordlist.h:
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/spicelib/parser/inpxx.h:
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/spicelib/parser/inpptree-parser.h:
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/spicelib/parser/inpptree-parser-y.h:

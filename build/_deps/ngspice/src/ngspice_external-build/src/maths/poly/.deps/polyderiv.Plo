@@ -1,0 +1,4 @@
+polyderiv.lo: \
+  /home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/maths/poly/polyderiv.c \
+  /home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/maths/poly/polyderiv.h
+/home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/src/ngspice_external/src/maths/poly/polyderiv.h:
