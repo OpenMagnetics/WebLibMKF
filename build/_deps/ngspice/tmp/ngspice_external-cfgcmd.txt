@@ -1,1 +1,0 @@
-cmd='emconfigure;<SOURCE_DIR>/configure;--with-ngshared;--disable-debug;--without-x;--disable-xspice;--disable-cider;--disable-openmp;--with-readline=no;CFLAGS=-O2 -fwasm-exceptions -sSUPPORT_LONGJMP=wasm;CXXFLAGS=-O2 -fwasm-exceptions -sSUPPORT_LONGJMP=wasm;LDFLAGS=-fwasm-exceptions -sSUPPORT_LONGJMP=wasm;--prefix=/home/alf/OpenMagnetics/WebLibMKF/build/_deps/ngspice/install'

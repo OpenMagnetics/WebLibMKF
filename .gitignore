@@ -1,0 +1,26 @@
+# Build directory - contains all generated files
+build/
+
+# IDE/editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Compiled binaries
+*.wasm
+*.wasm.js
+*.o
+*.a
+*.so
+
+# CMake files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# OS files
+.DS_Store
+Thumbs.db

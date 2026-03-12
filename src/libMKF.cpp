@@ -2732,13 +2732,11 @@ std::string get_solid_insulation_requirements_for_wires(std::string inputsString
 
 std::string calculate_advised_magnetics(std::string inputsString, std::string weightsString, int maximumNumberResults, std::string coreModeString){
     try {
-        std::cerr << "[DEBUG WASM calculate_advised_magnetics] coreModeString: " << coreModeString << std::endl;
         OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(true);
         OpenMagnetics::Inputs inputs(json::parse(inputsString));
 
         OpenMagnetics::CoreAdviser::CoreAdviserModes coreMode;
         from_json(coreModeString, coreMode);
-        std::cerr << "[DEBUG WASM calculate_advised_magnetics] coreMode enum value set" << std::endl;
 
         std::map<std::string, double> weightsKeysString = json::parse(weightsString);
         std::map<OpenMagnetics::MagneticFilters, double> weights;
@@ -2763,7 +2761,20 @@ std::string calculate_advised_magnetics(std::string inputsString, std::string we
         json results = json();
         results["data"] = json::array();
         for (auto& [masMagnetic, scoring] : masMagnetics) {
-            std::string name = masMagnetic.get_magnetic().get_manufacturer_info().value().get_reference().value();
+            // Safely get the name with optional checks
+            std::string name;
+            auto& magnetic = masMagnetic.get_magnetic();
+            auto manufacturerInfo = magnetic.get_manufacturer_info();
+            if (!manufacturerInfo) {
+                name = "unnamed";
+            } else {
+                auto reference = manufacturerInfo.value().get_reference();
+                if (!reference) {
+                    name = "unnamed";
+                } else {
+                    name = reference.value();
+                }
+            }
 
             json result;
             json masJson;
@@ -3120,19 +3131,26 @@ std::string get_available_core_losses_methods(std::string magneticString){
     try {
         OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
         auto core = magnetic.get_core();
-        auto methods = core.get_available_core_losses_methods();
+        
+        // Use CoreLossesModel::get_methods to get calculation models (IGSE, MSE, etc.)
+        // instead of core.get_available_core_losses_methods() which returns data methods
+        auto methods = OpenMagnetics::CoreLossesModel::get_methods(core.resolve_material());
         
         json resultJson;
         resultJson["methods"] = json::array();
         resultJson["hasMaterial"] = true;
         
-        // Map VolumetricCoreLossesMethodType to display names in preference order
+        // Map CoreLossesModels to display names in preference order
         std::map<std::string, int> methodPriority = {
-            {"steinmetz", 0},
-            {"roshen", 1},
-            {"lossFactor", 2},
-            {"magnetics", 3},
-            {"micrometals", 4}
+            {"IGSE", 0},
+            {"Steinmetz", 1},
+            {"MSE", 2},
+            {"ciGSE", 3},
+            {"Roshen", 4},
+            {"Barg", 5},
+            {"Albach", 6},
+            {"PROPRIETARY", 7},
+            {"LOSS_FACTOR", 8}
         };
         
         struct MethodInfo {
@@ -3149,10 +3167,15 @@ std::string get_available_core_losses_methods(std::string magneticString){
             std::string methodKey = methodJson.get<std::string>();
             
             std::string displayName;
-            if (methodKey == "steinmetz") displayName = "Steinmetz";
-            else if (methodKey == "roshen") displayName = "Roshen";
-            else if (methodKey == "lossFactor") displayName = "Loss Factor";
-            else if (methodKey == "magnetics" || methodKey == "micrometals") displayName = "Proprietary";
+            if (methodKey == "IGSE") displayName = "IGSE";
+            else if (methodKey == "Steinmetz") displayName = "Steinmetz";
+            else if (methodKey == "MSE") displayName = "MSE";
+            else if (methodKey == "ciGSE") displayName = "ciGSE";
+            else if (methodKey == "Roshen") displayName = "Roshen";
+            else if (methodKey == "Barg") displayName = "Barg";
+            else if (methodKey == "Albach") displayName = "Albach";
+            else if (methodKey == "PROPRIETARY") displayName = "Proprietary";
+            else if (methodKey == "LOSS_FACTOR") displayName = "Loss Factor";
             else displayName = methodKey;
             
             int priority = methodPriority.count(methodKey) ? methodPriority[methodKey] : 999;
@@ -6555,8 +6578,8 @@ std::string plot_magnetic_field(std::string magneticString, std::string operatin
         painter.paint_magnetic_field(operatingPoint, magnetic);
         painter.paint_core(magnetic);
         // painter.paint_bobbin(magnetic);
-        // Paint turns for H field
-        painter.paint_coil_turns(magnetic);
+        // Paint turns for H field, skip insulation tape and margin for cleaner visualization
+        painter.paint_coil_turns(magnetic, true);
         auto result = painter.export_svg();
         return result;
     }
@@ -6597,8 +6620,8 @@ std::string plot_electric_field(std::string magneticString, std::string operatin
         painter.paint_electric_field(operatingPoint, magnetic);
         painter.paint_core(magnetic);
         // painter.paint_bobbin(magnetic);
-        // Paint turns for E field
-        painter.paint_coil_turns(magnetic);
+        // Paint turns for E field, skip insulation tape and margin for cleaner visualization
+        painter.paint_coil_turns(magnetic, true);
         auto result = painter.export_svg();
         return result;
     }
@@ -7477,29 +7500,7 @@ std::string simulate_llc_ideal_waveforms(std::string llcInputsString) {
         auto topologyWaveforms = llcInputs.simulate_and_extract_topology_waveforms(
             turnsRatios, magnetizingInductance, numberOfPeriods);
         auto operatingPoints = llcInputs.simulate_and_extract_operating_points(
-            turnsRatios, magnetizingInductance);
-
-        // DEBUG: Check if data is preserved after return
-        std::cerr << "DEBUG libMKF LLC: Returned " << operatingPoints.size() << " operating points" << std::endl;
-        for (size_t i = 0; i < operatingPoints.size(); ++i) {
-            const auto& op = operatingPoints[i];
-            std::cerr << "  OP " << i << ": " << op.get_excitations_per_winding().size() << " excitations" << std::endl;
-            for (size_t j = 0; j < op.get_excitations_per_winding().size(); ++j) {
-                const auto& exc = op.get_excitations_per_winding()[j];
-                std::cerr << "    Exc " << j << ":";
-                if (exc.get_voltage() && exc.get_voltage()->get_waveform()) {
-                    std::cerr << " V=" << exc.get_voltage()->get_waveform()->get_data().size();
-                } else {
-                    std::cerr << " V=none";
-                }
-                if (exc.get_current() && exc.get_current()->get_waveform()) {
-                    std::cerr << " I=" << exc.get_current()->get_waveform()->get_data().size();
-                } else {
-                    std::cerr << " I=none";
-                }
-                std::cerr << std::endl;
-            }
-        }
+            turnsRatios, magnetizingInductance, numberOfPeriods);
 
         // Build the result with inputs and converterWaveforms
         json result;
@@ -7516,46 +7517,12 @@ std::string simulate_llc_ideal_waveforms(std::string llcInputsString) {
         }
         result["inputs"] = inputsJson;
 
-        // DEBUG: Check data after JSON building
-        std::cerr << "DEBUG libMKF LLC after JSON: " << operatingPoints.size() << " OPs" << std::endl;
-        for (size_t i = 0; i < operatingPoints.size() && i < 1; ++i) {
-            const auto& op = operatingPoints[i];
-            std::cerr << "  OP " << i << ": " << op.get_excitations_per_winding().size() << " excs" << std::endl;
-            for (size_t j = 0; j < op.get_excitations_per_winding().size() && j < 1; ++j) {
-                const auto& exc = op.get_excitations_per_winding()[j];
-                if (exc.get_voltage() && exc.get_voltage()->get_waveform()) {
-                    std::cerr << "    V=" << exc.get_voltage()->get_waveform()->get_data().size();
-                } else {
-                    std::cerr << "    V=none";
-                }
-                std::cerr << std::endl;
-            }
-        }
-
         // converterWaveforms: array of OpenMagnetics::ConverterWaveforms
         result["converterWaveforms"] = json::array();
         for (const auto& tw : topologyWaveforms) {
             json cwJson;
             to_json(cwJson, tw);
             result["converterWaveforms"].push_back(cwJson);
-        }
-        
-        // DEBUG: Check converterWaveforms after JSON serialization
-        std::cerr << "DEBUG libMKF LLC converterWaveforms JSON:" << std::endl;
-        for (size_t i = 0; i < result["converterWaveforms"].size(); ++i) {
-            const auto& cw = result["converterWaveforms"][i];
-            std::cerr << "  CW " << i << ":";
-            if (cw.contains("inputVoltage") && cw["inputVoltage"].contains("data")) {
-                std::cerr << " Vin=" << cw["inputVoltage"]["data"].size();
-            } else {
-                std::cerr << " Vin=none";
-            }
-            if (cw.contains("inputCurrent") && cw["inputCurrent"].contains("data")) {
-                std::cerr << " Iin=" << cw["inputCurrent"]["data"].size();
-            } else {
-                std::cerr << " Iin=none";
-            }
-            std::cerr << std::endl;
         }
 
         return result.dump(4);
