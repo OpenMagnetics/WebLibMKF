@@ -73,6 +73,75 @@ std::string design_magnetics_from_converter(std::string topologyName, std::strin
                                              int maxResults, std::string coreModeString, 
                                              bool useNgspice, std::string weightsString);
 
+// Default frequency constant (100 kHz)
+constexpr double DEFAULT_FREQUENCY_HZ = 100000.0;
+
+// Helper function to process current signal descriptor if it lacks processed data
+// Returns true if processing succeeded or was not needed, false on error
+bool ensure_current_processed(SignalDescriptor& current, const std::string& functionName) {
+    if (current.get_processed() && current.get_processed()->get_rms()) {
+        return true;  // Already has processed data
+    }
+    
+    if (!current.get_waveform()) {
+        std::cerr << "Error in " << functionName << ": Current has no waveform to process" << std::endl;
+        return false;
+    }
+    
+    // Extract frequency from waveform time data or use default
+    double frequency = DEFAULT_FREQUENCY_HZ;
+    auto waveform = current.get_waveform().value();
+    if (waveform.get_time() && waveform.get_time()->size() > 1) {
+        auto time = waveform.get_time().value();
+        double period = time.back() - time.front();
+        if (period > 0) {
+            frequency = 1.0 / period;
+        }
+    }
+    
+    // Process the current: first calculate harmonics, then processed data
+    auto sampledWaveform = OpenMagnetics::Inputs::calculate_sampled_waveform(waveform, frequency);
+    auto harmonics = OpenMagnetics::Inputs::calculate_harmonics_data(sampledWaveform, frequency);
+    current.set_harmonics(harmonics);
+    auto processed = OpenMagnetics::Inputs::calculate_processed_data(harmonics, sampledWaveform, true);
+    current.set_processed(processed);
+    
+    return true;
+}
+
+// Helper function to process current signal descriptor if it lacks effective_frequency
+// Returns true if processing succeeded or was not needed, false on error
+bool ensure_current_processed_for_effective_frequency(SignalDescriptor& current, const std::string& functionName) {
+    if (current.get_processed() && current.get_processed()->get_effective_frequency()) {
+        return true;  // Already has processed data with effective frequency
+    }
+    
+    if (!current.get_waveform()) {
+        std::cerr << "Error in " << functionName << ": Current has no waveform to process" << std::endl;
+        return false;
+    }
+    
+    // Extract frequency from waveform time data or use default
+    double frequency = DEFAULT_FREQUENCY_HZ;
+    auto waveform = current.get_waveform().value();
+    if (waveform.get_time() && waveform.get_time()->size() > 1) {
+        auto time = waveform.get_time().value();
+        double period = time.back() - time.front();
+        if (period > 0) {
+            frequency = 1.0 / period;
+        }
+    }
+    
+    // Process the current: first calculate harmonics, then processed data
+    auto sampledWaveform = OpenMagnetics::Inputs::calculate_sampled_waveform(waveform, frequency);
+    auto harmonics = OpenMagnetics::Inputs::calculate_harmonics_data(sampledWaveform, frequency);
+    current.set_harmonics(harmonics);
+    auto processed = OpenMagnetics::Inputs::calculate_processed_data(harmonics, sampledWaveform, true);
+    current.set_processed(processed);
+    
+    return true;
+}
+
 std::map<std::string, double> get_constants() {
     std::map<std::string, double> constantsMap;
     constantsMap["residualGap"] = OpenMagnetics::constants.residualGap;
@@ -610,8 +679,22 @@ double get_wire_outer_diameter_insulated_round(double conductingDiameter, int nu
     return OpenMagnetics::Wire::get_outer_diameter_round(conductingDiameter, numberLayers, thicknessLayers, wireStandard);
 }
 
+// Helper: resolve a Wire from either a JSON string name (e.g. "\"Round S18A01FX-3\"")
+// or a full JSON wire object.
+OpenMagnetics::Wire resolve_wire_from_string(const std::string& wireString) {
+    auto j = json::parse(wireString);
+    if (j.is_string()) {
+        // Wire is referenced by name — look it up in the database
+        return OpenMagnetics::find_wire_by_name(j.get<std::string>());
+    }
+    else {
+        // Wire is a full object
+        return OpenMagnetics::Wire(j);
+    }
+}
+
 std::vector<double> get_outer_dimensions(std::string wireString) {
-    OpenMagnetics::Wire wire(json::parse(wireString));
+    auto wire = resolve_wire_from_string(wireString);
     return {wire.get_maximum_outer_width(), wire.get_maximum_outer_height()};
 }
 
@@ -1598,9 +1681,16 @@ std::vector<int> calculate_number_turns(int numberTurnsPrimary, std::string desi
 }
 
 double calculate_dc_resistance_per_meter(std::string wireString, double temperature){
-    OpenMagnetics::Wire wire(json::parse(wireString));
-    auto dcResistancePerMeter = OpenMagnetics::WindingOhmicLosses::calculate_dc_resistance_per_meter(wire, temperature);
-    return dcResistancePerMeter;
+    try {
+        auto wire = resolve_wire_from_string(wireString);
+        auto dcResistancePerMeter = OpenMagnetics::WindingOhmicLosses::calculate_dc_resistance_per_meter(wire, temperature);
+        return dcResistancePerMeter;
+    }
+    catch(const std::exception& ex)
+    {
+        std::cerr << "Error in calculate_dc_resistance_per_meter: " << ex.what() << std::endl;
+        return -1;
+    }
 }
 
 std::vector<double> calculate_dc_resistance_per_winding(std::string coilString, double temperature){
@@ -1610,54 +1700,120 @@ std::vector<double> calculate_dc_resistance_per_winding(std::string coilString, 
 }
 
 double calculate_dc_losses_per_meter(std::string wireString, std::string currentString, double temperature){
-    OpenMagnetics::Wire wire(json::parse(wireString));
-    SignalDescriptor current(json::parse(currentString));
-    auto dcLossesPerMeter = OpenMagnetics::WindingOhmicLosses::calculate_ohmic_losses_per_meter(wire, current, temperature);
-    return dcLossesPerMeter;
+    try {
+        auto wire = resolve_wire_from_string(wireString);
+        SignalDescriptor current(json::parse(currentString));
+        
+        // Ensure current has processed data
+        if (!ensure_current_processed(current, "calculate_dc_losses_per_meter")) {
+            return -1;
+        }
+        
+        auto dcLossesPerMeter = OpenMagnetics::WindingOhmicLosses::calculate_ohmic_losses_per_meter(wire, current, temperature);
+        return dcLossesPerMeter;
+    }
+    catch(const std::exception& ex)
+    {
+        std::cerr << "Error in calculate_dc_losses_per_meter: " << ex.what() << std::endl;
+        return -1;
+    }
 }
 
 double calculate_skin_ac_factor(std::string wireString, std::string currentString, double temperature){
-    OpenMagnetics::Wire wire(json::parse(wireString));
-    SignalDescriptor current(json::parse(currentString));
-    auto dcLossesPerMeter = OpenMagnetics::WindingOhmicLosses::calculate_ohmic_losses_per_meter(wire, current, temperature);
-    auto [skinLossesPerMeter, _] = OpenMagnetics::WindingSkinEffectLosses::calculate_skin_effect_losses_per_meter(wire, current, temperature);
-    auto skinAcFactor = (skinLossesPerMeter + dcLossesPerMeter) / dcLossesPerMeter;
-    return skinAcFactor;
+    try {
+        auto wire = resolve_wire_from_string(wireString);
+        SignalDescriptor current(json::parse(currentString));
+        
+        // Ensure current has processed data
+        if (!ensure_current_processed(current, "calculate_skin_ac_factor")) {
+            return -1;
+        }
+        
+        auto dcLossesPerMeter = OpenMagnetics::WindingOhmicLosses::calculate_ohmic_losses_per_meter(wire, current, temperature);
+        auto [skinLossesPerMeter, _] = OpenMagnetics::WindingSkinEffectLosses::calculate_skin_effect_losses_per_meter(wire, current, temperature);
+        auto skinAcFactor = (skinLossesPerMeter + dcLossesPerMeter) / dcLossesPerMeter;
+        return skinAcFactor;
+    }
+    catch(const std::exception& ex)
+    {
+        std::cerr << "Error in calculate_skin_ac_factor: " << ex.what() << std::endl;
+        return -1;
+    }
 }
 
 double calculate_skin_ac_losses_per_meter(std::string wireString, std::string currentString, double temperature){
-    OpenMagnetics::Wire wire(json::parse(wireString));
-    SignalDescriptor current(json::parse(currentString));
-    auto [skinLossesPerMeter, _] = OpenMagnetics::WindingSkinEffectLosses::calculate_skin_effect_losses_per_meter(wire, current, temperature);
-    return skinLossesPerMeter;
+    try {
+        auto wire = resolve_wire_from_string(wireString);
+        SignalDescriptor current(json::parse(currentString));
+        
+        // Ensure current has processed data
+        if (!ensure_current_processed(current, "calculate_skin_ac_losses_per_meter")) {
+            return -1;
+        }
+        
+        auto [skinLossesPerMeter, _] = OpenMagnetics::WindingSkinEffectLosses::calculate_skin_effect_losses_per_meter(wire, current, temperature);
+        return skinLossesPerMeter;
+    }
+    catch(const std::exception& ex)
+    {
+        std::cerr << "Error in calculate_skin_ac_losses_per_meter: " << ex.what() << std::endl;
+        return -1;
+    }
 }
 
 double calculate_skin_ac_resistance_per_meter(std::string wireString, std::string currentString, double temperature){
-    OpenMagnetics::Wire wire(json::parse(wireString));
-    SignalDescriptor current(json::parse(currentString));
-    auto dcLossesPerMeter = OpenMagnetics::WindingOhmicLosses::calculate_ohmic_losses_per_meter(wire, current, temperature);
-    auto [skinLossesPerMeter, _] = OpenMagnetics::WindingSkinEffectLosses::calculate_skin_effect_losses_per_meter(wire, current, temperature);
-    auto skinAcFactor = (skinLossesPerMeter + dcLossesPerMeter) / dcLossesPerMeter;
-    auto dcResistancePerMeter = OpenMagnetics::WindingOhmicLosses::calculate_dc_resistance_per_meter(wire, temperature);
+    try {
+        auto wire = resolve_wire_from_string(wireString);
+        SignalDescriptor current(json::parse(currentString));
+        
+        // Ensure current has processed data
+        if (!ensure_current_processed(current, "calculate_skin_ac_resistance_per_meter")) {
+            return -1;
+        }
+        
+        auto dcLossesPerMeter = OpenMagnetics::WindingOhmicLosses::calculate_ohmic_losses_per_meter(wire, current, temperature);
+        auto [skinLossesPerMeter, _] = OpenMagnetics::WindingSkinEffectLosses::calculate_skin_effect_losses_per_meter(wire, current, temperature);
+        auto skinAcFactor = (skinLossesPerMeter + dcLossesPerMeter) / dcLossesPerMeter;
+        auto dcResistancePerMeter = OpenMagnetics::WindingOhmicLosses::calculate_dc_resistance_per_meter(wire, temperature);
 
-    return dcResistancePerMeter * skinAcFactor;
+        return dcResistancePerMeter * skinAcFactor;
+    }
+    catch(const std::exception& ex)
+    {
+        std::cerr << "Error in calculate_skin_ac_resistance_per_meter: " << ex.what() << std::endl;
+        return -1;
+    }
 }
 
 double calculate_effective_current_density(std::string wireString, std::string currentString, double temperature){
-    OpenMagnetics::Wire wire(json::parse(wireString));
-    SignalDescriptor current(json::parse(currentString));
-    auto effectiveCurrentDensity = wire.calculate_effective_current_density(current, temperature);
-
-    return effectiveCurrentDensity;
+    try {
+        auto wire = resolve_wire_from_string(wireString);
+        SignalDescriptor current(json::parse(currentString));
+        
+        // Ensure current has processed data
+        if (!ensure_current_processed(current, "calculate_effective_current_density")) {
+            return -1;
+        }
+        
+        auto effectiveCurrentDensity = wire.calculate_effective_current_density(current, temperature);
+        return effectiveCurrentDensity;
+    }
+    catch(const std::exception& ex)
+    {
+        std::cerr << "Error in calculate_effective_current_density: " << ex.what() << std::endl;
+        return -1;
+    }
 }
 
 double calculate_effective_skin_depth(std::string material, std::string currentString, double temperature){
     try {
         SignalDescriptor current(json::parse(currentString));
 
-        if (!current.get_processed()->get_effective_frequency()) {
-            throw std::runtime_error("Current processed is missing field effective frequency");
+        // Ensure current has processed data with effective frequency
+        if (!ensure_current_processed_for_effective_frequency(current, "calculate_effective_skin_depth")) {
+            return -1;
         }
+
         auto currentEffectiveFrequency = current.get_processed()->get_effective_frequency().value();
         double effectiveSkinDepth = OpenMagnetics::WindingSkinEffectLosses::calculate_skin_depth(material, currentEffectiveFrequency, temperature);
         return effectiveSkinDepth;
@@ -2181,6 +2337,8 @@ std::string export_magnetic_as_subcircuit(std::string magneticString, double tem
             case OpenMagnetics::CircuitSimulatorExporterModels::NGSPICE:
                 return OpenMagnetics::CircuitSimulatorExporter(simulator).export_magnetic_as_subcircuit(magnetic, OpenMagnetics::Defaults().measurementFrequency, temperature);
                 break;
+            case OpenMagnetics::CircuitSimulatorExporterModels::NL5:
+                return OpenMagnetics::CircuitSimulatorExporterNl5Model().export_magnetic_as_subcircuit(magnetic, OpenMagnetics::Defaults().measurementFrequency, temperature);
         }
 
 
@@ -2488,6 +2646,7 @@ std::string calculate_advised_cores(std::string inputsString, std::string weight
         OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(true);
 
         std::cout << "=== DEBUG calculate_advised_cores ===" << std::endl;
+        std::cout << "inputsString: " << inputsString << std::endl;
         std::cout << "weightsString: " << weightsString << std::endl;
         std::cout << "coreModeString: " << coreModeString << std::endl;
 
@@ -2522,8 +2681,12 @@ std::string calculate_advised_cores(std::string inputsString, std::string weight
 
         OpenMagnetics::CoreAdviser coreAdviser;
         coreAdviser.set_mode(coreMode);
-        std::cout << "[DEBUG] CoreAdviser mode set to: " << (int)coreMode << " (0=STANDARD, 1=AVAILABLE, 2=CUSTOM)" << std::endl;
+        std::cout << "[DEBUG] CoreAdviser mode set to: " << (int)coreMode << " (0=AVAILABLE, 1=STANDARD, 2=CUSTOM)" << std::endl;
         std::cout << "[DEBUG] Requesting " << maximumNumberResults << " results" << std::endl;
+        std::cout << "[DEBUG] coreShapeDatabase.size() = " << OpenMagnetics::coreShapeDatabase.size() << std::endl;
+        std::cout << "[DEBUG] coreMaterialDatabase.size() = " << OpenMagnetics::coreMaterialDatabase.size() << std::endl;
+        std::cout << "[DEBUG] useToroidalCores = " << OpenMagnetics::Settings::GetInstance().get_use_toroidal_cores() << std::endl;
+        std::cout << "[DEBUG] useConcentricCores = " << OpenMagnetics::Settings::GetInstance().get_use_concentric_cores() << std::endl;
         auto masMagnetics = coreAdviser.get_advised_core(inputs, weights, maximumNumberResults);
         auto log = OpenMagnetics::read_log();
         std::cout << "[DEBUG] MKF Log:\n" << log << std::endl;
@@ -3894,7 +4057,7 @@ std::string calculate_isolated_buck_boost_inputs(std::string isolatedBuckBoostIn
                 
                 for (size_t i = 0; i < origOp.get_output_voltages().size(); i++) {
                     // Extract frequency and duty cycle from first excitation
-                    double frequency = 100000; // default
+                    double frequency = DEFAULT_FREQUENCY_HZ; // default
                     double dutyCycle = 0.5; // default
                     if (op.contains("excitationsPerWinding") && op["excitationsPerWinding"].size() > 0) {
                         if (op["excitationsPerWinding"][0].contains("frequency")) {
@@ -4020,7 +4183,7 @@ std::string calculate_advanced_isolated_buck_boost_inputs(std::string isolatedBu
                 
                 for (size_t i = 0; i < origOp.get_output_voltages().size(); i++) {
                     // Extract frequency and duty cycle from first excitation
-                    double frequency = 100000; // default
+                    double frequency = DEFAULT_FREQUENCY_HZ; // default
                     double dutyCycle = 0.5; // default
                     if (op.contains("excitationsPerWinding") && op["excitationsPerWinding"].size() > 0) {
                         if (op["excitationsPerWinding"][0].contains("frequency")) {
@@ -5273,7 +5436,7 @@ std::string calculate_single_switch_forward_inputs(std::string singleSwitchForwa
                 json outputCurrentsArray = json::array();
                 
                 for (size_t i = 0; i < origOp.get_output_voltages().size(); i++) {
-                    double frequency = 100000;
+                    double frequency = DEFAULT_FREQUENCY_HZ;
                     double dutyCycle = 0.5;
                     if (op.contains("excitationsPerWinding") && op["excitationsPerWinding"].size() > 0) {
                         if (op["excitationsPerWinding"][0].contains("frequency")) {
@@ -5367,7 +5530,7 @@ std::string calculate_advanced_single_switch_forward_inputs(std::string singleSw
                 json outputCurrentsArray = json::array();
                 
                 for (size_t i = 0; i < origOp.get_output_voltages().size(); i++) {
-                    double frequency = 100000;
+                    double frequency = DEFAULT_FREQUENCY_HZ;
                     double dutyCycle = 0.5;
                     if (op.contains("excitationsPerWinding") && op["excitationsPerWinding"].size() > 0) {
                         if (op["excitationsPerWinding"][0].contains("frequency")) {
@@ -5465,7 +5628,7 @@ std::string calculate_active_clamp_forward_inputs(std::string activeClampForward
                 json outputCurrentsArray = json::array();
                 
                 for (size_t i = 0; i < origOp.get_output_voltages().size(); i++) {
-                    double frequency = 100000;
+                    double frequency = DEFAULT_FREQUENCY_HZ;
                     double dutyCycle = 0.5;
                     if (op.contains("excitationsPerWinding") && op["excitationsPerWinding"].size() > 0) {
                         if (op["excitationsPerWinding"][0].contains("frequency")) {
@@ -5559,7 +5722,7 @@ std::string calculate_advanced_active_clamp_forward_inputs(std::string activeCla
                 json outputCurrentsArray = json::array();
                 
                 for (size_t i = 0; i < origOp.get_output_voltages().size(); i++) {
-                    double frequency = 100000;
+                    double frequency = DEFAULT_FREQUENCY_HZ;
                     double dutyCycle = 0.5;
                     if (op.contains("excitationsPerWinding") && op["excitationsPerWinding"].size() > 0) {
                         if (op["excitationsPerWinding"][0].contains("frequency")) {
@@ -5657,7 +5820,7 @@ std::string calculate_two_switch_forward_inputs(std::string twoSwitchForwardInpu
                 json outputCurrentsArray = json::array();
                 
                 for (size_t i = 0; i < origOp.get_output_voltages().size(); i++) {
-                    double frequency = 100000;
+                    double frequency = DEFAULT_FREQUENCY_HZ;
                     double dutyCycle = 0.5;
                     if (op.contains("excitationsPerWinding") && op["excitationsPerWinding"].size() > 0) {
                         if (op["excitationsPerWinding"][0].contains("frequency")) {
@@ -5751,7 +5914,7 @@ std::string calculate_advanced_two_switch_forward_inputs(std::string twoSwitchFo
                 json outputCurrentsArray = json::array();
                 
                 for (size_t i = 0; i < origOp.get_output_voltages().size(); i++) {
-                    double frequency = 100000;
+                    double frequency = DEFAULT_FREQUENCY_HZ;
                     double dutyCycle = 0.5;
                     if (op.contains("excitationsPerWinding") && op["excitationsPerWinding"].size() > 0) {
                         if (op["excitationsPerWinding"][0].contains("frequency")) {
