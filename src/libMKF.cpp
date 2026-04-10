@@ -1323,10 +1323,8 @@ std::string calculate_core_losses(std::string coreData,
         result["voltageRms"] = operatingPoint.get_mutable_excitations_per_winding()[0].get_voltage().value().get_processed().value().get_rms().value();
         result["currentRms"] = operatingPoint.get_mutable_excitations_per_winding()[0].get_current().value().get_processed().value().get_rms().value();
         result["apparentPower"] = operatingPoint.get_mutable_excitations_per_winding()[0].get_voltage().value().get_processed().value().get_rms().value() * operatingPoint.get_mutable_excitations_per_winding()[0].get_current().value().get_processed().value().get_rms().value();
-        if (coreLossesOutput.get_temperature()) {
-            result["maximumCoreTemperature"] = coreLossesOutput.get_temperature().value();
-            result["maximumCoreTemperatureRise"] = coreLossesOutput.get_temperature().value() - operatingPoint.get_conditions().get_ambient_temperature();
-        }
+        result["maximumCoreTemperature"] = coreLossesOutput.get_temperature();
+        result["maximumCoreTemperatureRise"] = coreLossesOutput.get_temperature() - operatingPoint.get_conditions().get_ambient_temperature();
         
         return result.dump(4);
     }
