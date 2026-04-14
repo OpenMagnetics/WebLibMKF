@@ -1323,8 +1323,9 @@ std::string calculate_core_losses(std::string coreData,
         result["voltageRms"] = operatingPoint.get_mutable_excitations_per_winding()[0].get_voltage().value().get_processed().value().get_rms().value();
         result["currentRms"] = operatingPoint.get_mutable_excitations_per_winding()[0].get_current().value().get_processed().value().get_rms().value();
         result["apparentPower"] = operatingPoint.get_mutable_excitations_per_winding()[0].get_voltage().value().get_processed().value().get_rms().value() * operatingPoint.get_mutable_excitations_per_winding()[0].get_current().value().get_processed().value().get_rms().value();
-        result["maximumCoreTemperature"] = coreLossesOutput.get_temperature();
-        result["maximumCoreTemperatureRise"] = coreLossesOutput.get_temperature() - operatingPoint.get_conditions().get_ambient_temperature();
+        double coreTemperature = coreLossesOutput.get_temperature();
+        result["maximumCoreTemperature"] = coreTemperature;
+        result["maximumCoreTemperatureRise"] = coreTemperature - operatingPoint.get_conditions().get_ambient_temperature();
         
         return result.dump(4);
     }
@@ -7255,6 +7256,7 @@ std::string load_magnetics_from_string(std::string database, bool expand) {
 // Forward declarations for new topology functions
 std::string calculate_llc_inputs(std::string llcInputsString);
 std::string simulate_llc_ideal_waveforms(std::string llcInputsString);
+std::string simulate_dab_ideal_waveforms(std::string dabInputsString);
 std::string calculate_cllc_inputs(std::string cllcInputsString);
 std::string calculate_dab_inputs(std::string dabInputsString);
 std::string calculate_psfb_inputs(std::string psfbInputsString);
@@ -7511,6 +7513,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     // New topology wizard functions
     function("calculate_llc_inputs", &calculate_llc_inputs);
     function("simulate_llc_ideal_waveforms", &simulate_llc_ideal_waveforms);
+    function("simulate_dab_ideal_waveforms", &simulate_dab_ideal_waveforms);
     function("calculate_cllc_inputs", &calculate_cllc_inputs);
     function("calculate_dab_inputs", &calculate_dab_inputs);
     function("calculate_psfb_inputs", &calculate_psfb_inputs);
@@ -7534,8 +7537,8 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
 std::string calculate_dab_inputs(std::string dabInputsString) {
     try {
         json dabInputsJson = json::parse(dabInputsString);
-        
-        OpenMagnetics::Dab dabInputs(dabInputsJson);
+
+        OpenMagnetics::AdvancedDab dabInputs(dabInputsJson);
         
         // Read number of periods from input (default to 1 for analytical)
         size_t numberOfPeriods = 1;
@@ -7553,7 +7556,19 @@ std::string calculate_dab_inputs(std::string dabInputsString) {
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
-        
+
+        // Append per-op diagnostics from the Dab object (populated after process())
+        {
+            json dabDiag;
+            dabDiag["modulationType"]           = dabInputs.get_last_modulation_type();
+            dabDiag["computedPhaseShiftDeg"]    = dabInputs.get_last_phase_shift_rad() * 180.0 / M_PI;
+            dabDiag["zvsMarginPrimaryDeg"]      = dabInputs.get_last_zvs_margin_primary()   * 180.0 / M_PI;
+            dabDiag["zvsMarginSecondaryDeg"]    = dabInputs.get_last_zvs_margin_secondary() * 180.0 / M_PI;
+            dabDiag["computedSeriesInductance"] = dabInputs.get_computed_series_inductance();
+            dabDiag["voltageConversionRatio"]   = dabInputs.get_last_voltage_conversion_ratio();
+            result["dabDiagnostics"] = dabDiag;
+        }
+
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -7564,38 +7579,53 @@ std::string calculate_dab_inputs(std::string dabInputsString) {
 EMSCRIPTEN_KEEPALIVE std::string calculate_llc_inputs(std::string llcInputsString){
     try {
         json llcInputsJson = json::parse(llcInputsString);
-        
+
         OpenMagnetics::Llc llcInputs(llcInputsJson);
-        
+
         // Read number of periods from input (default to 1 for analytical)
         size_t numberOfPeriods = 1;
         if (llcInputsJson.contains("numberOfPeriods")) {
             numberOfPeriods = llcInputsJson["numberOfPeriods"].get<size_t>();
         }
         llcInputs.set_num_periods_to_extract(numberOfPeriods);
-        
+
+        // Optional user overrides for the resonant tank values. The Llc class
+        // honours these via set_user_resonant_{inductance,capacitance}, but the
+        // JSON constructor doesn't auto-bind them — wire them here.
+        if (llcInputsJson.contains("desiredResonantInductance") &&
+            llcInputsJson["desiredResonantInductance"].is_number()) {
+            llcInputs.set_user_resonant_inductance(
+                llcInputsJson["desiredResonantInductance"].get<double>());
+        }
+        if (llcInputsJson.contains("desiredResonantCapacitance") &&
+            llcInputsJson["desiredResonantCapacitance"].is_number()) {
+            llcInputs.set_user_resonant_capacitance(
+                llcInputsJson["desiredResonantCapacitance"].get<double>());
+        }
+
         auto inputs = llcInputs.process();
-        
+
         json result;
         to_json(result, inputs);
-        
-        // Debug: Log excitation names
-        std::cerr << "DEBUG calculate_llc_inputs: " << result["operatingPoints"].size() << " operating points" << std::endl;
-        for (size_t i = 0; i < result["operatingPoints"].size(); ++i) {
-            const auto& op = result["operatingPoints"][i];
-            std::cerr << "  OP " << i << ": " << op["excitationsPerWinding"].size() << " excitations" << std::endl;
-            for (size_t j = 0; j < op["excitationsPerWinding"].size(); ++j) {
-                const auto& exc = op["excitationsPerWinding"][j];
-                std::string name = exc.contains("name") && !exc["name"].is_null() ? exc["name"].get<std::string>() : "NULL";
-                std::cerr << "    Excitation " << j << ": name='" << name << "'" << std::endl;
-            }
-        }
-        
+
         // Repeat waveforms for the specified number of periods (analytical generates 1 period)
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
-        
+
+        // Expose the Nielsen TDA diagnostics + computed tank values so the
+        // frontend can show them without re-running the solver.
+        json diag;
+        diag["computedResonantInductance"]  = llcInputs.get_computed_resonant_inductance();
+        diag["computedResonantCapacitance"] = llcInputs.get_computed_resonant_capacitance();
+        diag["computedInductanceRatio"]     = llcInputs.get_computed_inductance_ratio();
+        diag["lastMode"]                    = llcInputs.get_last_mode();
+        diag["lipFrequency"]                = llcInputs.get_lip_frequency();
+        diag["lipInputVoltage"]             = llcInputs.get_lip_input_voltage();
+        diag["lastSteadyStateResidual"]     = llcInputs.get_last_steady_state_residual();
+        diag["lastSubStateSequence"]        = llcInputs.get_last_sub_state_sequence();
+        result["llcDiagnostics"] = diag;
+
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -7607,19 +7637,19 @@ std::string simulate_llc_ideal_waveforms(std::string llcInputsString) {
     try {
         json llcInputsJson = json::parse(llcInputsString);
 
-        // Check for multi-output request (not yet supported for LLC)
-        if (llcInputsJson.contains("operatingPoints") && llcInputsJson["operatingPoints"].is_array()) {
-            for (const auto& op : llcInputsJson["operatingPoints"]) {
-                if (op.contains("outputVoltages") && op["outputVoltages"].is_array() && op["outputVoltages"].size() > 1) {
-                    throw std::runtime_error("Multi-output configuration is not yet supported for LLC converter.");
-                }
-                if (op.contains("outputCurrents") && op["outputCurrents"].is_array() && op["outputCurrents"].size() > 1) {
-                    throw std::runtime_error("Multi-output configuration is not yet supported for LLC converter.");
-                }
-            }
-        }
-
         OpenMagnetics::Llc llcInputs(llcInputsJson);
+
+        // Optional user overrides for the resonant tank values.
+        if (llcInputsJson.contains("desiredResonantInductance") &&
+            llcInputsJson["desiredResonantInductance"].is_number()) {
+            llcInputs.set_user_resonant_inductance(
+                llcInputsJson["desiredResonantInductance"].get<double>());
+        }
+        if (llcInputsJson.contains("desiredResonantCapacitance") &&
+            llcInputsJson["desiredResonantCapacitance"].is_number()) {
+            llcInputs.set_user_resonant_capacitance(
+                llcInputsJson["desiredResonantCapacitance"].get<double>());
+        }
 
         auto designRequirements = llcInputs.process_design_requirements();
         double magnetizingInductance = llcInputsJson.value("magnetizingInductance", 200e-6);
@@ -7684,6 +7714,132 @@ std::string simulate_llc_ideal_waveforms(std::string llcInputsString) {
             json cwJson;
             to_json(cwJson, tw);
             result["converterWaveforms"].push_back(cwJson);
+        }
+
+        // Nielsen TDA diagnostics + computed tank values.
+        json diag;
+        diag["computedResonantInductance"]  = llcInputs.get_computed_resonant_inductance();
+        diag["computedResonantCapacitance"] = llcInputs.get_computed_resonant_capacitance();
+        diag["computedInductanceRatio"]     = llcInputs.get_computed_inductance_ratio();
+        diag["lastMode"]                    = llcInputs.get_last_mode();
+        diag["lipFrequency"]                = llcInputs.get_lip_frequency();
+        diag["lipInputVoltage"]             = llcInputs.get_lip_input_voltage();
+        diag["lastSteadyStateResidual"]     = llcInputs.get_last_steady_state_residual();
+        diag["lastSubStateSequence"]        = llcInputs.get_last_sub_state_sequence();
+        result["llcDiagnostics"] = diag;
+
+        return result.dump(4);
+    }
+    catch (const std::exception& exc) {
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
+    }
+}
+
+std::string simulate_dab_ideal_waveforms(std::string dabInputsString) {
+    try {
+        json dabInputsJson = json::parse(dabInputsString);
+
+        // Use AdvancedDab so that desiredTurnsRatios and desiredMagnetizingInductance
+        // from the UI are respected. Using base Dab recomputes N=Vin/Vout which can
+        // produce d=1 (degenerate) when the user specifies a non-default turns ratio,
+        // causing ngspice to hang indefinitely.
+        OpenMagnetics::AdvancedDab dabInputs(dabInputsJson);
+
+        auto t0 = std::chrono::steady_clock::now();
+        auto inputs = dabInputs.process();
+        auto t1 = std::chrono::steady_clock::now();
+        std::cout << "[WASM-TIMING] DAB process() took "
+                  << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count()
+                  << " ms" << std::endl;
+
+        auto designRequirements = inputs.get_design_requirements();
+
+        std::vector<double> turnsRatios;
+        for (const auto& tr : designRequirements.get_turns_ratios()) {
+            if (tr.get_nominal()) {
+                turnsRatios.push_back(tr.get_nominal().value());
+            }
+        }
+
+        double magnetizingInductance = 0;
+        if (designRequirements.get_magnetizing_inductance().get_minimum()) {
+            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
+        } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
+            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
+        } else {
+            throw std::runtime_error("Unable to calculate magnetizing inductance for DAB simulation");
+        }
+
+#ifndef ENABLE_NGSPICE
+        throw std::runtime_error("ngspice simulation is required but ENABLE_NGSPICE was not defined at compile time");
+#endif
+
+        OpenMagnetics::NgspiceRunner runner;
+        if (!runner.is_available()) {
+            throw std::runtime_error("ngspice simulation is required but ngspice is not available");
+        }
+
+        size_t numberOfPeriods = 2;
+        if (dabInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = dabInputsJson["numberOfPeriods"].get<size_t>();
+        }
+
+        size_t numberOfSteadyStatePeriods = 3;
+        if (dabInputsJson.contains("numberOfSteadyStatePeriods")) {
+            numberOfSteadyStatePeriods = dabInputsJson["numberOfSteadyStatePeriods"].get<size_t>();
+        }
+
+        dabInputs.set_num_periods_to_extract(static_cast<int>(numberOfPeriods));
+        dabInputs.set_num_steady_state_periods(static_cast<int>(numberOfSteadyStatePeriods));
+
+        auto t2 = std::chrono::steady_clock::now();
+        auto topologyWaveforms = dabInputs.simulate_and_extract_topology_waveforms(
+            turnsRatios, magnetizingInductance, numberOfPeriods);
+        auto t3 = std::chrono::steady_clock::now();
+        std::cout << "[WASM-TIMING] simulate_and_extract_topology_waveforms() took "
+                  << std::chrono::duration_cast<std::chrono::milliseconds>(t3 - t2).count()
+                  << " ms" << std::endl;
+
+        auto t4 = std::chrono::steady_clock::now();
+        auto operatingPoints = dabInputs.simulate_and_extract_operating_points(
+            turnsRatios, magnetizingInductance);
+        auto t5 = std::chrono::steady_clock::now();
+        std::cout << "[WASM-TIMING] simulate_and_extract_operating_points() took "
+                  << std::chrono::duration_cast<std::chrono::milliseconds>(t5 - t4).count()
+                  << " ms" << std::endl;
+
+        json result;
+
+        json inputsJson;
+        inputsJson["designRequirements"] = json();
+        to_json(inputsJson["designRequirements"], designRequirements);
+        inputsJson["operatingPoints"] = json::array();
+        for (const auto& op : operatingPoints) {
+            json opJson;
+            to_json(opJson, op);
+            inputsJson["operatingPoints"].push_back(opJson);
+        }
+        result["inputs"] = inputsJson;
+
+        result["converterWaveforms"] = json::array();
+        for (const auto& tw : topologyWaveforms) {
+            json cwJson;
+            to_json(cwJson, tw);
+            result["converterWaveforms"].push_back(cwJson);
+        }
+
+        // DAB diagnostics (post-simulation, from last solved op point)
+        {
+            json dabDiag;
+            dabDiag["modulationType"]           = dabInputs.get_last_modulation_type();
+            dabDiag["computedPhaseShiftDeg"]    = dabInputs.get_last_phase_shift_rad() * 180.0 / M_PI;
+            dabDiag["zvsMarginPrimaryDeg"]      = dabInputs.get_last_zvs_margin_primary()   * 180.0 / M_PI;
+            dabDiag["zvsMarginSecondaryDeg"]    = dabInputs.get_last_zvs_margin_secondary() * 180.0 / M_PI;
+            dabDiag["computedSeriesInductance"] = dabInputs.get_computed_series_inductance();
+            dabDiag["voltageConversionRatio"]   = dabInputs.get_last_voltage_conversion_ratio();
+            result["dabDiagnostics"] = dabDiag;
         }
 
         return result.dump(4);

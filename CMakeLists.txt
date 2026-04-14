@@ -61,14 +61,14 @@ set(MATPLOTPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(MATPLOTPP_BUILD_HIGH_RESOLUTION_WORLD_MAP OFF CACHE BOOL "" FORCE)
 set(MATPLOTPP_BUILD_EXPERIMENTAL_OPENGL_BACKEND OFF CACHE BOOL "" FORCE)
 
-# Enable ngspice for WASM - using --with-ngshared with emscripten produces a 
+# Enable ngspice for WASM - using --with-ngshared with emscripten produces a
 # static library (despite .so extension) that provides the sharedspice.h API.
 # Based on ngspice patch #96: https://sourceforge.net/p/ngspice/patches/96/
 set(ENABLE_NGSPICE ON CACHE BOOL "" FORCE)
 
+# Use local MKF for debugging (point to sibling directory)
 FetchContent_Declare(MKF
-    GIT_REPOSITORY https://github.com/OpenMagnetics/MKF.git
-    GIT_TAG main
+    SOURCE_DIR /home/alf/OpenMagnetics/MKF
 )
 
 FetchContent_Declare(magic-enum
