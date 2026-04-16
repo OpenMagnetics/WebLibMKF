@@ -1146,11 +1146,15 @@ double calculate_inductance_from_number_turns_and_gapping(std::string coreData,
         json coreJson = json::parse(coreData);
         MAS::CoreFunctionalDescription coreFunctionalDescription(coreJson["functionalDescription"]);
         MAS::CoreProcessedDescription coreProcessedDescription(coreJson["processedDescription"]);
-        std::vector<MAS::CoreGeometricalDescriptionElement> coreGeometricalDescription(coreJson["geometricalDescription"]);
         OpenMagnetics::Core core;
         core.set_functional_description(coreFunctionalDescription);
         core.set_processed_description(coreProcessedDescription);
-        core.set_geometrical_description(coreGeometricalDescription);
+        // geometricalDescription is optional; skip when missing/null to avoid the
+        // nlohmann::json "type must be array, but is null" constructor error.
+        if (coreJson.contains("geometricalDescription") && !coreJson["geometricalDescription"].is_null()) {
+            std::vector<MAS::CoreGeometricalDescriptionElement> coreGeometricalDescription(coreJson["geometricalDescription"]);
+            core.set_geometrical_description(coreGeometricalDescription);
+        }
         OpenMagnetics::Coil coil(json::parse(coilData), false);
 
         std::map<std::string, std::string> models = json::parse(modelsData).get<std::map<std::string, std::string>>();
@@ -1262,11 +1266,15 @@ std::string calculate_core_losses(std::string coreData,
         json coreJson = json::parse(coreData);
         MAS::CoreFunctionalDescription coreFunctionalDescription(coreJson["functionalDescription"]);
         MAS::CoreProcessedDescription coreProcessedDescription(coreJson["processedDescription"]);
-        std::vector<MAS::CoreGeometricalDescriptionElement> coreGeometricalDescription(coreJson["geometricalDescription"]);
         OpenMagnetics::Core core;
         core.set_functional_description(coreFunctionalDescription);
         core.set_processed_description(coreProcessedDescription);
-        core.set_geometrical_description(coreGeometricalDescription);
+        // geometricalDescription is optional; skip when missing/null to avoid the
+        // nlohmann::json "type must be array, but is null" constructor error.
+        if (coreJson.contains("geometricalDescription") && !coreJson["geometricalDescription"].is_null()) {
+            std::vector<MAS::CoreGeometricalDescriptionElement> coreGeometricalDescription(coreJson["geometricalDescription"]);
+            core.set_geometrical_description(coreGeometricalDescription);
+        }
         OpenMagnetics::Coil coil(json::parse(coilData), false);
 
         OpenMagnetics::MagnetizingInductance magnetizingInductanceModel;
@@ -2896,6 +2904,26 @@ std::string calculate_advised_magnetics(std::string inputsString, std::string we
     try {
         OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(true);
         OpenMagnetics::Inputs inputs(json::parse(inputsString));
+
+        // DEBUG: Check if voltage waveform is present in the first operating point
+        if (!inputs.get_operating_points().empty()) {
+            auto op = inputs.get_operating_point(0);
+            if (!op.get_excitations_per_winding().empty()) {
+                auto exc = op.get_excitations_per_winding()[0];
+                bool hasVoltage = exc.get_voltage().has_value();
+                bool hasWaveform = hasVoltage && exc.get_voltage()->get_waveform().has_value();
+                bool hasTime = hasWaveform && exc.get_voltage()->get_waveform()->get_time().has_value();
+                size_t timeSize = hasTime ? exc.get_voltage()->get_waveform()->get_time().value().size() : 0;
+                size_t dataSize = hasWaveform ? exc.get_voltage()->get_waveform()->get_data().size() : 0;
+                std::cout << "[DEBUG calculate_advised_magnetics] Voltage waveform check: hasVoltage=" << hasVoltage
+                          << ", hasWaveform=" << hasWaveform << ", hasTime=" << hasTime
+                          << ", timeSize=" << timeSize << ", dataSize=" << dataSize << std::endl;
+            } else {
+                std::cout << "[DEBUG calculate_advised_magnetics] No excitations found!" << std::endl;
+            }
+        } else {
+            std::cout << "[DEBUG calculate_advised_magnetics] No operating points found!" << std::endl;
+        }
 
         OpenMagnetics::CoreAdviser::CoreAdviserModes coreMode;
         from_json(coreModeString, coreMode);
