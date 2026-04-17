@@ -7589,7 +7589,7 @@ std::string calculate_dab_inputs(std::string dabInputsString) {
         {
             json dabDiag;
             dabDiag["modulationType"]           = dabInputs.get_last_modulation_type();
-            dabDiag["computedPhaseShiftDeg"]    = dabInputs.get_last_phase_shift_rad() * 180.0 / M_PI;
+            dabDiag["computedD3Deg"]    = dabInputs.get_last_d3_rad() * 180.0 / M_PI;
             dabDiag["zvsMarginPrimaryDeg"]      = dabInputs.get_last_zvs_margin_primary()   * 180.0 / M_PI;
             dabDiag["zvsMarginSecondaryDeg"]    = dabInputs.get_last_zvs_margin_secondary() * 180.0 / M_PI;
             dabDiag["computedSeriesInductance"] = dabInputs.get_computed_series_inductance();
@@ -7862,7 +7862,7 @@ std::string simulate_dab_ideal_waveforms(std::string dabInputsString) {
         {
             json dabDiag;
             dabDiag["modulationType"]           = dabInputs.get_last_modulation_type();
-            dabDiag["computedPhaseShiftDeg"]    = dabInputs.get_last_phase_shift_rad() * 180.0 / M_PI;
+            dabDiag["computedD3Deg"]    = dabInputs.get_last_d3_rad() * 180.0 / M_PI;
             dabDiag["zvsMarginPrimaryDeg"]      = dabInputs.get_last_zvs_margin_primary()   * 180.0 / M_PI;
             dabDiag["zvsMarginSecondaryDeg"]    = dabInputs.get_last_zvs_margin_secondary() * 180.0 / M_PI;
             dabDiag["computedSeriesInductance"] = dabInputs.get_computed_series_inductance();
