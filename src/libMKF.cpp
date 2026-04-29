@@ -2667,10 +2667,25 @@ std::string calculate_advised_cores(std::string inputsString, std::string weight
 
         bool filterMode = bool(inputs.get_design_requirements().get_minimum_impedance());
 
-        if (filterMode) {
+        // Detect CMC/DMC (interference-suppression application). The wizard
+        // tags DesignRequirements; this standalone entry point used to ignore
+        // that tag and leave CoreAdviser in POWER mode, silently routing
+        // through the wrong filter flow. Mirror the MagneticAdviser policy
+        // here: if INTERFERENCE_SUPPRESSION is set, switch to AVAILABLE_CORES
+        // (toroidal EMI parts come off a catalog, no gap-grinding) and force
+        // toroidal-only settings.
+        const bool isSuppression =
+            inputs.get_design_requirements().get_application().has_value()
+            && inputs.get_design_requirements().get_application().value()
+               == OpenMagnetics::Application::INTERFERENCE_SUPPRESSION;
+
+        if (filterMode || isSuppression) {
             OpenMagnetics::Settings::GetInstance().set_use_toroidal_cores(true);
             OpenMagnetics::Settings::GetInstance().set_use_only_cores_in_stock(false);
             OpenMagnetics::Settings::GetInstance().set_use_concentric_cores(false);
+        }
+        if (isSuppression && coreMode == OpenMagnetics::CoreAdviser::CoreAdviserModes::STANDARD_CORES) {
+            coreMode = OpenMagnetics::CoreAdviser::CoreAdviserModes::AVAILABLE_CORES;
         }
 
         double externalSum = 0;
@@ -2688,6 +2703,12 @@ std::string calculate_advised_cores(std::string inputsString, std::string weight
 
         OpenMagnetics::CoreAdviser coreAdviser;
         coreAdviser.set_mode(coreMode);
+        // Critical: without this, the CoreAdviser defaults to POWER and
+        // picks the wrong filter-flow branch for CMC/DMC (no impedance
+        // filter, no interference-suppression material pruning).
+        if (isSuppression) {
+            coreAdviser.set_application(OpenMagnetics::Application::INTERFERENCE_SUPPRESSION);
+        }
         std::cout << "[DEBUG] CoreAdviser mode set to: " << (int)coreMode << " (0=AVAILABLE, 1=STANDARD, 2=CUSTOM)" << std::endl;
         std::cout << "[DEBUG] Requesting " << maximumNumberResults << " results" << std::endl;
         std::cout << "[DEBUG] coreShapeDatabase.size() = " << OpenMagnetics::coreShapeDatabase.size() << std::endl;
@@ -2944,7 +2965,48 @@ std::string calculate_advised_magnetics(std::string inputsString, std::string we
 
         OpenMagnetics::MagneticAdviser magneticAdviser;
         magneticAdviser.set_core_mode(coreMode);
-        auto masMagnetics = magneticAdviser.get_advised_magnetic(inputs, weights, maximumNumberResults);
+
+        // For interference-suppression (CMC/DMC) the user's COST/LOSSES/
+        // DIMENSIONS-only weight set is insufficient — the default weights-
+        // to-filter expansion in MagneticAdviser.cpp:152 doesn't include
+        // CORE_MINIMUM_IMPEDANCE, so tiny toroids that can't meet the |Z|
+        // spec slip through. Build the filter flow explicitly and force
+        // impedance + leakage-inductance filters in.
+        bool hasApp = inputs.get_design_requirements().get_application().has_value();
+        int appVal = hasApp ? (int)inputs.get_design_requirements().get_application().value() : -1;
+        std::cerr << "[DEBUG calculate_advised_magnetics] hasApp=" << hasApp
+                  << " appVal=" << appVal
+                  << " INTERFERENCE_SUPPRESSION=" << (int)OpenMagnetics::Application::INTERFERENCE_SUPPRESSION
+                  << std::endl;
+        const bool isSuppressionFlow = hasApp
+            && inputs.get_design_requirements().get_application().value()
+               == OpenMagnetics::Application::INTERFERENCE_SUPPRESSION;
+        std::cerr << "[DEBUG calculate_advised_magnetics] isSuppressionFlow=" << (isSuppressionFlow ? "true" : "false") << std::endl;
+        std::vector<std::pair<OpenMagnetics::Mas, double>> masMagnetics;
+        if (isSuppressionFlow) {
+            double wCost = weights.count(OpenMagnetics::MagneticFilters::COST)
+                ? weights[OpenMagnetics::MagneticFilters::COST] : 1.0;
+            double wLosses = weights.count(OpenMagnetics::MagneticFilters::LOSSES)
+                ? weights[OpenMagnetics::MagneticFilters::LOSSES] : 1.0;
+            double wDims = weights.count(OpenMagnetics::MagneticFilters::DIMENSIONS)
+                ? weights[OpenMagnetics::MagneticFilters::DIMENSIONS] : 1.0;
+            // CORE_MINIMUM_IMPEDANCE is the make-or-break filter for EMI
+            // suppression: without it the adviser happily picks cores that
+            // don't meet |Z| spec. Give it the highest weight.
+            // LEAKAGE_INDUCTANCE rewards tight CM coupling on the chosen
+            // magnetic (k → 1) so we get a proper CMC.
+            std::vector<OpenMagnetics::MagneticFilterOperation> cmcFilterFlow{
+                OpenMagnetics::MagneticFilterOperation(OpenMagnetics::MagneticFilters::CORE_MINIMUM_IMPEDANCE, true, true, true, std::max(1.0, wDims * 2.0)),
+                OpenMagnetics::MagneticFilterOperation(OpenMagnetics::MagneticFilters::COST,       true, true, wCost),
+                OpenMagnetics::MagneticFilterOperation(OpenMagnetics::MagneticFilters::LOSSES,     true, true, wLosses),
+                OpenMagnetics::MagneticFilterOperation(OpenMagnetics::MagneticFilters::DIMENSIONS, true, true, wDims),
+                OpenMagnetics::MagneticFilterOperation(OpenMagnetics::MagneticFilters::LEAKAGE_INDUCTANCE, true, true, wDims),
+            };
+            masMagnetics = magneticAdviser.get_advised_magnetic(inputs, cmcFilterFlow, maximumNumberResults);
+        }
+        else {
+            masMagnetics = magneticAdviser.get_advised_magnetic(inputs, weights, maximumNumberResults);
+        }
         // auto log = magneticAdviser.read_log();
         auto scorings = magneticAdviser.get_scorings();
 
@@ -6378,14 +6440,19 @@ EMSCRIPTEN_KEEPALIVE std::string simulate_cmc_lisn_waveforms(std::string cmcInpu
 EMSCRIPTEN_KEEPALIVE std::string simulate_cmc_ideal_waveforms(std::string cmcInputsString, double inductance, double parasiticCap_pF, double dvdt_V_ns) {
     try {
         json cmcInputsJson = json::parse(cmcInputsString);
-        
+
         OpenMagnetics::CommonModeChoke cmc(cmcInputsJson);
-        
+
         // Get design requirements
         auto designRequirements = cmc.process_design_requirements();
-        
+
+        int numberOfPeriods            = cmcInputsJson.value("numberOfPeriods", 2);
+        int numberOfSteadyStatePeriods = cmcInputsJson.value("numberOfSteadyStatePeriods", 10);
+
         // Run realistic simulation with line + noise
-        auto operatingPoints = cmc.simulate_realistic_cmc(inductance, parasiticCap_pF, dvdt_V_ns);
+        auto operatingPoints = cmc.simulate_realistic_cmc(
+            inductance, parasiticCap_pF, dvdt_V_ns,
+            numberOfPeriods, numberOfSteadyStatePeriods);
         
         // Build the result with inputs and converterWaveforms (same format as other wizards)
         json result;
@@ -7093,6 +7160,11 @@ std::string get_settings() {
         settingsJson["useToroidalCores"] = OpenMagnetics::Settings::GetInstance().get_use_toroidal_cores();
         settingsJson["useConcentricCores"] = OpenMagnetics::Settings::GetInstance().get_use_concentric_cores();
 
+        // Temperature-filter settings were removed from Settings upstream;
+        // emit defaults so the frontend schema isn't broken.
+        settingsJson["coreAdviserEnableTemperatureFilter"] = false;
+        settingsJson["coreAdviserMaximumTemperature"] = 130.0;
+
         // Model selection settings
         settingsJson["magneticFieldStrengthModel"] = static_cast<int>(OpenMagnetics::Settings::GetInstance().get_magnetic_field_strength_model());
         settingsJson["magneticFieldStrengthFringingEffectModel"] = static_cast<int>(OpenMagnetics::Settings::GetInstance().get_magnetic_field_strength_fringing_effect_model());
@@ -7157,6 +7229,10 @@ void set_settings(std::string settingsString) {
 
     OpenMagnetics::Settings::GetInstance().set_use_toroidal_cores(settingsJson["useToroidalCores"]);
     OpenMagnetics::Settings::GetInstance().set_use_concentric_cores(settingsJson["useConcentricCores"]);
+
+    // coreAdviserEnableTemperatureFilter / coreAdviserMaximumTemperature:
+    // setters were removed from Settings upstream; accept the keys for
+    // forward-compat but don't persist — no-op.
 
     // Model selection settings
     if (settingsJson.contains("magneticFieldStrengthModel")) {
