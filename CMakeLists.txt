@@ -68,7 +68,7 @@ set(ENABLE_NGSPICE ON CACHE BOOL "" FORCE)
 
 # Use local MKF for debugging (point to sibling directory)
 FetchContent_Declare(MKF
-    SOURCE_DIR /home/alf/OpenMagnetics/MKF
+    SOURCE_DIR ${CMAKE_SOURCE_DIR}/../MKF
 )
 
 FetchContent_Declare(magic-enum
@@ -118,6 +118,7 @@ set(COMMON_INCLUDE_DIRS
     ${DEPS_DIR}/spline-src/src
     ${DEPS_DIR}/eigen-src
     ${MAS_DIRECTORY}
+    ${CMAKE_BINARY_DIR}/CAS
 )
 
 foreach(target libMKF libInsulationCoordinator libCrossReferencers)

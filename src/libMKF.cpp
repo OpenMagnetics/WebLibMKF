@@ -6580,6 +6580,40 @@ std::string simulate_dmc_waveforms(std::string dmcInputsString, double inductanc
     }
 }
 
+// DMC SPICE Circuit Generation
+EMSCRIPTEN_KEEPALIVE std::string generate_dmc_ngspice_circuit(std::string dmcInputsString, size_t inputVoltageIndex, size_t operatingPointIndex){
+    try {
+        json dmcInputsJson = json::parse(dmcInputsString);
+
+        OpenMagnetics::DifferentialModeChoke dmc(dmcInputsJson);
+
+        double inductance;
+        double frequency = 150000; // Default test frequency for DMC
+
+        // Prefer an explicit minimumInductance from the wizard params; fall
+        // back to a proposed inductance derived from the attenuation /
+        // impedance requirements via propose_design().
+        if (dmcInputsJson.contains("minimumInductance") && dmcInputsJson["minimumInductance"].is_number()) {
+            inductance = dmcInputsJson["minimumInductance"].get<double>();
+        } else {
+            auto proposal = dmc.propose_design();
+            if (proposal.contains("inductance") && proposal["inductance"].is_number()) {
+                inductance = proposal["inductance"].get<double>();
+            } else if (proposal.contains("minimumInductance") && proposal["minimumInductance"].is_number()) {
+                inductance = proposal["minimumInductance"].get<double>();
+            } else {
+                throw std::runtime_error("Unable to determine DMC inductance for SPICE generation");
+            }
+        }
+
+        std::string netlist = dmc.generate_ngspice_circuit(inductance, frequency);
+        return netlist;
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
 std::vector<size_t> get_only_temperature_dependent_indexes(std::string permeabilityPointsString) {
     try {
         std::vector<std::string> permeabilityPointsStringVector = json::parse(permeabilityPointsString);
@@ -7382,6 +7416,7 @@ EMSCRIPTEN_KEEPALIVE std::string generate_psfb_ngspice_circuit(std::string psfbI
 EMSCRIPTEN_KEEPALIVE std::string generate_cmc_ngspice_circuit(std::string cmcInputsString, size_t inputVoltageIndex, size_t operatingPointIndex);
 EMSCRIPTEN_KEEPALIVE std::string simulate_cmc_lisn_waveforms(std::string cmcInputsString, double inductance);
 EMSCRIPTEN_KEEPALIVE std::string simulate_cmc_ideal_waveforms(std::string cmcInputsString, double inductance, double parasiticCap_pF, double dvdt_V_ns);
+EMSCRIPTEN_KEEPALIVE std::string generate_dmc_ngspice_circuit(std::string dmcInputsString, size_t inputVoltageIndex, size_t operatingPointIndex);
 
 EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_constants", &get_constants);
@@ -7570,6 +7605,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("generate_dab_ngspice_circuit", &generate_dab_ngspice_circuit);
     function("generate_psfb_ngspice_circuit", &generate_psfb_ngspice_circuit);
     function("generate_cmc_ngspice_circuit", &generate_cmc_ngspice_circuit);
+    function("generate_dmc_ngspice_circuit", &generate_dmc_ngspice_circuit);
 
     function("calculate_pfc_inputs", &calculate_pfc_inputs);
     function("simulate_pfc_waveforms", &simulate_pfc_waveforms);
