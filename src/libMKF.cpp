@@ -50,6 +50,8 @@
 #include "converter_models/Cllc.h"
 #include "converter_models/Dab.h"
 #include "converter_models/PhaseShiftedFullBridge.h"
+#include "converter_models/PhaseShiftedHalfBridge.h"
+#include "converter_models/AsymmetricHalfBridge.h"
 #include "support/Painter.h"
 #include "support/Utils.h"
 #include "processors/Sweeper.h"
@@ -1933,6 +1935,12 @@ void process_coil_configuration(OpenMagnetics::Coil& coil, json configuration, s
         coil.set_section_alignment(configuration["_sectionAlignment"]);
     }
 
+    // NOTE: zero thickness is intentionally allowed. A zero-thickness inter-layer
+    // insulation layer acts as a geometric/thermal "marker" that lets adjacent
+    // layer turns participate in the thermal graph (R_layer = 0, only wire enamel
+    // contributes resistance). Coil::set_interlayer_insulation always assigns a
+    // default material when none is provided, so Temperature.cpp's no-material
+    // path is never hit.
     if (configuration.contains("_interlayerInsulationThickness")) {
         coil.set_interlayer_insulation(configuration["_interlayerInsulationThickness"], std::nullopt, std::nullopt, false);
     }
@@ -2659,9 +2667,7 @@ std::string calculate_advised_cores(std::string inputsString, std::string weight
 
         OpenMagnetics::Inputs inputs(json::parse(inputsString));
         OpenMagnetics::CoreAdviser::CoreAdviserModes coreMode;
-        std::cout << "[DEBUG] About to parse coreModeString: '" << coreModeString << "'" << std::endl;
         from_json(coreModeString, coreMode);
-        std::cout << "[DEBUG] After from_json, coreMode = " << (int)coreMode << std::endl;
         std::map<std::string, double> weightsKeysString = json::parse(weightsString);
         std::map<OpenMagnetics::CoreAdviser::CoreAdviserFilters, double> weights;
 
@@ -2973,15 +2979,9 @@ std::string calculate_advised_magnetics(std::string inputsString, std::string we
         // spec slip through. Build the filter flow explicitly and force
         // impedance + leakage-inductance filters in.
         bool hasApp = inputs.get_design_requirements().get_application().has_value();
-        int appVal = hasApp ? (int)inputs.get_design_requirements().get_application().value() : -1;
-        std::cerr << "[DEBUG calculate_advised_magnetics] hasApp=" << hasApp
-                  << " appVal=" << appVal
-                  << " INTERFERENCE_SUPPRESSION=" << (int)OpenMagnetics::Application::INTERFERENCE_SUPPRESSION
-                  << std::endl;
         const bool isSuppressionFlow = hasApp
             && inputs.get_design_requirements().get_application().value()
                == OpenMagnetics::Application::INTERFERENCE_SUPPRESSION;
-        std::cerr << "[DEBUG calculate_advised_magnetics] isSuppressionFlow=" << (isSuppressionFlow ? "true" : "false") << std::endl;
         std::vector<std::pair<OpenMagnetics::Mas, double>> masMagnetics;
         if (isSuppressionFlow) {
             double wCost = weights.count(OpenMagnetics::MagneticFilters::COST)
@@ -6824,7 +6824,17 @@ std::string plot_turns(std::string magneticString) {
         auto magneticJson = json::parse(magneticString);
         
         OpenMagnetics::Magnetic magnetic(magneticJson);
-        
+
+        // Ensure the coil is wound; otherwise paint_coil_turns throws COIL_NOT_PROCESSED.
+        // Catalog magnetics often arrive with only functionalDescription populated.
+        {
+            auto coil = magnetic.get_mutable_coil();
+            if (!coil.get_turns_description() || coil.get_turns_description()->empty()) {
+                coil.wind();
+                magnetic.set_coil(coil);
+            }
+        }
+
         OpenMagnetics::Painter painter(emptyFilepath, false, false, false);
         painter.paint_core(magnetic);
         painter.paint_bobbin(magnetic);
@@ -7181,6 +7191,8 @@ std::string get_settings() {
         settingsJson["painterColorCopper"] = OpenMagnetics::Settings::GetInstance().get_painter_color_copper();
         settingsJson["painterColorInsulation"] = OpenMagnetics::Settings::GetInstance().get_painter_color_insulation();
         settingsJson["painterColorMargin"] = OpenMagnetics::Settings::GetInstance().get_painter_color_margin();
+        settingsJson["painterColorSpacer"] = OpenMagnetics::Settings::GetInstance().get_painter_color_spacer();
+        settingsJson["painterDrawSpacer"] = OpenMagnetics::Settings::GetInstance().get_painter_draw_spacer();
         settingsJson["magneticFieldNumberPointsX"] = OpenMagnetics::Settings::GetInstance().get_magnetic_field_number_points_x();
         settingsJson["magneticFieldNumberPointsY"] = OpenMagnetics::Settings::GetInstance().get_magnetic_field_number_points_y();
         settingsJson["magneticFieldMirroringDimension"] = OpenMagnetics::Settings::GetInstance().get_magnetic_field_mirroring_dimension();
@@ -7251,6 +7263,12 @@ void set_settings(std::string settingsString) {
     OpenMagnetics::Settings::GetInstance().set_painter_color_copper(settingsJson["painterColorCopper"]);
     OpenMagnetics::Settings::GetInstance().set_painter_color_insulation(settingsJson["painterColorInsulation"]);
     OpenMagnetics::Settings::GetInstance().set_painter_color_margin(settingsJson["painterColorMargin"]);
+    if (settingsJson.contains("painterColorSpacer")) {
+        OpenMagnetics::Settings::GetInstance().set_painter_color_spacer(settingsJson["painterColorSpacer"]);
+    }
+    if (settingsJson.contains("painterDrawSpacer")) {
+        OpenMagnetics::Settings::GetInstance().set_painter_draw_spacer(settingsJson["painterDrawSpacer"]);
+    }
     OpenMagnetics::Settings::GetInstance().set_magnetic_field_number_points_x(settingsJson["magneticFieldNumberPointsX"]);
     OpenMagnetics::Settings::GetInstance().set_magnetic_field_number_points_y(settingsJson["magneticFieldNumberPointsY"]);
     OpenMagnetics::Settings::GetInstance().set_magnetic_field_mirroring_dimension(settingsJson["magneticFieldMirroringDimension"]);
@@ -7398,6 +7416,11 @@ std::string simulate_dab_ideal_waveforms(std::string dabInputsString);
 std::string calculate_cllc_inputs(std::string cllcInputsString);
 std::string calculate_dab_inputs(std::string dabInputsString);
 std::string calculate_psfb_inputs(std::string psfbInputsString);
+std::string simulate_psfb_ideal_waveforms(std::string psfbInputsString);
+std::string calculate_pshb_inputs(std::string pshbInputsString);
+std::string simulate_pshb_ideal_waveforms(std::string pshbInputsString);
+std::string calculate_ahb_inputs(std::string ahbInputsString);
+std::string simulate_ahb_ideal_waveforms(std::string ahbInputsString);
 
 // SPICE Code Generation forward declarations
 EMSCRIPTEN_KEEPALIVE std::string generate_flyback_ngspice_circuit(std::string flybackInputsString, size_t inputVoltageIndex, size_t operatingPointIndex);
@@ -7657,6 +7680,11 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("calculate_cllc_inputs", &calculate_cllc_inputs);
     function("calculate_dab_inputs", &calculate_dab_inputs);
     function("calculate_psfb_inputs", &calculate_psfb_inputs);
+    function("simulate_psfb_ideal_waveforms", &simulate_psfb_ideal_waveforms);
+    function("calculate_pshb_inputs", &calculate_pshb_inputs);
+    function("simulate_pshb_ideal_waveforms", &simulate_pshb_ideal_waveforms);
+    function("calculate_ahb_inputs", &calculate_ahb_inputs);
+    function("simulate_ahb_ideal_waveforms", &simulate_ahb_ideal_waveforms);
     
     // New integrated converter processing functions
     function("process_converter", &process_converter);
@@ -7980,6 +8008,300 @@ std::string simulate_dab_ideal_waveforms(std::string dabInputsString) {
             dabDiag["computedSeriesInductance"] = dabInputs.get_computed_series_inductance();
             dabDiag["voltageConversionRatio"]   = dabInputs.get_last_voltage_conversion_ratio();
             result["dabDiagnostics"] = dabDiag;
+        }
+
+        return result.dump(4);
+    }
+    catch (const std::exception& exc) {
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
+    }
+}
+
+// ============================================================================
+// PSFB / PSHB / AHB - DAB-shaped wizard bindings
+// Each pair (calculate_*_inputs / simulate_*_ideal_waveforms) follows the same
+// pattern as calculate_dab_inputs / simulate_dab_ideal_waveforms above:
+//   - calculate_*: AdvancedX(json).process() -> Inputs -> JSON
+//   - simulate_*:  same, then run NgspiceRunner via simulate_and_extract_*
+// Returns "Exception: ..." string on failure (calculate path) or
+// {"error": "..."} JSON (simulate path) to match DAB / wizard expectations.
+// ============================================================================
+
+std::string simulate_psfb_ideal_waveforms(std::string psfbInputsString) {
+    try {
+        json psfbInputsJson = json::parse(psfbInputsString);
+
+        OpenMagnetics::AdvancedPsfb psfbInputs(psfbInputsJson);
+        auto inputs = psfbInputs.process();
+        auto designRequirements = inputs.get_design_requirements();
+
+        std::vector<double> turnsRatios;
+        for (const auto& tr : designRequirements.get_turns_ratios()) {
+            if (tr.get_nominal()) {
+                turnsRatios.push_back(tr.get_nominal().value());
+            }
+        }
+
+        double magnetizingInductance = 0;
+        if (designRequirements.get_magnetizing_inductance().get_minimum()) {
+            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
+        } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
+            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
+        } else {
+            throw std::runtime_error("Unable to determine magnetizing inductance for PSFB simulation");
+        }
+
+#ifndef ENABLE_NGSPICE
+        throw std::runtime_error("ngspice simulation is required but ENABLE_NGSPICE was not defined at compile time");
+#endif
+        OpenMagnetics::NgspiceRunner runner;
+        if (!runner.is_available()) {
+            throw std::runtime_error("ngspice simulation is required but ngspice is not available");
+        }
+
+        size_t numberOfPeriods = 2;
+        if (psfbInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = psfbInputsJson["numberOfPeriods"].get<size_t>();
+        }
+        size_t numberOfSteadyStatePeriods = 3;
+        if (psfbInputsJson.contains("numberOfSteadyStatePeriods")) {
+            numberOfSteadyStatePeriods = psfbInputsJson["numberOfSteadyStatePeriods"].get<size_t>();
+        }
+        psfbInputs.set_num_periods_to_extract(static_cast<int>(numberOfPeriods));
+        psfbInputs.set_num_steady_state_periods(static_cast<int>(numberOfSteadyStatePeriods));
+
+        auto topologyWaveforms = psfbInputs.simulate_and_extract_topology_waveforms(
+            turnsRatios, magnetizingInductance, numberOfPeriods);
+        auto operatingPoints = psfbInputs.simulate_and_extract_operating_points(
+            turnsRatios, magnetizingInductance);
+
+        json result;
+        json inputsJson;
+        inputsJson["designRequirements"] = json();
+        to_json(inputsJson["designRequirements"], designRequirements);
+        inputsJson["operatingPoints"] = json::array();
+        for (const auto& op : operatingPoints) {
+            json opJson;
+            to_json(opJson, op);
+            inputsJson["operatingPoints"].push_back(opJson);
+        }
+        result["inputs"] = inputsJson;
+
+        result["converterWaveforms"] = json::array();
+        for (const auto& tw : topologyWaveforms) {
+            json cwJson;
+            to_json(cwJson, tw);
+            result["converterWaveforms"].push_back(cwJson);
+        }
+
+        return result.dump(4);
+    }
+    catch (const std::exception& exc) {
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
+    }
+}
+
+std::string calculate_pshb_inputs(std::string pshbInputsString) {
+    try {
+        json pshbInputsJson = json::parse(pshbInputsString);
+
+        OpenMagnetics::AdvancedPshb pshbInputs(pshbInputsJson);
+
+        size_t numberOfPeriods = 1;
+        if (pshbInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = pshbInputsJson["numberOfPeriods"].get<size_t>();
+        }
+        pshbInputs.set_num_periods_to_extract(numberOfPeriods);
+
+        auto inputs = pshbInputs.process();
+
+        json result;
+        to_json(result, inputs);
+
+        if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string simulate_pshb_ideal_waveforms(std::string pshbInputsString) {
+    try {
+        json pshbInputsJson = json::parse(pshbInputsString);
+
+        OpenMagnetics::AdvancedPshb pshbInputs(pshbInputsJson);
+        auto inputs = pshbInputs.process();
+        auto designRequirements = inputs.get_design_requirements();
+
+        std::vector<double> turnsRatios;
+        for (const auto& tr : designRequirements.get_turns_ratios()) {
+            if (tr.get_nominal()) {
+                turnsRatios.push_back(tr.get_nominal().value());
+            }
+        }
+
+        double magnetizingInductance = 0;
+        if (designRequirements.get_magnetizing_inductance().get_minimum()) {
+            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
+        } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
+            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
+        } else {
+            throw std::runtime_error("Unable to determine magnetizing inductance for PSHB simulation");
+        }
+
+#ifndef ENABLE_NGSPICE
+        throw std::runtime_error("ngspice simulation is required but ENABLE_NGSPICE was not defined at compile time");
+#endif
+        OpenMagnetics::NgspiceRunner runner;
+        if (!runner.is_available()) {
+            throw std::runtime_error("ngspice simulation is required but ngspice is not available");
+        }
+
+        size_t numberOfPeriods = 2;
+        if (pshbInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = pshbInputsJson["numberOfPeriods"].get<size_t>();
+        }
+        size_t numberOfSteadyStatePeriods = 3;
+        if (pshbInputsJson.contains("numberOfSteadyStatePeriods")) {
+            numberOfSteadyStatePeriods = pshbInputsJson["numberOfSteadyStatePeriods"].get<size_t>();
+        }
+        pshbInputs.set_num_periods_to_extract(static_cast<int>(numberOfPeriods));
+        pshbInputs.set_num_steady_state_periods(static_cast<int>(numberOfSteadyStatePeriods));
+
+        auto topologyWaveforms = pshbInputs.simulate_and_extract_topology_waveforms(
+            turnsRatios, magnetizingInductance, numberOfPeriods);
+        auto operatingPoints = pshbInputs.simulate_and_extract_operating_points(
+            turnsRatios, magnetizingInductance);
+
+        json result;
+        json inputsJson;
+        inputsJson["designRequirements"] = json();
+        to_json(inputsJson["designRequirements"], designRequirements);
+        inputsJson["operatingPoints"] = json::array();
+        for (const auto& op : operatingPoints) {
+            json opJson;
+            to_json(opJson, op);
+            inputsJson["operatingPoints"].push_back(opJson);
+        }
+        result["inputs"] = inputsJson;
+
+        result["converterWaveforms"] = json::array();
+        for (const auto& tw : topologyWaveforms) {
+            json cwJson;
+            to_json(cwJson, tw);
+            result["converterWaveforms"].push_back(cwJson);
+        }
+
+        return result.dump(4);
+    }
+    catch (const std::exception& exc) {
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
+    }
+}
+
+std::string calculate_ahb_inputs(std::string ahbInputsString) {
+    try {
+        json ahbInputsJson = json::parse(ahbInputsString);
+
+        OpenMagnetics::AdvancedAsymmetricHalfBridge ahbInputs(ahbInputsJson);
+
+        size_t numberOfPeriods = 1;
+        if (ahbInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = ahbInputsJson["numberOfPeriods"].get<size_t>();
+        }
+        ahbInputs.set_num_periods_to_extract(numberOfPeriods);
+
+        auto inputs = ahbInputs.process();
+
+        json result;
+        to_json(result, inputs);
+
+        if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string simulate_ahb_ideal_waveforms(std::string ahbInputsString) {
+    try {
+        json ahbInputsJson = json::parse(ahbInputsString);
+
+        OpenMagnetics::AdvancedAsymmetricHalfBridge ahbInputs(ahbInputsJson);
+        auto inputs = ahbInputs.process();
+        auto designRequirements = inputs.get_design_requirements();
+
+        std::vector<double> turnsRatios;
+        for (const auto& tr : designRequirements.get_turns_ratios()) {
+            if (tr.get_nominal()) {
+                turnsRatios.push_back(tr.get_nominal().value());
+            }
+        }
+
+        double magnetizingInductance = 0;
+        if (designRequirements.get_magnetizing_inductance().get_minimum()) {
+            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
+        } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
+            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
+        } else {
+            throw std::runtime_error("Unable to determine magnetizing inductance for AHB simulation");
+        }
+
+#ifndef ENABLE_NGSPICE
+        throw std::runtime_error("ngspice simulation is required but ENABLE_NGSPICE was not defined at compile time");
+#endif
+        OpenMagnetics::NgspiceRunner runner;
+        if (!runner.is_available()) {
+            throw std::runtime_error("ngspice simulation is required but ngspice is not available");
+        }
+
+        size_t numberOfPeriods = 2;
+        if (ahbInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = ahbInputsJson["numberOfPeriods"].get<size_t>();
+        }
+        size_t numberOfSteadyStatePeriods = 3;
+        if (ahbInputsJson.contains("numberOfSteadyStatePeriods")) {
+            numberOfSteadyStatePeriods = ahbInputsJson["numberOfSteadyStatePeriods"].get<size_t>();
+        }
+        ahbInputs.set_num_periods_to_extract(static_cast<int>(numberOfPeriods));
+        ahbInputs.set_num_steady_state_periods(static_cast<int>(numberOfSteadyStatePeriods));
+
+        auto topologyWaveforms = ahbInputs.simulate_and_extract_topology_waveforms(
+            turnsRatios, magnetizingInductance, numberOfPeriods);
+        auto operatingPoints = ahbInputs.simulate_and_extract_operating_points(
+            turnsRatios, magnetizingInductance);
+
+        json result;
+        json inputsJson;
+        inputsJson["designRequirements"] = json();
+        to_json(inputsJson["designRequirements"], designRequirements);
+        inputsJson["operatingPoints"] = json::array();
+        for (const auto& op : operatingPoints) {
+            json opJson;
+            to_json(opJson, op);
+            inputsJson["operatingPoints"].push_back(opJson);
+        }
+        result["inputs"] = inputsJson;
+
+        result["converterWaveforms"] = json::array();
+        for (const auto& tw : topologyWaveforms) {
+            json cwJson;
+            to_json(cwJson, tw);
+            result["converterWaveforms"].push_back(cwJson);
         }
 
         return result.dump(4);
