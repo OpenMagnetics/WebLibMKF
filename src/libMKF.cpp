@@ -2660,11 +2660,6 @@ std::string calculate_advised_cores(std::string inputsString, std::string weight
     try {
         OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(true);
 
-        std::cout << "=== DEBUG calculate_advised_cores ===" << std::endl;
-        std::cout << "inputsString: " << inputsString << std::endl;
-        std::cout << "weightsString: " << weightsString << std::endl;
-        std::cout << "coreModeString: " << coreModeString << std::endl;
-
         OpenMagnetics::Inputs inputs(json::parse(inputsString));
         OpenMagnetics::CoreAdviser::CoreAdviserModes coreMode;
         from_json(coreModeString, coreMode);
@@ -2932,26 +2927,6 @@ std::string calculate_advised_magnetics(std::string inputsString, std::string we
         OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(true);
         OpenMagnetics::Inputs inputs(json::parse(inputsString));
 
-        // DEBUG: Check if voltage waveform is present in the first operating point
-        if (!inputs.get_operating_points().empty()) {
-            auto op = inputs.get_operating_point(0);
-            if (!op.get_excitations_per_winding().empty()) {
-                auto exc = op.get_excitations_per_winding()[0];
-                bool hasVoltage = exc.get_voltage().has_value();
-                bool hasWaveform = hasVoltage && exc.get_voltage()->get_waveform().has_value();
-                bool hasTime = hasWaveform && exc.get_voltage()->get_waveform()->get_time().has_value();
-                size_t timeSize = hasTime ? exc.get_voltage()->get_waveform()->get_time().value().size() : 0;
-                size_t dataSize = hasWaveform ? exc.get_voltage()->get_waveform()->get_data().size() : 0;
-                std::cout << "[DEBUG calculate_advised_magnetics] Voltage waveform check: hasVoltage=" << hasVoltage
-                          << ", hasWaveform=" << hasWaveform << ", hasTime=" << hasTime
-                          << ", timeSize=" << timeSize << ", dataSize=" << dataSize << std::endl;
-            } else {
-                std::cout << "[DEBUG calculate_advised_magnetics] No excitations found!" << std::endl;
-            }
-        } else {
-            std::cout << "[DEBUG calculate_advised_magnetics] No operating points found!" << std::endl;
-        }
-
         OpenMagnetics::CoreAdviser::CoreAdviserModes coreMode;
         from_json(coreModeString, coreMode);
 
@@ -3001,6 +2976,12 @@ std::string calculate_advised_magnetics(std::string inputsString, std::string we
                 OpenMagnetics::MagneticFilterOperation(OpenMagnetics::MagneticFilters::LOSSES,     true, true, wLosses),
                 OpenMagnetics::MagneticFilterOperation(OpenMagnetics::MagneticFilters::DIMENSIONS, true, true, wDims),
                 OpenMagnetics::MagneticFilterOperation(OpenMagnetics::MagneticFilters::LEAKAGE_INDUCTANCE, true, true, wDims),
+                // Manufacturability proxy: penalises low-µ candidates that need an
+                // absurd turn count (e.g. powder on a CMC) even when their size/cost
+                // are attractive. Score = N_total × max(W, H, D); linear, inverted.
+                // Weight is 2× the efficiency weight so the N×dim penalty has enough
+                // magnitude to overcome the cost/size advantage powder cores often have.
+                OpenMagnetics::MagneticFilterOperation(OpenMagnetics::MagneticFilters::TURNS_DENSITY, true, false, std::max(wLosses, wDims) * 2.0),
             };
             masMagnetics = magneticAdviser.get_advised_magnetic(inputs, cmcFilterFlow, maximumNumberResults);
         }
