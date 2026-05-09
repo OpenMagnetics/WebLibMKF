@@ -2981,7 +2981,7 @@ std::string calculate_advised_magnetics(std::string inputsString, std::string we
                 // are attractive. Score = N_total × max(W, H, D); linear, inverted.
                 // Weight is 2× the efficiency weight so the N×dim penalty has enough
                 // magnitude to overcome the cost/size advantage powder cores often have.
-                OpenMagnetics::MagneticFilterOperation(OpenMagnetics::MagneticFilters::TURN_COUNT, true, false, std::max(wLosses, wDims) * 2.0),
+                OpenMagnetics::MagneticFilterOperation(OpenMagnetics::MagneticFilters::TURN_COUNT, true, false, std::max(wLosses, wDims)),
             };
             masMagnetics = magneticAdviser.get_advised_magnetic(inputs, cmcFilterFlow, maximumNumberResults);
         }
