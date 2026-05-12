@@ -6473,6 +6473,19 @@ std::string calculate_dmc_inputs(std::string dmcInputsString){
 
         json result;
         to_json(result, inputs);
+
+        // Honor numberOfPeriods so the frontend doesn't have to tile the
+        // waveforms in JS. DMC's process() always emits a single period;
+        // we replicate it here using the shared helper, matching the
+        // pattern used by every other converter binding above.
+        size_t numberOfPeriods = 1;
+        if (dmcInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = dmcInputsJson["numberOfPeriods"].get<size_t>();
+        }
+        if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -6539,7 +6552,15 @@ std::string simulate_dmc_waveforms(std::string dmcInputsString, double inductanc
             frequencies = {150000, 500000, 1000000, 10000000, 30000000};
         }
 
-        auto waveforms = dmc.simulate_and_extract_waveforms(inductance, frequencies);
+        // Honor numberOfPeriods (matches the pattern used by every other
+        // converter binding: pass through to the underlying simulator,
+        // which sets ngspice's extractOnePeriod + numberOfPeriods).
+        size_t numberOfPeriods = 1;
+        if (dmcInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = dmcInputsJson["numberOfPeriods"].get<size_t>();
+        }
+
+        auto waveforms = dmc.simulate_and_extract_waveforms(inductance, frequencies, numberOfPeriods);
 
         json result = json::array();
         for (const auto& wf : waveforms) {
@@ -7319,7 +7340,7 @@ std::string load_magnetic(std::string key, std::string magneticString, bool expa
         if (expand) {
             magnetic = OpenMagnetics::magnetic_autocomplete(magnetic);
         }
-        OpenMagnetics::magneticsCache.load(key, magnetic);
+        OpenMagnetics::magneticsCache.load(std::move(key), std::move(magnetic));
 
         return std::to_string(OpenMagnetics::magneticsCache.size());
     }
@@ -7337,7 +7358,8 @@ std::string load_magnetics(std::string keysString, std::string magneticsString, 
             if (expand) {
                 magnetic = OpenMagnetics::magnetic_autocomplete(magnetic);
             }
-            OpenMagnetics::magneticsCache.load(keys[magneticIndex], magnetic);
+            std::string key = keys[magneticIndex];
+            OpenMagnetics::magneticsCache.load(std::move(key), std::move(magnetic));
         }
         return std::to_string(OpenMagnetics::magneticsCache.size());
     }
@@ -7358,7 +7380,7 @@ std::string load_magnetics_from_file(std::string path, bool expand) {
                     magnetic = OpenMagnetics::magnetic_autocomplete(magnetic);
                 }
                 std::string key = magnetic.get_manufacturer_info()->get_reference().value();
-                OpenMagnetics::magneticsCache.load(key, magnetic);
+                OpenMagnetics::magneticsCache.load(std::move(key), std::move(magnetic));
             }
         }
         return std::to_string(OpenMagnetics::magneticsCache.size());
@@ -7370,18 +7392,28 @@ std::string load_magnetics_from_file(std::string path, bool expand) {
 
 std::string load_magnetics_from_string(std::string database, bool expand) {
     try {
-        std::string delimiter = "\n";
-        size_t pos = 0;
-        std::string token;
-        if (database.back() != delimiter.back()) {
-            database += delimiter;
-        }
-        while ((pos = database.find(delimiter)) != std::string::npos) {
-            token = database.substr(0, pos);
-            json jf = json::parse(token);
-            OpenMagnetics::Magnetic magnetic(jf);
-            OpenMagnetics::magneticsCache.load(jf["manufacturerInfo"]["reference"], magnetic);
-            database.erase(0, pos + delimiter.length());
+        // Linear-time NDJSON scan. The previous loop did
+        //   database.erase(0, pos + 1)
+        // per line, which is O(N²) memmove for multi-MB catalogs. We now
+        // walk the buffer once with a sliding `start` index and parse
+        // each line directly from the original buffer via iterator pair,
+        // mirroring MKF's parse_ndjson refactor.
+        const size_t n = database.size();
+        size_t start = 0;
+        while (start < n) {
+            size_t pos = database.find('\n', start);
+            size_t end = (pos == std::string::npos) ? n : pos;
+            if (end > start) {
+                json jf = json::parse(database.begin() + start, database.begin() + end);
+                OpenMagnetics::Magnetic magnetic(jf);
+                if (expand) {
+                    magnetic = OpenMagnetics::magnetic_autocomplete(magnetic);
+                }
+                std::string key = jf["manufacturerInfo"]["reference"];
+                OpenMagnetics::magneticsCache.load(std::move(key), std::move(magnetic));
+            }
+            if (pos == std::string::npos) break;
+            start = pos + 1;
         }
         return std::to_string(OpenMagnetics::magneticsCache.size());
     }
