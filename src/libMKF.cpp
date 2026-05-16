@@ -38,6 +38,7 @@
 #include "converter_models/IsolatedBuckBoost.h"
 #include "converter_models/Buck.h"
 #include "converter_models/Boost.h"
+#include "converter_models/Sepic.h"
 #include "converter_models/PushPull.h"
 #include "converter_models/SingleSwitchForward.h"
 #include "converter_models/PowerFactorCorrection.h"
@@ -3909,6 +3910,42 @@ EMSCRIPTEN_KEEPALIVE std::string generate_boost_ngspice_circuit(std::string boos
     }
 }
 
+// SEPIC SPICE generation (uses inductanceL1 directly)
+EMSCRIPTEN_KEEPALIVE std::string generate_sepic_ngspice_circuit(std::string sepicInputsString, size_t inputVoltageIndex, size_t operatingPointIndex){
+    try {
+        json sepicInputsJson = json::parse(sepicInputsString);
+
+        bool isAdvancedSepic = sepicInputsJson.contains("desiredInductance");
+
+        double inductanceL1;
+
+        std::string netlist;
+        if (isAdvancedSepic) {
+            OpenMagnetics::AdvancedSepic sepic(sepicInputsJson);
+            inductanceL1 = sepic.get_desired_inductance();
+            netlist = sepic.generate_ngspice_circuit(inductanceL1, inputVoltageIndex, operatingPointIndex);
+        } else {
+            OpenMagnetics::Sepic sepic(sepicInputsJson);
+            auto designRequirements = sepic.process_design_requirements();
+
+            if (designRequirements.get_magnetizing_inductance().get_minimum()) {
+                inductanceL1 = designRequirements.get_magnetizing_inductance().get_minimum().value();
+            } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
+                inductanceL1 = designRequirements.get_magnetizing_inductance().get_nominal().value();
+            } else {
+                throw std::runtime_error("Unable to calculate inductance");
+            }
+
+            netlist = sepic.generate_ngspice_circuit(inductanceL1, inputVoltageIndex, operatingPointIndex);
+        }
+
+        return netlist;
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
 // PushPull SPICE generation
 EMSCRIPTEN_KEEPALIVE std::string generate_push_pull_ngspice_circuit(std::string pushPullInputsString, size_t inputVoltageIndex, size_t operatingPointIndex){
     return generate_converter_ngspice_circuit_helper<OpenMagnetics::PushPull, OpenMagnetics::AdvancedPushPull>(pushPullInputsString, inputVoltageIndex, operatingPointIndex, "desiredInductance");
@@ -4449,6 +4486,66 @@ std::string calculate_advanced_boost_inputs(std::string boostInputsString){
     }
 }
 
+std::string calculate_sepic_inputs(std::string sepicInputsString){
+    try {
+        json sepicInputsJson = json::parse(sepicInputsString);
+
+        OpenMagnetics::Sepic sepicInputs(sepicInputsJson);
+
+        // Read number of periods from input (default to 1 for analytical)
+        size_t numberOfPeriods = 1;
+        if (sepicInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = sepicInputsJson["numberOfPeriods"].get<size_t>();
+        }
+        sepicInputs.set_num_periods_to_extract(numberOfPeriods);
+
+        auto inputs = sepicInputs.process();
+
+        json result;
+        to_json(result, inputs);
+
+        // Repeat waveforms for the specified number of periods (analytical generates 1 period)
+        if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string calculate_advanced_sepic_inputs(std::string sepicInputsString){
+    try {
+        json sepicInputsJson = json::parse(sepicInputsString);
+
+        OpenMagnetics::AdvancedSepic sepicInputs(sepicInputsJson);
+
+        // Read number of periods from input (default to 1 for analytical)
+        size_t numberOfPeriods = 1;
+        if (sepicInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = sepicInputsJson["numberOfPeriods"].get<size_t>();
+        }
+        sepicInputs.set_num_periods_to_extract(numberOfPeriods);
+
+        auto inputs = sepicInputs.process();
+
+        json result;
+        to_json(result, inputs);
+
+        // Repeat waveforms for the specified number of periods (analytical generates 1 period)
+        if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
 std::string simulate_buck_ideal_waveforms(std::string buckInputsString){
     try {
         json buckInputsJson = json::parse(buckInputsString);
@@ -4664,6 +4761,104 @@ std::string simulate_boost_ideal_waveforms(std::string boostInputsString){
         }
         result["inputs"] = inputs;
         
+        // converterWaveforms: array of OpenMagnetics::ConverterWaveforms
+        result["converterWaveforms"] = json::array();
+        for (const auto& tw : topologyWaveforms) {
+            json cwJson;
+            to_json(cwJson, tw);
+            result["converterWaveforms"].push_back(cwJson);
+        }
+
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string simulate_sepic_ideal_waveforms(std::string sepicInputsString){
+    try {
+        json sepicInputsJson = json::parse(sepicInputsString);
+
+        // Detect if this is an AdvancedSepic (user knows design) or regular Sepic (help with design)
+        bool isAdvancedSepic = sepicInputsJson.contains("desiredInductance");
+
+        DesignRequirements designRequirements;
+        double inductanceL1;
+
+        std::unique_ptr<OpenMagnetics::Sepic> sepicPtr;
+
+        if (isAdvancedSepic) {
+            auto advancedSepicPtr = std::make_unique<OpenMagnetics::AdvancedSepic>(sepicInputsJson);
+            inductanceL1 = advancedSepicPtr->get_desired_inductance();
+
+            // Build designRequirements
+            designRequirements.get_mutable_turns_ratios().clear();
+            DimensionWithTolerance inductanceWithTolerance;
+            inductanceWithTolerance.set_nominal(inductanceL1);
+            designRequirements.set_magnetizing_inductance(inductanceWithTolerance);
+            std::vector<IsolationSide> isolationSides;
+            isolationSides.push_back(OpenMagnetics::get_isolation_side_from_index(0));
+            designRequirements.set_isolation_sides(isolationSides);
+            designRequirements.set_topology(Topologies::SEPIC_CONVERTER);
+
+            sepicPtr = std::move(advancedSepicPtr);
+        } else {
+            sepicPtr = std::make_unique<OpenMagnetics::Sepic>(sepicInputsJson);
+            designRequirements = sepicPtr->process_design_requirements();
+
+            if (designRequirements.get_magnetizing_inductance().get_minimum()) {
+                inductanceL1 = designRequirements.get_magnetizing_inductance().get_minimum().value();
+            } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
+                inductanceL1 = designRequirements.get_magnetizing_inductance().get_nominal().value();
+            } else {
+                throw std::runtime_error("Unable to calculate inductance");
+            }
+        }
+
+#ifndef ENABLE_NGSPICE
+        throw std::runtime_error("ngspice simulation is required but ENABLE_NGSPICE was not defined at compile time");
+#endif
+
+        OpenMagnetics::NgspiceRunner runner;
+        if (!runner.is_available()) {
+            throw std::runtime_error("ngspice simulation is required but ngspice is not available");
+        }
+
+        // Read number of periods from input (default to 2)
+        size_t numberOfPeriods = 2;
+        if (sepicInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = sepicInputsJson["numberOfPeriods"].get<size_t>();
+        }
+
+        // Read number of steady state periods from input (default to 5)
+        size_t numberOfSteadyStatePeriods = 5;
+        if (sepicInputsJson.contains("numberOfSteadyStatePeriods")) {
+            numberOfSteadyStatePeriods = sepicInputsJson["numberOfSteadyStatePeriods"].get<size_t>();
+        }
+
+        // Set the number of periods to extract (not hardcoded to 1)
+        sepicPtr->set_num_periods_to_extract(numberOfPeriods);
+        sepicPtr->set_num_steady_state_periods(numberOfSteadyStatePeriods);
+
+        auto topologyWaveforms = sepicPtr->simulate_and_extract_topology_waveforms(inductanceL1, numberOfPeriods);
+        auto operatingPoints = sepicPtr->simulate_and_extract_operating_points(inductanceL1);
+
+        // Build the result with just two fields: inputs and converterWaveforms
+        json result;
+
+        // inputs: OpenMagnetics::Inputs containing designRequirements and operatingPoints
+        json inputs;
+        inputs["designRequirements"] = json();
+        to_json(inputs["designRequirements"], designRequirements);
+        inputs["operatingPoints"] = json::array();
+        for (const auto& op : operatingPoints) {
+            json opJson;
+            to_json(opJson, op);
+            inputs["operatingPoints"].push_back(opJson);
+        }
+        result["inputs"] = inputs;
+
         // converterWaveforms: array of OpenMagnetics::ConverterWaveforms
         result["converterWaveforms"] = json::array();
         for (const auto& tw : topologyWaveforms) {
@@ -7450,6 +7645,7 @@ std::string simulate_ahb_ideal_waveforms(std::string ahbInputsString);
 EMSCRIPTEN_KEEPALIVE std::string generate_flyback_ngspice_circuit(std::string flybackInputsString, size_t inputVoltageIndex, size_t operatingPointIndex);
 EMSCRIPTEN_KEEPALIVE std::string generate_buck_ngspice_circuit(std::string buckInputsString, size_t inputVoltageIndex, size_t operatingPointIndex);
 EMSCRIPTEN_KEEPALIVE std::string generate_boost_ngspice_circuit(std::string boostInputsString, size_t inputVoltageIndex, size_t operatingPointIndex);
+EMSCRIPTEN_KEEPALIVE std::string generate_sepic_ngspice_circuit(std::string sepicInputsString, size_t inputVoltageIndex, size_t operatingPointIndex);
 EMSCRIPTEN_KEEPALIVE std::string generate_push_pull_ngspice_circuit(std::string pushPullInputsString, size_t inputVoltageIndex, size_t operatingPointIndex);
 EMSCRIPTEN_KEEPALIVE std::string generate_forward_ngspice_circuit(std::string forwardInputsString, size_t inputVoltageIndex, size_t operatingPointIndex);
 EMSCRIPTEN_KEEPALIVE std::string generate_two_switch_forward_ngspice_circuit(std::string forwardInputsString, size_t inputVoltageIndex, size_t operatingPointIndex);
@@ -7623,6 +7819,9 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("calculate_boost_inputs", &calculate_boost_inputs);
     function("calculate_advanced_boost_inputs", &calculate_advanced_boost_inputs);
     function("simulate_boost_ideal_waveforms", &simulate_boost_ideal_waveforms);
+    function("calculate_sepic_inputs", &calculate_sepic_inputs);
+    function("calculate_advanced_sepic_inputs", &calculate_advanced_sepic_inputs);
+    function("simulate_sepic_ideal_waveforms", &simulate_sepic_ideal_waveforms);
     function("calculate_push_pull_inputs", &calculate_push_pull_inputs);
     function("calculate_advanced_push_pull_inputs", &calculate_advanced_push_pull_inputs);
     function("simulate_push_pull_ideal_waveforms", &simulate_push_pull_ideal_waveforms);
@@ -7641,6 +7840,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("generate_flyback_ngspice_circuit", &generate_flyback_ngspice_circuit);
     function("generate_buck_ngspice_circuit", &generate_buck_ngspice_circuit);
     function("generate_boost_ngspice_circuit", &generate_boost_ngspice_circuit);
+    function("generate_sepic_ngspice_circuit", &generate_sepic_ngspice_circuit);
     function("generate_push_pull_ngspice_circuit", &generate_push_pull_ngspice_circuit);
     function("generate_forward_ngspice_circuit", &generate_forward_ngspice_circuit);
     function("generate_two_switch_forward_ngspice_circuit", &generate_two_switch_forward_ngspice_circuit);
@@ -8694,6 +8894,17 @@ std::string process_converter(std::string topologyName, std::string converterJso
                     return calculate_advanced_boost_inputs(converterJson);
                 } else {
                     return calculate_boost_inputs(converterJson);
+                }
+            }
+        }
+        else if (topology == "sepic" || topology == "advanced_sepic") {
+            if (useNgspice) {
+                return simulate_sepic_ideal_waveforms(converterJson);
+            } else {
+                if (converterData.contains("desiredInductance")) {
+                    return calculate_advanced_sepic_inputs(converterJson);
+                } else {
+                    return calculate_sepic_inputs(converterJson);
                 }
             }
         }
