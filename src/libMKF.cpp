@@ -3969,11 +3969,21 @@ EMSCRIPTEN_KEEPALIVE std::string generate_llc_ngspice_circuit(std::string llcInp
     }
 }
 
-// CLLC SPICE generation - Note: CLLC has a different signature, skipping for now
-// EMSCRIPTEN_KEEPALIVE std::string generate_cllc_ngspice_circuit(std::string cllcInputsString, size_t inputVoltageIndex, size_t operatingPointIndex){
-//     // CLLC requires CllcResonantParameters, different from other converters
-//     return "Exception: CLLC SPICE generation not yet implemented";
-// }
+// CLLC SPICE generation — uses CllcResonantParameters from
+// calculate_resonant_parameters(); turnsRatio is scalar (single secondary).
+EMSCRIPTEN_KEEPALIVE std::string generate_cllc_ngspice_circuit(std::string cllcInputsString, size_t inputVoltageIndex, size_t operatingPointIndex){
+    try {
+        json cllcInputsJson = json::parse(cllcInputsString);
+        OpenMagnetics::CllcConverter cllc(cllcInputsJson);
+        auto params = cllc.calculate_resonant_parameters();
+        double turnsRatio = params.turnsRatio;
+        std::string netlist = cllc.generate_ngspice_circuit(turnsRatio, params, inputVoltageIndex, operatingPointIndex);
+        return netlist;
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
 
 // DAB SPICE generation
 EMSCRIPTEN_KEEPALIVE std::string generate_dab_ngspice_circuit(std::string dabInputsString, size_t inputVoltageIndex, size_t operatingPointIndex){
@@ -7427,6 +7437,7 @@ std::string calculate_llc_inputs(std::string llcInputsString);
 std::string simulate_llc_ideal_waveforms(std::string llcInputsString);
 std::string simulate_dab_ideal_waveforms(std::string dabInputsString);
 std::string calculate_cllc_inputs(std::string cllcInputsString);
+std::string simulate_cllc_ideal_waveforms(std::string cllcInputsString);
 std::string calculate_dab_inputs(std::string dabInputsString);
 std::string calculate_psfb_inputs(std::string psfbInputsString);
 std::string simulate_psfb_ideal_waveforms(std::string psfbInputsString);
@@ -7637,7 +7648,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("generate_isolated_buck_ngspice_circuit", &generate_isolated_buck_ngspice_circuit);
     function("generate_isolated_buck_boost_ngspice_circuit", &generate_isolated_buck_boost_ngspice_circuit);
     function("generate_llc_ngspice_circuit", &generate_llc_ngspice_circuit);
-    // function("generate_cllc_ngspice_circuit", &generate_cllc_ngspice_circuit);  // Different signature - requires CllcResonantParameters
+    function("generate_cllc_ngspice_circuit", &generate_cllc_ngspice_circuit);
     function("generate_dab_ngspice_circuit", &generate_dab_ngspice_circuit);
     function("generate_psfb_ngspice_circuit", &generate_psfb_ngspice_circuit);
     function("generate_cmc_ngspice_circuit", &generate_cmc_ngspice_circuit);
@@ -7691,6 +7702,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("simulate_llc_ideal_waveforms", &simulate_llc_ideal_waveforms);
     function("simulate_dab_ideal_waveforms", &simulate_dab_ideal_waveforms);
     function("calculate_cllc_inputs", &calculate_cllc_inputs);
+    function("simulate_cllc_ideal_waveforms", &simulate_cllc_ideal_waveforms);
     function("calculate_dab_inputs", &calculate_dab_inputs);
     function("calculate_psfb_inputs", &calculate_psfb_inputs);
     function("simulate_psfb_ideal_waveforms", &simulate_psfb_ideal_waveforms);
@@ -8352,10 +8364,38 @@ std::string calculate_cllc_inputs(std::string cllcInputsString) {
         cllcInputs.set_num_periods_to_extract(numberOfPeriods);
         
         auto designRequirements = cllcInputs.process_design_requirements();
-        
-        double magnetizingInductance = cllcInputsJson.value("magnetizingInductance", 100e-6);
-        
-        auto operatingPoints = cllcInputs.process_operating_points({}, magnetizingInductance);
+
+        // Extract turns ratios from designRequirements (set by process_design_requirements()).
+        // process_operating_points(turnsRatios, Lm) requires a non-empty turnsRatios
+        // vector — it dereferences turnsRatios[0] unconditionally. If desiredTurnsRatios
+        // was supplied, the JSON ctor will have set it on designRequirements; otherwise
+        // we use the value calculate_resonant_parameters() computed.
+        std::vector<double> turnsRatios;
+        for (const auto& tr : designRequirements.get_turns_ratios()) {
+            if (tr.get_nominal()) {
+                turnsRatios.push_back(tr.get_nominal().value());
+            }
+        }
+        if (turnsRatios.empty()) {
+            throw std::runtime_error("CLLC: process_design_requirements produced no turns ratios");
+        }
+
+        // Magnetizing inductance: prefer explicit user input, else use the
+        // value computed by calculate_resonant_parameters() (stored on the
+        // designRequirements). Mirrors LLC.process() behaviour.
+        double magnetizingInductance;
+        if (cllcInputsJson.contains("magnetizingInductance") &&
+            cllcInputsJson["magnetizingInductance"].is_number()) {
+            magnetizingInductance = cllcInputsJson["magnetizingInductance"].get<double>();
+        }
+        else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
+            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
+        }
+        else {
+            throw std::runtime_error("CLLC: no magnetizing inductance available (neither user input nor computed)");
+        }
+
+        auto operatingPoints = cllcInputs.process_operating_points(turnsRatios, magnetizingInductance);
         
         // Commented out due to missing calculate_resonant_tank method
         // if (!cllcInputsJson.contains("primaryResonantInductance")) {
@@ -8365,23 +8405,153 @@ std::string calculate_cllc_inputs(std::string cllcInputsString) {
         // }
         
         json result;
-        to_json(result, designRequirements);
+        // Match LLC's calculate_llc_inputs output shape: { designRequirements, operatingPoints }
+        // The frontend ConverterWizardBase.processWizardData reads r.designRequirements;
+        // a flattened DR at the root would make that field undefined and break
+        // Review Specs / Design Magnetic navigation (setupMasStore would throw
+        // "Cannot set properties of undefined (setting 'topology')").
+        json drJson;
+        to_json(drJson, designRequirements);
+        result["designRequirements"] = drJson;
         result["operatingPoints"] = json::array();
-        
+
         for (auto& op : operatingPoints) {
             json opJson;
             to_json(opJson, op);
             result["operatingPoints"].push_back(opJson);
         }
-        
+
         // Repeat waveforms for the specified number of periods (analytical generates 1 period)
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
-        
+
         return result.dump(4);
     }
     catch (const std::exception &exc) {
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
+    }
+}
+
+// SPICE/TDA-based CLLC ideal waveform simulator. Mirrors
+// simulate_llc_ideal_waveforms (7817): runs both topology-waveform and
+// per-OP extractions through ngspice, returns inputs + converterWaveforms
+// + cllcDiagnostics (richer than LLC — includes ZVS margins, resonant
+// transition time, peak primary current, peak resonant-cap voltage, and
+// the per-segment sub-state sequence).
+std::string simulate_cllc_ideal_waveforms(std::string cllcInputsString) {
+    try {
+        json cllcInputsJson = json::parse(cllcInputsString);
+
+        // Reject multi-output (CLLC backend is single-output only).
+        if (cllcInputsJson.contains("operatingPoints") && cllcInputsJson["operatingPoints"].is_array()) {
+            for (const auto& op : cllcInputsJson["operatingPoints"]) {
+                if (op.contains("outputVoltages") && op["outputVoltages"].is_array() && op["outputVoltages"].size() > 1) {
+                    throw std::runtime_error("Multi-output configuration is not yet supported for CLLC converter.");
+                }
+                if (op.contains("outputCurrents") && op["outputCurrents"].is_array() && op["outputCurrents"].size() > 1) {
+                    throw std::runtime_error("Multi-output configuration is not yet supported for CLLC converter.");
+                }
+            }
+        }
+
+        OpenMagnetics::CllcConverter cllc(cllcInputsJson);
+
+        auto designRequirements = cllc.process_design_requirements();
+
+        // Turns ratios from design requirements (single secondary expected).
+        std::vector<double> turnsRatios;
+        for (const auto& tr : designRequirements.get_turns_ratios()) {
+            if (tr.get_nominal()) {
+                turnsRatios.push_back(tr.get_nominal().value());
+            }
+        }
+        if (turnsRatios.empty()) {
+            throw std::runtime_error("CLLC: process_design_requirements produced no turns ratios");
+        }
+
+        // Magnetizing inductance: prefer explicit user input, else use the
+        // value computed by process_design_requirements().
+        double magnetizingInductance;
+        if (cllcInputsJson.contains("magnetizingInductance") &&
+            cllcInputsJson["magnetizingInductance"].is_number()) {
+            magnetizingInductance = cllcInputsJson["magnetizingInductance"].get<double>();
+        }
+        else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
+            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
+        }
+        else {
+            throw std::runtime_error("CLLC: no magnetizing inductance available (neither user input nor computed)");
+        }
+
+#ifndef ENABLE_NGSPICE
+        throw std::runtime_error("ngspice simulation is required but ENABLE_NGSPICE was not defined at compile time");
+#endif
+
+        OpenMagnetics::NgspiceRunner runner;
+        if (!runner.is_available()) {
+            throw std::runtime_error("ngspice simulation is required but ngspice is not available");
+        }
+
+        size_t numberOfPeriods = 2;
+        if (cllcInputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = cllcInputsJson["numberOfPeriods"].get<size_t>();
+        }
+        size_t numberOfSteadyStatePeriods = 3;
+        if (cllcInputsJson.contains("numberOfSteadyStatePeriods")) {
+            numberOfSteadyStatePeriods = cllcInputsJson["numberOfSteadyStatePeriods"].get<size_t>();
+        }
+        cllc.set_num_periods_to_extract(static_cast<int>(numberOfPeriods));
+        cllc.set_num_steady_state_periods(static_cast<int>(numberOfSteadyStatePeriods));
+
+        auto topologyWaveforms = cllc.simulate_and_extract_topology_waveforms(
+            turnsRatios, magnetizingInductance, numberOfPeriods);
+        // Note: CllcConverter::simulate_and_extract_operating_points has no
+        // numberOfPeriods argument (CLLC API choice — operating-point extraction
+        // always uses the converter's stored num_periods_to_extract setter,
+        // which we just set above).
+        auto operatingPoints = cllc.simulate_and_extract_operating_points(
+            turnsRatios, magnetizingInductance);
+
+        json result;
+
+        json inputsJson;
+        inputsJson["designRequirements"] = json();
+        to_json(inputsJson["designRequirements"], designRequirements);
+        inputsJson["operatingPoints"] = json::array();
+        for (const auto& op : operatingPoints) {
+            json opJson;
+            to_json(opJson, op);
+            inputsJson["operatingPoints"].push_back(opJson);
+        }
+        result["inputs"] = inputsJson;
+
+        result["converterWaveforms"] = json::array();
+        for (const auto& tw : topologyWaveforms) {
+            json cwJson;
+            to_json(cwJson, tw);
+            result["converterWaveforms"].push_back(cwJson);
+        }
+
+        // CLLC diagnostics — richer than LLC's. Mirrors plan §5.4.
+        json diag;
+        diag["lastMode"]                  = cllc.get_last_mode();
+        diag["lipFrequency"]              = cllc.get_lip_frequency();
+        diag["lastSteadyStateResidual"]   = cllc.get_last_steady_state_residual();
+        diag["lastZvsMarginPrimary"]      = cllc.get_last_zvs_margin_primary();
+        diag["lastZvsMarginSecondary"]    = cllc.get_last_zvs_margin_secondary();
+        diag["lastResonantTransitionTime"]= cllc.get_last_resonant_transition_time();
+        diag["lastPrimaryPeakCurrent"]    = cllc.get_last_primary_peak_current();
+        diag["lastResonantCapPeakVoltage"]= cllc.get_last_resonant_cap_peak_voltage();
+        diag["lastSubStateSequence"]      = cllc.get_last_sub_state_sequence();
+        diag["bridgeVoltageFactor"]       = cllc.get_bridge_voltage_factor();
+        result["cllcDiagnostics"] = diag;
+
+        return result.dump(4);
+    }
+    catch (const std::exception& exc) {
         json error;
         error["error"] = std::string{exc.what()};
         return error.dump(4);
@@ -8414,13 +8584,43 @@ std::string calculate_psfb_inputs(std::string psfbInputsString) {
         psfbInputs.set_num_periods_to_extract(numberOfPeriods);
         
         auto designRequirements = psfbInputs.process_design_requirements();
-        
-        double magnetizingInductance = psfbInputsJson.value("magnetizingInductance", 1e-3);
-        
-        auto operatingPoints = psfbInputs.process_operating_points({}, magnetizingInductance);
+
+        // Extract turns ratios from designRequirements (set by process_design_requirements()).
+        // process_operating_points(turnsRatios, Lm) dereferences turnsRatios[0] —
+        // passing an empty vector produces NaN waveforms downstream.
+        std::vector<double> turnsRatios;
+        for (const auto& tr : designRequirements.get_turns_ratios()) {
+            if (tr.get_nominal()) {
+                turnsRatios.push_back(tr.get_nominal().value());
+            }
+        }
+        if (turnsRatios.empty()) {
+            throw std::runtime_error("PSFB: process_design_requirements produced no turns ratios");
+        }
+
+        // Magnetizing inductance: prefer explicit user input, else use computed value.
+        double magnetizingInductance;
+        if (psfbInputsJson.contains("magnetizingInductance") &&
+            psfbInputsJson["magnetizingInductance"].is_number()) {
+            magnetizingInductance = psfbInputsJson["magnetizingInductance"].get<double>();
+        }
+        else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
+            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
+        }
+        else {
+            throw std::runtime_error("PSFB: no magnetizing inductance available (neither user input nor computed)");
+        }
+
+        auto operatingPoints = psfbInputs.process_operating_points(turnsRatios, magnetizingInductance);
         
         json result;
-        to_json(result, designRequirements);
+        // Nest designRequirements (matches LLC/CLLC; ConverterWizardBase
+        // reads result.designRequirements — a flattened DR at the root would
+        // make that undefined and break Review Specs / Design Magnetic
+        // navigation with "Cannot set properties of undefined (setting 'topology')").
+        json drJson;
+        to_json(drJson, designRequirements);
+        result["designRequirements"] = drJson;
         result["operatingPoints"] = json::array();
         
         for (auto& op : operatingPoints) {
@@ -8571,7 +8771,11 @@ std::string process_converter(std::string topologyName, std::string converterJso
             }
         }
         else if (topology == "cllc" || topology == "advanced_cllc") {
-            return calculate_cllc_inputs(converterJson);
+            if (useNgspice) {
+                return simulate_cllc_ideal_waveforms(converterJson);
+            } else {
+                return calculate_cllc_inputs(converterJson);
+            }
         }
         else if (topology == "dab" || topology == "advanced_dab") {
             return calculate_dab_inputs(converterJson);
