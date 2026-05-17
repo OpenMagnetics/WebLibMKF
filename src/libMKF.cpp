@@ -49,6 +49,11 @@
 #include "converter_models/DifferentialModeChoke.h"
 #include "converter_models/Llc.h"
 #include "converter_models/Cllc.h"
+#include "converter_models/Clllc.h"
+#include "converter_models/Cuk.h"
+#include "converter_models/FourSwitchBuckBoost.h"
+#include "converter_models/Weinberg.h"
+#include "converter_models/Zeta.h"
 #include "converter_models/Dab.h"
 #include "converter_models/PhaseShiftedFullBridge.h"
 #include "converter_models/PhaseShiftedHalfBridge.h"
@@ -7640,6 +7645,16 @@ std::string calculate_pshb_inputs(std::string pshbInputsString);
 std::string simulate_pshb_ideal_waveforms(std::string pshbInputsString);
 std::string calculate_ahb_inputs(std::string ahbInputsString);
 std::string simulate_ahb_ideal_waveforms(std::string ahbInputsString);
+std::string calculate_clllc_inputs(std::string clllcInputsString);
+std::string simulate_clllc_ideal_waveforms(std::string clllcInputsString);
+std::string calculate_cuk_inputs(std::string cukInputsString);
+std::string simulate_cuk_ideal_waveforms(std::string cukInputsString);
+std::string calculate_four_switch_buck_boost_inputs(std::string fsbbInputsString);
+std::string simulate_four_switch_buck_boost_ideal_waveforms(std::string fsbbInputsString);
+std::string calculate_weinberg_inputs(std::string weinbergInputsString);
+std::string simulate_weinberg_ideal_waveforms(std::string weinbergInputsString);
+std::string calculate_zeta_inputs(std::string zetaInputsString);
+std::string simulate_zeta_ideal_waveforms(std::string zetaInputsString);
 
 // SPICE Code Generation forward declarations
 EMSCRIPTEN_KEEPALIVE std::string generate_flyback_ngspice_circuit(std::string flybackInputsString, size_t inputVoltageIndex, size_t operatingPointIndex);
@@ -7813,6 +7828,16 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("calculate_advanced_isolated_buck_boost_inputs", &calculate_advanced_isolated_buck_boost_inputs);
     function("simulate_isolated_buck_boost_ideal_waveforms", &simulate_isolated_buck_boost_ideal_waveforms);
     function("simulate_isolated_buck_ideal_waveforms", &simulate_isolated_buck_ideal_waveforms);
+    function("calculate_clllc_inputs", &calculate_clllc_inputs);
+    function("simulate_clllc_ideal_waveforms", &simulate_clllc_ideal_waveforms);
+    function("calculate_cuk_inputs", &calculate_cuk_inputs);
+    function("simulate_cuk_ideal_waveforms", &simulate_cuk_ideal_waveforms);
+    function("calculate_four_switch_buck_boost_inputs", &calculate_four_switch_buck_boost_inputs);
+    function("simulate_four_switch_buck_boost_ideal_waveforms", &simulate_four_switch_buck_boost_ideal_waveforms);
+    function("calculate_weinberg_inputs", &calculate_weinberg_inputs);
+    function("simulate_weinberg_ideal_waveforms", &simulate_weinberg_ideal_waveforms);
+    function("calculate_zeta_inputs", &calculate_zeta_inputs);
+    function("simulate_zeta_ideal_waveforms", &simulate_zeta_ideal_waveforms);
     function("calculate_buck_inputs", &calculate_buck_inputs);
     function("calculate_advanced_buck_inputs", &calculate_advanced_buck_inputs);
     function("simulate_buck_ideal_waveforms", &simulate_buck_ideal_waveforms);
@@ -8995,6 +9020,41 @@ std::string process_converter(std::string topologyName, std::string converterJso
                  topology == "advanced_psfb" || topology == "advanced_phase_shifted_full_bridge") {
             return calculate_psfb_inputs(converterJson);
         }
+        else if (topology == "clllc" || topology == "advanced_clllc") {
+            if (useNgspice) {
+                return simulate_clllc_ideal_waveforms(converterJson);
+            } else {
+                return calculate_clllc_inputs(converterJson);
+            }
+        }
+        else if (topology == "cuk" || topology == "advanced_cuk") {
+            if (useNgspice) {
+                return simulate_cuk_ideal_waveforms(converterJson);
+            } else {
+                return calculate_cuk_inputs(converterJson);
+            }
+        }
+        else if (topology == "four_switch_buck_boost" || topology == "advanced_four_switch_buck_boost") {
+            if (useNgspice) {
+                return simulate_four_switch_buck_boost_ideal_waveforms(converterJson);
+            } else {
+                return calculate_four_switch_buck_boost_inputs(converterJson);
+            }
+        }
+        else if (topology == "weinberg" || topology == "advanced_weinberg") {
+            if (useNgspice) {
+                return simulate_weinberg_ideal_waveforms(converterJson);
+            } else {
+                return calculate_weinberg_inputs(converterJson);
+            }
+        }
+        else if (topology == "zeta" || topology == "advanced_zeta") {
+            if (useNgspice) {
+                return simulate_zeta_ideal_waveforms(converterJson);
+            } else {
+                return calculate_zeta_inputs(converterJson);
+            }
+        }
         else {
             json error;
             error["error"] = "Unknown topology: " + topologyName;
@@ -9092,6 +9152,380 @@ std::string design_magnetics_from_converter(std::string topologyName, std::strin
         return results.dump(4);
     }
     catch (const std::exception &exc) {
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
+    }
+}
+
+// =========================================================================
+// New converter wrappers (Clllc, Cuk, FourSwitchBuckBoost, Weinberg, Zeta)
+// =========================================================================
+// Pattern mirrors calculate_isolated_buck_inputs / simulate_isolated_buck_ideal_waveforms.
+// All five C++ models expose:
+//   - Inputs process()  (analytical: builds designRequirements + operating points)
+//   - simulate_and_extract_operating_points(...)
+//   - simulate_and_extract_topology_waveforms(..., numberOfPeriods)
+// Simulate signatures vary per topology (see audit notes inline).
+
+// ---- Clllc (resonant, vector<turnsRatios> + magnetizingInductance) ----
+std::string calculate_clllc_inputs(std::string clllcInputsString) {
+    try {
+        json inputsJson = json::parse(clllcInputsString);
+        size_t numberOfPeriods = 1;
+        if (inputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = inputsJson["numberOfPeriods"].get<size_t>();
+        }
+        OpenMagnetics::Clllc model(inputsJson);
+        auto inputs = model.process();
+        json result;
+        to_json(result, inputs);
+        if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+        return result.dump(4);
+    }
+    catch (const std::exception& exc) {
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
+    }
+}
+
+std::string simulate_clllc_ideal_waveforms(std::string clllcInputsString) {
+    try {
+        json inputsJson = json::parse(clllcInputsString);
+#ifndef ENABLE_NGSPICE
+        throw std::runtime_error("ngspice simulation is required but ENABLE_NGSPICE was not defined at compile time");
+#endif
+        size_t numberOfPeriods = 2;
+        if (inputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = inputsJson["numberOfPeriods"].get<size_t>();
+        }
+        size_t numberOfSteadyStatePeriods = 5;
+        if (inputsJson.contains("numberOfSteadyStatePeriods")) {
+            numberOfSteadyStatePeriods = inputsJson["numberOfSteadyStatePeriods"].get<size_t>();
+        }
+        OpenMagnetics::Clllc model(inputsJson);
+        auto designRequirements = model.process_design_requirements();
+        std::vector<double> turnsRatios;
+        for (const auto& tr : designRequirements.get_turns_ratios()) {
+            if (tr.get_nominal()) turnsRatios.push_back(tr.get_nominal().value());
+        }
+        if (turnsRatios.empty()) {
+            throw std::runtime_error("Clllc: process_design_requirements produced no turns ratios");
+        }
+        double magnetizingInductance;
+        if (designRequirements.get_magnetizing_inductance().get_nominal()) {
+            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
+        } else if (designRequirements.get_magnetizing_inductance().get_minimum()) {
+            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
+        } else {
+            throw std::runtime_error("Clllc: no magnetizing inductance available");
+        }
+        model.set_num_periods_to_extract(static_cast<int>(numberOfPeriods));
+        model.set_num_steady_state_periods(static_cast<int>(numberOfSteadyStatePeriods));
+        auto operatingPoints = model.simulate_and_extract_operating_points(turnsRatios, magnetizingInductance);
+        auto topologyWaveforms = model.simulate_and_extract_topology_waveforms(turnsRatios, magnetizingInductance, numberOfPeriods);
+        json result;
+        json inputs;
+        inputs["designRequirements"] = json();
+        to_json(inputs["designRequirements"], designRequirements);
+        inputs["operatingPoints"] = json::array();
+        for (const auto& op : operatingPoints) { json j; to_json(j, op); inputs["operatingPoints"].push_back(j); }
+        result["inputs"] = inputs;
+        result["converterWaveforms"] = json::array();
+        for (const auto& tw : topologyWaveforms) { json j; to_json(j, tw); result["converterWaveforms"].push_back(j); }
+        return result.dump(4);
+    }
+    catch (const std::exception& exc) {
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
+    }
+}
+
+// ---- Cuk (single inductanceL1, no turns ratios in simulate call) ----
+std::string calculate_cuk_inputs(std::string cukInputsString) {
+    try {
+        json inputsJson = json::parse(cukInputsString);
+        size_t numberOfPeriods = 1;
+        if (inputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = inputsJson["numberOfPeriods"].get<size_t>();
+        }
+        OpenMagnetics::Cuk model(inputsJson);
+        auto inputs = model.process();
+        json result;
+        to_json(result, inputs);
+        if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+        return result.dump(4);
+    }
+    catch (const std::exception& exc) {
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
+    }
+}
+
+std::string simulate_cuk_ideal_waveforms(std::string cukInputsString) {
+    try {
+        json inputsJson = json::parse(cukInputsString);
+#ifndef ENABLE_NGSPICE
+        throw std::runtime_error("ngspice simulation is required but ENABLE_NGSPICE was not defined at compile time");
+#endif
+        size_t numberOfPeriods = 2;
+        if (inputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = inputsJson["numberOfPeriods"].get<size_t>();
+        }
+        size_t numberOfSteadyStatePeriods = 5;
+        if (inputsJson.contains("numberOfSteadyStatePeriods")) {
+            numberOfSteadyStatePeriods = inputsJson["numberOfSteadyStatePeriods"].get<size_t>();
+        }
+        OpenMagnetics::Cuk model(inputsJson);
+        auto designRequirements = model.process_design_requirements();
+        double inductanceL1;
+        if (designRequirements.get_magnetizing_inductance().get_nominal()) {
+            inductanceL1 = designRequirements.get_magnetizing_inductance().get_nominal().value();
+        } else if (designRequirements.get_magnetizing_inductance().get_minimum()) {
+            inductanceL1 = designRequirements.get_magnetizing_inductance().get_minimum().value();
+        } else {
+            throw std::runtime_error("Cuk: no inductance L1 available");
+        }
+        model.set_num_periods_to_extract(static_cast<int>(numberOfPeriods));
+        model.set_num_steady_state_periods(static_cast<int>(numberOfSteadyStatePeriods));
+        auto operatingPoints = model.simulate_and_extract_operating_points(inductanceL1);
+        auto topologyWaveforms = model.simulate_and_extract_topology_waveforms(inductanceL1, numberOfPeriods);
+        json result;
+        json inputs;
+        inputs["designRequirements"] = json();
+        to_json(inputs["designRequirements"], designRequirements);
+        inputs["operatingPoints"] = json::array();
+        for (const auto& op : operatingPoints) { json j; to_json(j, op); inputs["operatingPoints"].push_back(j); }
+        result["inputs"] = inputs;
+        result["converterWaveforms"] = json::array();
+        for (const auto& tw : topologyWaveforms) { json j; to_json(j, tw); result["converterWaveforms"].push_back(j); }
+        return result.dump(4);
+    }
+    catch (const std::exception& exc) {
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
+    }
+}
+
+// ---- FourSwitchBuckBoost (single inductance, no turns ratios) ----
+std::string calculate_four_switch_buck_boost_inputs(std::string fsbbInputsString) {
+    try {
+        json inputsJson = json::parse(fsbbInputsString);
+        size_t numberOfPeriods = 1;
+        if (inputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = inputsJson["numberOfPeriods"].get<size_t>();
+        }
+        OpenMagnetics::FourSwitchBuckBoost model(inputsJson);
+        auto inputs = model.process();
+        json result;
+        to_json(result, inputs);
+        if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+        return result.dump(4);
+    }
+    catch (const std::exception& exc) {
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
+    }
+}
+
+std::string simulate_four_switch_buck_boost_ideal_waveforms(std::string fsbbInputsString) {
+    try {
+        json inputsJson = json::parse(fsbbInputsString);
+#ifndef ENABLE_NGSPICE
+        throw std::runtime_error("ngspice simulation is required but ENABLE_NGSPICE was not defined at compile time");
+#endif
+        size_t numberOfPeriods = 2;
+        if (inputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = inputsJson["numberOfPeriods"].get<size_t>();
+        }
+        size_t numberOfSteadyStatePeriods = 5;
+        if (inputsJson.contains("numberOfSteadyStatePeriods")) {
+            numberOfSteadyStatePeriods = inputsJson["numberOfSteadyStatePeriods"].get<size_t>();
+        }
+        OpenMagnetics::FourSwitchBuckBoost model(inputsJson);
+        auto designRequirements = model.process_design_requirements();
+        double inductance;
+        if (designRequirements.get_magnetizing_inductance().get_nominal()) {
+            inductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
+        } else if (designRequirements.get_magnetizing_inductance().get_minimum()) {
+            inductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
+        } else {
+            throw std::runtime_error("FourSwitchBuckBoost: no inductance available");
+        }
+        model.set_num_periods_to_extract(static_cast<int>(numberOfPeriods));
+        model.set_num_steady_state_periods(static_cast<int>(numberOfSteadyStatePeriods));
+        auto operatingPoints = model.simulate_and_extract_operating_points(inductance);
+        auto topologyWaveforms = model.simulate_and_extract_topology_waveforms(inductance, numberOfPeriods);
+        json result;
+        json inputs;
+        inputs["designRequirements"] = json();
+        to_json(inputs["designRequirements"], designRequirements);
+        inputs["operatingPoints"] = json::array();
+        for (const auto& op : operatingPoints) { json j; to_json(j, op); inputs["operatingPoints"].push_back(j); }
+        result["inputs"] = inputs;
+        result["converterWaveforms"] = json::array();
+        for (const auto& tw : topologyWaveforms) { json j; to_json(j, tw); result["converterWaveforms"].push_back(j); }
+        return result.dump(4);
+    }
+    catch (const std::exception& exc) {
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
+    }
+}
+
+// ---- Weinberg (scalar turnsRatio + magnetizingInductance) ----
+std::string calculate_weinberg_inputs(std::string weinbergInputsString) {
+    try {
+        json inputsJson = json::parse(weinbergInputsString);
+        size_t numberOfPeriods = 1;
+        if (inputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = inputsJson["numberOfPeriods"].get<size_t>();
+        }
+        OpenMagnetics::Weinberg model(inputsJson);
+        auto inputs = model.process();
+        json result;
+        to_json(result, inputs);
+        if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+        return result.dump(4);
+    }
+    catch (const std::exception& exc) {
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
+    }
+}
+
+std::string simulate_weinberg_ideal_waveforms(std::string weinbergInputsString) {
+    try {
+        json inputsJson = json::parse(weinbergInputsString);
+#ifndef ENABLE_NGSPICE
+        throw std::runtime_error("ngspice simulation is required but ENABLE_NGSPICE was not defined at compile time");
+#endif
+        size_t numberOfPeriods = 2;
+        if (inputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = inputsJson["numberOfPeriods"].get<size_t>();
+        }
+        size_t numberOfSteadyStatePeriods = 5;
+        if (inputsJson.contains("numberOfSteadyStatePeriods")) {
+            numberOfSteadyStatePeriods = inputsJson["numberOfSteadyStatePeriods"].get<size_t>();
+        }
+        OpenMagnetics::Weinberg model(inputsJson);
+        auto designRequirements = model.process_design_requirements();
+        // Weinberg simulate takes a scalar turnsRatio (single secondary)
+        double turnsRatio = 0.0;
+        if (!designRequirements.get_turns_ratios().empty() && designRequirements.get_turns_ratios()[0].get_nominal()) {
+            turnsRatio = designRequirements.get_turns_ratios()[0].get_nominal().value();
+        } else {
+            throw std::runtime_error("Weinberg: process_design_requirements produced no turns ratio");
+        }
+        double magnetizingInductance;
+        if (designRequirements.get_magnetizing_inductance().get_nominal()) {
+            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
+        } else if (designRequirements.get_magnetizing_inductance().get_minimum()) {
+            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
+        } else {
+            throw std::runtime_error("Weinberg: no magnetizing inductance available");
+        }
+        model.set_num_periods_to_extract(static_cast<int>(numberOfPeriods));
+        model.set_num_steady_state_periods(static_cast<int>(numberOfSteadyStatePeriods));
+        auto operatingPoints = model.simulate_and_extract_operating_points(turnsRatio, magnetizingInductance);
+        auto topologyWaveforms = model.simulate_and_extract_topology_waveforms(turnsRatio, magnetizingInductance, numberOfPeriods);
+        json result;
+        json inputs;
+        inputs["designRequirements"] = json();
+        to_json(inputs["designRequirements"], designRequirements);
+        inputs["operatingPoints"] = json::array();
+        for (const auto& op : operatingPoints) { json j; to_json(j, op); inputs["operatingPoints"].push_back(j); }
+        result["inputs"] = inputs;
+        result["converterWaveforms"] = json::array();
+        for (const auto& tw : topologyWaveforms) { json j; to_json(j, tw); result["converterWaveforms"].push_back(j); }
+        return result.dump(4);
+    }
+    catch (const std::exception& exc) {
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
+    }
+}
+
+// ---- Zeta (single inductanceL1, no turns ratios) ----
+std::string calculate_zeta_inputs(std::string zetaInputsString) {
+    try {
+        json inputsJson = json::parse(zetaInputsString);
+        size_t numberOfPeriods = 1;
+        if (inputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = inputsJson["numberOfPeriods"].get<size_t>();
+        }
+        OpenMagnetics::Zeta model(inputsJson);
+        auto inputs = model.process();
+        json result;
+        to_json(result, inputs);
+        if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+        return result.dump(4);
+    }
+    catch (const std::exception& exc) {
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
+    }
+}
+
+std::string simulate_zeta_ideal_waveforms(std::string zetaInputsString) {
+    try {
+        json inputsJson = json::parse(zetaInputsString);
+#ifndef ENABLE_NGSPICE
+        throw std::runtime_error("ngspice simulation is required but ENABLE_NGSPICE was not defined at compile time");
+#endif
+        size_t numberOfPeriods = 2;
+        if (inputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = inputsJson["numberOfPeriods"].get<size_t>();
+        }
+        size_t numberOfSteadyStatePeriods = 5;
+        if (inputsJson.contains("numberOfSteadyStatePeriods")) {
+            numberOfSteadyStatePeriods = inputsJson["numberOfSteadyStatePeriods"].get<size_t>();
+        }
+        OpenMagnetics::Zeta model(inputsJson);
+        auto designRequirements = model.process_design_requirements();
+        double inductanceL1;
+        if (designRequirements.get_magnetizing_inductance().get_nominal()) {
+            inductanceL1 = designRequirements.get_magnetizing_inductance().get_nominal().value();
+        } else if (designRequirements.get_magnetizing_inductance().get_minimum()) {
+            inductanceL1 = designRequirements.get_magnetizing_inductance().get_minimum().value();
+        } else {
+            throw std::runtime_error("Zeta: no inductance L1 available");
+        }
+        model.set_num_periods_to_extract(static_cast<int>(numberOfPeriods));
+        model.set_num_steady_state_periods(static_cast<int>(numberOfSteadyStatePeriods));
+        auto operatingPoints = model.simulate_and_extract_operating_points(inductanceL1);
+        auto topologyWaveforms = model.simulate_and_extract_topology_waveforms(inductanceL1, numberOfPeriods);
+        json result;
+        json inputs;
+        inputs["designRequirements"] = json();
+        to_json(inputs["designRequirements"], designRequirements);
+        inputs["operatingPoints"] = json::array();
+        for (const auto& op : operatingPoints) { json j; to_json(j, op); inputs["operatingPoints"].push_back(j); }
+        result["inputs"] = inputs;
+        result["converterWaveforms"] = json::array();
+        for (const auto& tw : topologyWaveforms) { json j; to_json(j, tw); result["converterWaveforms"].push_back(j); }
+        return result.dump(4);
+    }
+    catch (const std::exception& exc) {
         json error;
         error["error"] = std::string{exc.what()};
         return error.dump(4);
