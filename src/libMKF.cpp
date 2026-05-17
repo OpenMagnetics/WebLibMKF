@@ -7646,14 +7646,19 @@ std::string simulate_pshb_ideal_waveforms(std::string pshbInputsString);
 std::string calculate_ahb_inputs(std::string ahbInputsString);
 std::string simulate_ahb_ideal_waveforms(std::string ahbInputsString);
 std::string calculate_clllc_inputs(std::string clllcInputsString);
+std::string calculate_advanced_clllc_inputs(std::string clllcInputsString);
 std::string simulate_clllc_ideal_waveforms(std::string clllcInputsString);
 std::string calculate_cuk_inputs(std::string cukInputsString);
+std::string calculate_advanced_cuk_inputs(std::string cukInputsString);
 std::string simulate_cuk_ideal_waveforms(std::string cukInputsString);
 std::string calculate_four_switch_buck_boost_inputs(std::string fsbbInputsString);
+std::string calculate_advanced_four_switch_buck_boost_inputs(std::string fsbbInputsString);
 std::string simulate_four_switch_buck_boost_ideal_waveforms(std::string fsbbInputsString);
 std::string calculate_weinberg_inputs(std::string weinbergInputsString);
+std::string calculate_advanced_weinberg_inputs(std::string weinbergInputsString);
 std::string simulate_weinberg_ideal_waveforms(std::string weinbergInputsString);
 std::string calculate_zeta_inputs(std::string zetaInputsString);
+std::string calculate_advanced_zeta_inputs(std::string zetaInputsString);
 std::string simulate_zeta_ideal_waveforms(std::string zetaInputsString);
 
 // SPICE Code Generation forward declarations
@@ -7829,14 +7834,19 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("simulate_isolated_buck_boost_ideal_waveforms", &simulate_isolated_buck_boost_ideal_waveforms);
     function("simulate_isolated_buck_ideal_waveforms", &simulate_isolated_buck_ideal_waveforms);
     function("calculate_clllc_inputs", &calculate_clllc_inputs);
+    function("calculate_advanced_clllc_inputs", &calculate_advanced_clllc_inputs);
     function("simulate_clllc_ideal_waveforms", &simulate_clllc_ideal_waveforms);
     function("calculate_cuk_inputs", &calculate_cuk_inputs);
+    function("calculate_advanced_cuk_inputs", &calculate_advanced_cuk_inputs);
     function("simulate_cuk_ideal_waveforms", &simulate_cuk_ideal_waveforms);
     function("calculate_four_switch_buck_boost_inputs", &calculate_four_switch_buck_boost_inputs);
+    function("calculate_advanced_four_switch_buck_boost_inputs", &calculate_advanced_four_switch_buck_boost_inputs);
     function("simulate_four_switch_buck_boost_ideal_waveforms", &simulate_four_switch_buck_boost_ideal_waveforms);
     function("calculate_weinberg_inputs", &calculate_weinberg_inputs);
+    function("calculate_advanced_weinberg_inputs", &calculate_advanced_weinberg_inputs);
     function("simulate_weinberg_ideal_waveforms", &simulate_weinberg_ideal_waveforms);
     function("calculate_zeta_inputs", &calculate_zeta_inputs);
+    function("calculate_advanced_zeta_inputs", &calculate_advanced_zeta_inputs);
     function("simulate_zeta_ideal_waveforms", &simulate_zeta_ideal_waveforms);
     function("calculate_buck_inputs", &calculate_buck_inputs);
     function("calculate_advanced_buck_inputs", &calculate_advanced_buck_inputs);
@@ -9192,6 +9202,29 @@ std::string calculate_clllc_inputs(std::string clllcInputsString) {
     }
 }
 
+std::string calculate_advanced_clllc_inputs(std::string clllcInputsString) {
+    try {
+        json inputsJson = json::parse(clllcInputsString);
+        size_t numberOfPeriods = 1;
+        if (inputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = inputsJson["numberOfPeriods"].get<size_t>();
+        }
+        OpenMagnetics::AdvancedClllc model(inputsJson);
+        auto inputs = model.process();
+        json result;
+        to_json(result, inputs);
+        if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+        return result.dump(4);
+    }
+    catch (const std::exception& exc) {
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
+    }
+}
+
 std::string simulate_clllc_ideal_waveforms(std::string clllcInputsString) {
     try {
         json inputsJson = json::parse(clllcInputsString);
@@ -9254,6 +9287,29 @@ std::string calculate_cuk_inputs(std::string cukInputsString) {
             numberOfPeriods = inputsJson["numberOfPeriods"].get<size_t>();
         }
         OpenMagnetics::Cuk model(inputsJson);
+        auto inputs = model.process();
+        json result;
+        to_json(result, inputs);
+        if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+        return result.dump(4);
+    }
+    catch (const std::exception& exc) {
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
+    }
+}
+
+std::string calculate_advanced_cuk_inputs(std::string cukInputsString) {
+    try {
+        json inputsJson = json::parse(cukInputsString);
+        size_t numberOfPeriods = 1;
+        if (inputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = inputsJson["numberOfPeriods"].get<size_t>();
+        }
+        OpenMagnetics::AdvancedCuk model(inputsJson);
         auto inputs = model.process();
         json result;
         to_json(result, inputs);
@@ -9339,6 +9395,29 @@ std::string calculate_four_switch_buck_boost_inputs(std::string fsbbInputsString
     }
 }
 
+std::string calculate_advanced_four_switch_buck_boost_inputs(std::string fsbbInputsString) {
+    try {
+        json inputsJson = json::parse(fsbbInputsString);
+        size_t numberOfPeriods = 1;
+        if (inputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = inputsJson["numberOfPeriods"].get<size_t>();
+        }
+        OpenMagnetics::AdvancedFourSwitchBuckBoost model(inputsJson);
+        auto inputs = model.process();
+        json result;
+        to_json(result, inputs);
+        if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+        return result.dump(4);
+    }
+    catch (const std::exception& exc) {
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
+    }
+}
+
 std::string simulate_four_switch_buck_boost_ideal_waveforms(std::string fsbbInputsString) {
     try {
         json inputsJson = json::parse(fsbbInputsString);
@@ -9394,6 +9473,29 @@ std::string calculate_weinberg_inputs(std::string weinbergInputsString) {
             numberOfPeriods = inputsJson["numberOfPeriods"].get<size_t>();
         }
         OpenMagnetics::Weinberg model(inputsJson);
+        auto inputs = model.process();
+        json result;
+        to_json(result, inputs);
+        if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+        return result.dump(4);
+    }
+    catch (const std::exception& exc) {
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
+    }
+}
+
+std::string calculate_advanced_weinberg_inputs(std::string weinbergInputsString) {
+    try {
+        json inputsJson = json::parse(weinbergInputsString);
+        size_t numberOfPeriods = 1;
+        if (inputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = inputsJson["numberOfPeriods"].get<size_t>();
+        }
+        OpenMagnetics::AdvancedWeinberg model(inputsJson);
         auto inputs = model.process();
         json result;
         to_json(result, inputs);
@@ -9471,6 +9573,29 @@ std::string calculate_zeta_inputs(std::string zetaInputsString) {
             numberOfPeriods = inputsJson["numberOfPeriods"].get<size_t>();
         }
         OpenMagnetics::Zeta model(inputsJson);
+        auto inputs = model.process();
+        json result;
+        to_json(result, inputs);
+        if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
+            repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+        return result.dump(4);
+    }
+    catch (const std::exception& exc) {
+        json error;
+        error["error"] = std::string{exc.what()};
+        return error.dump(4);
+    }
+}
+
+std::string calculate_advanced_zeta_inputs(std::string zetaInputsString) {
+    try {
+        json inputsJson = json::parse(zetaInputsString);
+        size_t numberOfPeriods = 1;
+        if (inputsJson.contains("numberOfPeriods")) {
+            numberOfPeriods = inputsJson["numberOfPeriods"].get<size_t>();
+        }
+        OpenMagnetics::AdvancedZeta model(inputsJson);
         auto inputs = model.process();
         json result;
         to_json(result, inputs);
