@@ -6957,7 +6957,7 @@ std::string plot_core(std::string magneticString) {
     try {
         std::filesystem::path emptyFilepath;
         OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
-        OpenMagnetics::Painter painter(emptyFilepath, false, false, false);
+        OpenMagnetics::Painter painter(emptyFilepath);
         painter.paint_core(magnetic);
         painter.paint_bobbin(magnetic);
         auto result = painter.export_svg();
@@ -6981,7 +6981,7 @@ std::string plot_sections(std::string magneticString) {
     try {
         std::filesystem::path emptyFilepath;
         OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
-        OpenMagnetics::Painter painter(emptyFilepath, false, false, false);
+        OpenMagnetics::Painter painter(emptyFilepath);
         painter.paint_core(magnetic);
         painter.paint_bobbin(magnetic);
         painter.paint_coil_sections(magnetic);
@@ -7006,7 +7006,7 @@ std::string plot_layers(std::string magneticString) {
     try {
         std::filesystem::path emptyFilepath;
         OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
-        OpenMagnetics::Painter painter(emptyFilepath, false, false, false);
+        OpenMagnetics::Painter painter(emptyFilepath);
         painter.paint_core(magnetic);
         painter.paint_bobbin(magnetic);
         painter.paint_coil_layers(magnetic);
@@ -7047,7 +7047,7 @@ std::string plot_turns(std::string magneticString) {
             }
         }
 
-        OpenMagnetics::Painter painter(emptyFilepath, false, false, false);
+        OpenMagnetics::Painter painter(emptyFilepath);
         painter.paint_core(magnetic);
         painter.paint_bobbin(magnetic);
         painter.paint_coil_turns(magnetic);
@@ -7087,7 +7087,7 @@ std::string plot_magnetic_field(std::string magneticString, std::string operatin
             }
         }
 
-        OpenMagnetics::Painter painter(emptyFilepath, false, false, false);
+        OpenMagnetics::Painter painter(emptyFilepath);
         painter.paint_magnetic_field(operatingPoint, magnetic);
         painter.paint_core(magnetic);
         // painter.paint_bobbin(magnetic);
@@ -7129,7 +7129,7 @@ std::string plot_electric_field(std::string magneticString, std::string operatin
             }
         }
 
-        OpenMagnetics::Painter painter(emptyFilepath, false, false, false);
+        OpenMagnetics::Painter painter(emptyFilepath);
         painter.paint_electric_field(operatingPoint, magnetic);
         painter.paint_core(magnetic);
         // painter.paint_bobbin(magnetic);
@@ -7161,7 +7161,7 @@ std::string plot_wire_losses(std::string magneticString, std::string operatingPo
         OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
         OperatingPoint operatingPoint(json::parse(operatingPointString));
         
-        OpenMagnetics::Painter painter(emptyFilepath, false, false, false);
+        OpenMagnetics::Painter painter(emptyFilepath);
         painter.paint_core(magnetic);
         painter.paint_bobbin(magnetic);
         // Paint turns with margins/layers
@@ -7195,7 +7195,7 @@ std::string plot_wire(std::string wireString) {
         OpenMagnetics::Settings::GetInstance().set_painter_advanced_litz(true);
         std::filesystem::path emptyFilepath;
         OpenMagnetics::Wire wire(json::parse(wireString));
-        OpenMagnetics::Painter painter(emptyFilepath, false, false, false);
+        OpenMagnetics::Painter painter(emptyFilepath);
         painter.paint_wire(wire);
         auto result = painter.export_svg();
         return result;
@@ -7273,7 +7273,7 @@ std::string plot_temperature_field(std::string magneticString, std::string opera
         auto thermalResult = temperature.calculateTemperatures();
         
         // Use Painter class (same as magnetic field)
-        OpenMagnetics::Painter painter(emptyFilepath, false, false, false);
+        OpenMagnetics::Painter painter(emptyFilepath);
         painter.paint_temperature_field(magnetic, thermalResult.nodeTemperatures, true, OpenMagnetics::ColorPalette::BLUE_TO_RED, ambientTemperature, textColor, bgColor);
         // Note: paint_core and paint_coil_turns are NOT called here because they would draw
         // the standard ferrite/copper geometry on top of the temperature visualization,
