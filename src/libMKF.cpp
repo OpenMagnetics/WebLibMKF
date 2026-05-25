@@ -4337,12 +4337,33 @@ std::string calculate_isolated_buck_inputs(std::string isolatedBuckInputsString)
         }
         {
             json diag;
-            diag["dutyCycle"]                = isolatedBuckInputs.get_last_duty_cycle();
-            diag["magnetizingCurrentRipple"] = isolatedBuckInputs.get_last_magnetizing_current_ripple();
-            diag["primaryAverageCurrent"]    = isolatedBuckInputs.get_last_primary_average_current();
-            diag["primaryPeakCurrent"]       = isolatedBuckInputs.get_last_primary_peak_current();
-            diag["secondaryPeakCurrent"]     = isolatedBuckInputs.get_last_secondary_peak_current();
-            diag["isCcm"]                    = isolatedBuckInputs.get_last_is_ccm();
+            const auto& names = isolatedBuckInputs.get_per_op_name();
+            const auto& v_duty_cycle = isolatedBuckInputs.get_per_op_duty_cycle();
+            const auto& v_magnetizing_current_ripple = isolatedBuckInputs.get_per_op_magnetizing_current_ripple();
+            const auto& v_primary_average_current = isolatedBuckInputs.get_per_op_primary_average_current();
+            const auto& v_primary_peak_current = isolatedBuckInputs.get_per_op_primary_peak_current();
+            const auto& v_secondary_peak_current = isolatedBuckInputs.get_per_op_secondary_peak_current();
+            const auto& v_is_ccm = isolatedBuckInputs.get_per_op_is_ccm();
+            diag["dutyCycle"] = v_duty_cycle.empty() ? isolatedBuckInputs.get_last_duty_cycle() : v_duty_cycle.front();
+            diag["magnetizingCurrentRipple"] = v_magnetizing_current_ripple.empty() ? isolatedBuckInputs.get_last_magnetizing_current_ripple() : v_magnetizing_current_ripple.front();
+            diag["primaryAverageCurrent"] = v_primary_average_current.empty() ? isolatedBuckInputs.get_last_primary_average_current() : v_primary_average_current.front();
+            diag["primaryPeakCurrent"] = v_primary_peak_current.empty() ? isolatedBuckInputs.get_last_primary_peak_current() : v_primary_peak_current.front();
+            diag["secondaryPeakCurrent"] = v_secondary_peak_current.empty() ? isolatedBuckInputs.get_last_secondary_peak_current() : v_secondary_peak_current.front();
+            diag["isCcm"] = v_is_ccm.empty() ? isolatedBuckInputs.get_last_is_ccm() : (bool)v_is_ccm.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_duty_cycle.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"] = v_duty_cycle[i];
+                row["magnetizingCurrentRipple"] = v_magnetizing_current_ripple[i];
+                row["primaryAverageCurrent"] = v_primary_average_current[i];
+                row["primaryPeakCurrent"] = v_primary_peak_current[i];
+                row["secondaryPeakCurrent"] = v_secondary_peak_current[i];
+                row["isCcm"] = (bool)v_is_ccm[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["isolatedBuckDiagnostics"] = diag;
         }
 
@@ -4376,12 +4397,33 @@ std::string calculate_advanced_isolated_buck_inputs(std::string isolatedBuckInpu
         }
         {
             json diag;
-            diag["dutyCycle"]                = isolatedBuckInputs.get_last_duty_cycle();
-            diag["magnetizingCurrentRipple"] = isolatedBuckInputs.get_last_magnetizing_current_ripple();
-            diag["primaryAverageCurrent"]    = isolatedBuckInputs.get_last_primary_average_current();
-            diag["primaryPeakCurrent"]       = isolatedBuckInputs.get_last_primary_peak_current();
-            diag["secondaryPeakCurrent"]     = isolatedBuckInputs.get_last_secondary_peak_current();
-            diag["isCcm"]                    = isolatedBuckInputs.get_last_is_ccm();
+            const auto& names = isolatedBuckInputs.get_per_op_name();
+            const auto& v_duty_cycle = isolatedBuckInputs.get_per_op_duty_cycle();
+            const auto& v_magnetizing_current_ripple = isolatedBuckInputs.get_per_op_magnetizing_current_ripple();
+            const auto& v_primary_average_current = isolatedBuckInputs.get_per_op_primary_average_current();
+            const auto& v_primary_peak_current = isolatedBuckInputs.get_per_op_primary_peak_current();
+            const auto& v_secondary_peak_current = isolatedBuckInputs.get_per_op_secondary_peak_current();
+            const auto& v_is_ccm = isolatedBuckInputs.get_per_op_is_ccm();
+            diag["dutyCycle"] = v_duty_cycle.empty() ? isolatedBuckInputs.get_last_duty_cycle() : v_duty_cycle.front();
+            diag["magnetizingCurrentRipple"] = v_magnetizing_current_ripple.empty() ? isolatedBuckInputs.get_last_magnetizing_current_ripple() : v_magnetizing_current_ripple.front();
+            diag["primaryAverageCurrent"] = v_primary_average_current.empty() ? isolatedBuckInputs.get_last_primary_average_current() : v_primary_average_current.front();
+            diag["primaryPeakCurrent"] = v_primary_peak_current.empty() ? isolatedBuckInputs.get_last_primary_peak_current() : v_primary_peak_current.front();
+            diag["secondaryPeakCurrent"] = v_secondary_peak_current.empty() ? isolatedBuckInputs.get_last_secondary_peak_current() : v_secondary_peak_current.front();
+            diag["isCcm"] = v_is_ccm.empty() ? isolatedBuckInputs.get_last_is_ccm() : (bool)v_is_ccm.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_duty_cycle.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"] = v_duty_cycle[i];
+                row["magnetizingCurrentRipple"] = v_magnetizing_current_ripple[i];
+                row["primaryAverageCurrent"] = v_primary_average_current[i];
+                row["primaryPeakCurrent"] = v_primary_peak_current[i];
+                row["secondaryPeakCurrent"] = v_secondary_peak_current[i];
+                row["isCcm"] = (bool)v_is_ccm[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["isolatedBuckDiagnostics"] = diag;
         }
 
@@ -4517,12 +4559,33 @@ std::string calculate_isolated_buck_boost_inputs(std::string isolatedBuckBoostIn
         }
         {
             json diag;
-            diag["dutyCycle"]                = isolatedBuckBoostInputs.get_last_duty_cycle();
-            diag["magnetizingCurrentRipple"] = isolatedBuckBoostInputs.get_last_magnetizing_current_ripple();
-            diag["primaryAverageCurrent"]    = isolatedBuckBoostInputs.get_last_primary_average_current();
-            diag["primaryPeakCurrent"]       = isolatedBuckBoostInputs.get_last_primary_peak_current();
-            diag["secondaryPeakCurrent"]     = isolatedBuckBoostInputs.get_last_secondary_peak_current();
-            diag["isCcm"]                    = isolatedBuckBoostInputs.get_last_is_ccm();
+            const auto& names = isolatedBuckBoostInputs.get_per_op_name();
+            const auto& v_duty_cycle = isolatedBuckBoostInputs.get_per_op_duty_cycle();
+            const auto& v_magnetizing_current_ripple = isolatedBuckBoostInputs.get_per_op_magnetizing_current_ripple();
+            const auto& v_primary_average_current = isolatedBuckBoostInputs.get_per_op_primary_average_current();
+            const auto& v_primary_peak_current = isolatedBuckBoostInputs.get_per_op_primary_peak_current();
+            const auto& v_secondary_peak_current = isolatedBuckBoostInputs.get_per_op_secondary_peak_current();
+            const auto& v_is_ccm = isolatedBuckBoostInputs.get_per_op_is_ccm();
+            diag["dutyCycle"] = v_duty_cycle.empty() ? isolatedBuckBoostInputs.get_last_duty_cycle() : v_duty_cycle.front();
+            diag["magnetizingCurrentRipple"] = v_magnetizing_current_ripple.empty() ? isolatedBuckBoostInputs.get_last_magnetizing_current_ripple() : v_magnetizing_current_ripple.front();
+            diag["primaryAverageCurrent"] = v_primary_average_current.empty() ? isolatedBuckBoostInputs.get_last_primary_average_current() : v_primary_average_current.front();
+            diag["primaryPeakCurrent"] = v_primary_peak_current.empty() ? isolatedBuckBoostInputs.get_last_primary_peak_current() : v_primary_peak_current.front();
+            diag["secondaryPeakCurrent"] = v_secondary_peak_current.empty() ? isolatedBuckBoostInputs.get_last_secondary_peak_current() : v_secondary_peak_current.front();
+            diag["isCcm"] = v_is_ccm.empty() ? isolatedBuckBoostInputs.get_last_is_ccm() : (bool)v_is_ccm.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_duty_cycle.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"] = v_duty_cycle[i];
+                row["magnetizingCurrentRipple"] = v_magnetizing_current_ripple[i];
+                row["primaryAverageCurrent"] = v_primary_average_current[i];
+                row["primaryPeakCurrent"] = v_primary_peak_current[i];
+                row["secondaryPeakCurrent"] = v_secondary_peak_current[i];
+                row["isCcm"] = (bool)v_is_ccm[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["isolatedBuckBoostDiagnostics"] = diag;
         }
 
@@ -4628,12 +4691,33 @@ std::string calculate_advanced_isolated_buck_boost_inputs(std::string isolatedBu
         }
         {
             json diag;
-            diag["dutyCycle"]                = isolatedBuckBoostInputs.get_last_duty_cycle();
-            diag["magnetizingCurrentRipple"] = isolatedBuckBoostInputs.get_last_magnetizing_current_ripple();
-            diag["primaryAverageCurrent"]    = isolatedBuckBoostInputs.get_last_primary_average_current();
-            diag["primaryPeakCurrent"]       = isolatedBuckBoostInputs.get_last_primary_peak_current();
-            diag["secondaryPeakCurrent"]     = isolatedBuckBoostInputs.get_last_secondary_peak_current();
-            diag["isCcm"]                    = isolatedBuckBoostInputs.get_last_is_ccm();
+            const auto& names = isolatedBuckBoostInputs.get_per_op_name();
+            const auto& v_duty_cycle = isolatedBuckBoostInputs.get_per_op_duty_cycle();
+            const auto& v_magnetizing_current_ripple = isolatedBuckBoostInputs.get_per_op_magnetizing_current_ripple();
+            const auto& v_primary_average_current = isolatedBuckBoostInputs.get_per_op_primary_average_current();
+            const auto& v_primary_peak_current = isolatedBuckBoostInputs.get_per_op_primary_peak_current();
+            const auto& v_secondary_peak_current = isolatedBuckBoostInputs.get_per_op_secondary_peak_current();
+            const auto& v_is_ccm = isolatedBuckBoostInputs.get_per_op_is_ccm();
+            diag["dutyCycle"] = v_duty_cycle.empty() ? isolatedBuckBoostInputs.get_last_duty_cycle() : v_duty_cycle.front();
+            diag["magnetizingCurrentRipple"] = v_magnetizing_current_ripple.empty() ? isolatedBuckBoostInputs.get_last_magnetizing_current_ripple() : v_magnetizing_current_ripple.front();
+            diag["primaryAverageCurrent"] = v_primary_average_current.empty() ? isolatedBuckBoostInputs.get_last_primary_average_current() : v_primary_average_current.front();
+            diag["primaryPeakCurrent"] = v_primary_peak_current.empty() ? isolatedBuckBoostInputs.get_last_primary_peak_current() : v_primary_peak_current.front();
+            diag["secondaryPeakCurrent"] = v_secondary_peak_current.empty() ? isolatedBuckBoostInputs.get_last_secondary_peak_current() : v_secondary_peak_current.front();
+            diag["isCcm"] = v_is_ccm.empty() ? isolatedBuckBoostInputs.get_last_is_ccm() : (bool)v_is_ccm.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_duty_cycle.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"] = v_duty_cycle[i];
+                row["magnetizingCurrentRipple"] = v_magnetizing_current_ripple[i];
+                row["primaryAverageCurrent"] = v_primary_average_current[i];
+                row["primaryPeakCurrent"] = v_primary_peak_current[i];
+                row["secondaryPeakCurrent"] = v_secondary_peak_current[i];
+                row["isCcm"] = (bool)v_is_ccm[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["isolatedBuckBoostDiagnostics"] = diag;
         }
 
@@ -4669,11 +4753,33 @@ std::string calculate_buck_inputs(std::string buckInputsString){
         }
         {
             json diag;
-            diag["dutyCycle"]              = buckInputs.get_last_duty_cycle();
-            diag["inductorAverageCurrent"] = buckInputs.get_last_inductor_average_current();
-            diag["inductorPeakToPeak"]     = buckInputs.get_last_inductor_peak_to_peak();
-            diag["peakInductorCurrent"]    = buckInputs.get_last_peak_inductor_current();
-            diag["conductionRatio"]        = buckInputs.get_last_conduction_ratio();
+            const auto& names = buckInputs.get_per_op_name();
+            const auto& dC    = buckInputs.get_per_op_duty_cycle();
+            const auto& iAvg  = buckInputs.get_per_op_inductor_average_current();
+            const auto& iPP   = buckInputs.get_per_op_inductor_peak_to_peak();
+            const auto& iPk   = buckInputs.get_per_op_peak_inductor_current();
+            const auto& ccm   = buckInputs.get_per_op_is_ccm();
+            const auto& cRat  = buckInputs.get_per_op_conduction_ratio();
+            diag["dutyCycle"]              = dC.empty()   ? buckInputs.get_last_duty_cycle()              : dC.front();
+            diag["inductorAverageCurrent"] = iAvg.empty() ? buckInputs.get_last_inductor_average_current() : iAvg.front();
+            diag["inductorPeakToPeak"]     = iPP.empty()  ? buckInputs.get_last_inductor_peak_to_peak()    : iPP.front();
+            diag["peakInductorCurrent"]    = iPk.empty()  ? buckInputs.get_last_peak_inductor_current()    : iPk.front();
+            diag["conductionRatio"]        = cRat.empty() ? buckInputs.get_last_conduction_ratio()         : cRat.front();
+            diag["isCcm"]                  = ccm.empty()  ? buckInputs.get_last_is_ccm()                   : (bool)ccm.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < dC.size(); ++i) {
+                json row;
+                row["operatingPointName"]    = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"]             = dC[i];
+                row["inductorAverageCurrent"] = iAvg[i];
+                row["inductorPeakToPeak"]    = iPP[i];
+                row["peakInductorCurrent"]   = iPk[i];
+                row["conductionRatio"]       = cRat[i];
+                row["isCcm"]                 = (bool)ccm[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["buckDiagnostics"] = diag;
         }
 
@@ -4708,11 +4814,33 @@ std::string calculate_advanced_buck_inputs(std::string buckInputsString){
         }
         {
             json diag;
-            diag["dutyCycle"]              = buckInputs.get_last_duty_cycle();
-            diag["inductorAverageCurrent"] = buckInputs.get_last_inductor_average_current();
-            diag["inductorPeakToPeak"]     = buckInputs.get_last_inductor_peak_to_peak();
-            diag["peakInductorCurrent"]    = buckInputs.get_last_peak_inductor_current();
-            diag["conductionRatio"]        = buckInputs.get_last_conduction_ratio();
+            const auto& names = buckInputs.get_per_op_name();
+            const auto& dC    = buckInputs.get_per_op_duty_cycle();
+            const auto& iAvg  = buckInputs.get_per_op_inductor_average_current();
+            const auto& iPP   = buckInputs.get_per_op_inductor_peak_to_peak();
+            const auto& iPk   = buckInputs.get_per_op_peak_inductor_current();
+            const auto& ccm   = buckInputs.get_per_op_is_ccm();
+            const auto& cRat  = buckInputs.get_per_op_conduction_ratio();
+            diag["dutyCycle"]              = dC.empty()   ? buckInputs.get_last_duty_cycle()              : dC.front();
+            diag["inductorAverageCurrent"] = iAvg.empty() ? buckInputs.get_last_inductor_average_current() : iAvg.front();
+            diag["inductorPeakToPeak"]     = iPP.empty()  ? buckInputs.get_last_inductor_peak_to_peak()    : iPP.front();
+            diag["peakInductorCurrent"]    = iPk.empty()  ? buckInputs.get_last_peak_inductor_current()    : iPk.front();
+            diag["conductionRatio"]        = cRat.empty() ? buckInputs.get_last_conduction_ratio()         : cRat.front();
+            diag["isCcm"]                  = ccm.empty()  ? buckInputs.get_last_is_ccm()                   : (bool)ccm.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < dC.size(); ++i) {
+                json row;
+                row["operatingPointName"]    = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"]             = dC[i];
+                row["inductorAverageCurrent"] = iAvg[i];
+                row["inductorPeakToPeak"]    = iPP[i];
+                row["peakInductorCurrent"]   = iPk[i];
+                row["conductionRatio"]       = cRat[i];
+                row["isCcm"]                 = (bool)ccm[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["buckDiagnostics"] = diag;
         }
 
@@ -4747,15 +4875,37 @@ std::string calculate_boost_inputs(std::string boostInputsString){
         }
         {
             json diag;
-            diag["dutyCycle"]              = boostInputs.get_last_duty_cycle();
-            diag["inductorAverageCurrent"] = boostInputs.get_last_inductor_average_current();
-            diag["inductorPeakToPeak"]     = boostInputs.get_last_inductor_peak_to_peak();
-            diag["peakInductorCurrent"]    = boostInputs.get_last_peak_inductor_current();
-            diag["conductionRatio"]        = boostInputs.get_last_conduction_ratio();
+            const auto& names = boostInputs.get_per_op_name();
+            const auto& dC    = boostInputs.get_per_op_duty_cycle();
+            const auto& iAvg  = boostInputs.get_per_op_inductor_average_current();
+            const auto& iPP   = boostInputs.get_per_op_inductor_peak_to_peak();
+            const auto& iPk   = boostInputs.get_per_op_peak_inductor_current();
+            const auto& ccm   = boostInputs.get_per_op_is_ccm();
+            const auto& cRat  = boostInputs.get_per_op_conduction_ratio();
+            diag["dutyCycle"]              = dC.empty()   ? boostInputs.get_last_duty_cycle()              : dC.front();
+            diag["inductorAverageCurrent"] = iAvg.empty() ? boostInputs.get_last_inductor_average_current() : iAvg.front();
+            diag["inductorPeakToPeak"]     = iPP.empty()  ? boostInputs.get_last_inductor_peak_to_peak()    : iPP.front();
+            diag["peakInductorCurrent"]    = iPk.empty()  ? boostInputs.get_last_peak_inductor_current()    : iPk.front();
+            diag["conductionRatio"]        = cRat.empty() ? boostInputs.get_last_conduction_ratio()         : cRat.front();
+            diag["isCcm"]                  = ccm.empty()  ? boostInputs.get_last_is_ccm()                   : (bool)ccm.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < dC.size(); ++i) {
+                json row;
+                row["operatingPointName"]    = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"]             = dC[i];
+                row["inductorAverageCurrent"] = iAvg[i];
+                row["inductorPeakToPeak"]    = iPP[i];
+                row["peakInductorCurrent"]   = iPk[i];
+                row["conductionRatio"]       = cRat[i];
+                row["isCcm"]                 = (bool)ccm[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["boostDiagnostics"] = diag;
         }
 
-        
+
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -4787,15 +4937,37 @@ std::string calculate_advanced_boost_inputs(std::string boostInputsString){
         }
         {
             json diag;
-            diag["dutyCycle"]              = boostInputs.get_last_duty_cycle();
-            diag["inductorAverageCurrent"] = boostInputs.get_last_inductor_average_current();
-            diag["inductorPeakToPeak"]     = boostInputs.get_last_inductor_peak_to_peak();
-            diag["peakInductorCurrent"]    = boostInputs.get_last_peak_inductor_current();
-            diag["conductionRatio"]        = boostInputs.get_last_conduction_ratio();
+            const auto& names = boostInputs.get_per_op_name();
+            const auto& dC    = boostInputs.get_per_op_duty_cycle();
+            const auto& iAvg  = boostInputs.get_per_op_inductor_average_current();
+            const auto& iPP   = boostInputs.get_per_op_inductor_peak_to_peak();
+            const auto& iPk   = boostInputs.get_per_op_peak_inductor_current();
+            const auto& ccm   = boostInputs.get_per_op_is_ccm();
+            const auto& cRat  = boostInputs.get_per_op_conduction_ratio();
+            diag["dutyCycle"]              = dC.empty()   ? boostInputs.get_last_duty_cycle()              : dC.front();
+            diag["inductorAverageCurrent"] = iAvg.empty() ? boostInputs.get_last_inductor_average_current() : iAvg.front();
+            diag["inductorPeakToPeak"]     = iPP.empty()  ? boostInputs.get_last_inductor_peak_to_peak()    : iPP.front();
+            diag["peakInductorCurrent"]    = iPk.empty()  ? boostInputs.get_last_peak_inductor_current()    : iPk.front();
+            diag["conductionRatio"]        = cRat.empty() ? boostInputs.get_last_conduction_ratio()         : cRat.front();
+            diag["isCcm"]                  = ccm.empty()  ? boostInputs.get_last_is_ccm()                   : (bool)ccm.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < dC.size(); ++i) {
+                json row;
+                row["operatingPointName"]    = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"]             = dC[i];
+                row["inductorAverageCurrent"] = iAvg[i];
+                row["inductorPeakToPeak"]    = iPP[i];
+                row["peakInductorCurrent"]   = iPk[i];
+                row["conductionRatio"]       = cRat[i];
+                row["isCcm"]                 = (bool)ccm[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["boostDiagnostics"] = diag;
         }
 
-        
+
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -4827,21 +4999,60 @@ std::string calculate_sepic_inputs(std::string sepicInputsString){
         }
         {
             json diag;
-            diag["dutyCycle"]               = sepicInputs.get_last_duty_cycle();
-            diag["conversionRatio"]         = sepicInputs.get_last_conversion_ratio();
-            diag["couplingCapVoltage"]      = sepicInputs.get_last_coupling_cap_voltage();
-            diag["inputInductorAverage"]    = sepicInputs.get_last_input_inductor_average();
-            diag["outputInductorAverage"]   = sepicInputs.get_last_output_inductor_average();
-            diag["inputInductorRipple"]     = sepicInputs.get_last_input_inductor_ripple();
-            diag["outputInductorRipple"]    = sepicInputs.get_last_output_inductor_ripple();
-            diag["switchPeakVoltage"]       = sepicInputs.get_last_switch_peak_voltage();
-            diag["switchPeakCurrent"]       = sepicInputs.get_last_switch_peak_current();
-            diag["diodePeakReverseVoltage"] = sepicInputs.get_last_diode_peak_reverse_voltage();
-            diag["diodePeakCurrent"]        = sepicInputs.get_last_diode_peak_current();
-            diag["couplingCapRmsCurrent"]   = sepicInputs.get_last_coupling_cap_rms_current();
-            diag["isCcm"]                   = sepicInputs.get_last_is_ccm();
-            diag["sizedCs"]                 = sepicInputs.get_last_sized_cs();
-            diag["sizedCo"]                 = sepicInputs.get_last_sized_co();
+            const auto& names = sepicInputs.get_per_op_name();
+            const auto& v_duty_cycle = sepicInputs.get_per_op_duty_cycle();
+            const auto& v_conversion_ratio = sepicInputs.get_per_op_conversion_ratio();
+            const auto& v_coupling_cap_voltage = sepicInputs.get_per_op_coupling_cap_voltage();
+            const auto& v_input_inductor_average = sepicInputs.get_per_op_input_inductor_average();
+            const auto& v_output_inductor_average = sepicInputs.get_per_op_output_inductor_average();
+            const auto& v_input_inductor_ripple = sepicInputs.get_per_op_input_inductor_ripple();
+            const auto& v_output_inductor_ripple = sepicInputs.get_per_op_output_inductor_ripple();
+            const auto& v_switch_peak_voltage = sepicInputs.get_per_op_switch_peak_voltage();
+            const auto& v_switch_peak_current = sepicInputs.get_per_op_switch_peak_current();
+            const auto& v_diode_peak_reverse_voltage = sepicInputs.get_per_op_diode_peak_reverse_voltage();
+            const auto& v_diode_peak_current = sepicInputs.get_per_op_diode_peak_current();
+            const auto& v_coupling_cap_rms_current = sepicInputs.get_per_op_coupling_cap_rms_current();
+            const auto& v_is_ccm = sepicInputs.get_per_op_is_ccm();
+            const auto& v_sized_cs = sepicInputs.get_per_op_sized_cs();
+            const auto& v_sized_co = sepicInputs.get_per_op_sized_co();
+            diag["dutyCycle"] = v_duty_cycle.empty() ? sepicInputs.get_last_duty_cycle() : v_duty_cycle.front();
+            diag["conversionRatio"] = v_conversion_ratio.empty() ? sepicInputs.get_last_conversion_ratio() : v_conversion_ratio.front();
+            diag["couplingCapVoltage"] = v_coupling_cap_voltage.empty() ? sepicInputs.get_last_coupling_cap_voltage() : v_coupling_cap_voltage.front();
+            diag["inputInductorAverage"] = v_input_inductor_average.empty() ? sepicInputs.get_last_input_inductor_average() : v_input_inductor_average.front();
+            diag["outputInductorAverage"] = v_output_inductor_average.empty() ? sepicInputs.get_last_output_inductor_average() : v_output_inductor_average.front();
+            diag["inputInductorRipple"] = v_input_inductor_ripple.empty() ? sepicInputs.get_last_input_inductor_ripple() : v_input_inductor_ripple.front();
+            diag["outputInductorRipple"] = v_output_inductor_ripple.empty() ? sepicInputs.get_last_output_inductor_ripple() : v_output_inductor_ripple.front();
+            diag["switchPeakVoltage"] = v_switch_peak_voltage.empty() ? sepicInputs.get_last_switch_peak_voltage() : v_switch_peak_voltage.front();
+            diag["switchPeakCurrent"] = v_switch_peak_current.empty() ? sepicInputs.get_last_switch_peak_current() : v_switch_peak_current.front();
+            diag["diodePeakReverseVoltage"] = v_diode_peak_reverse_voltage.empty() ? sepicInputs.get_last_diode_peak_reverse_voltage() : v_diode_peak_reverse_voltage.front();
+            diag["diodePeakCurrent"] = v_diode_peak_current.empty() ? sepicInputs.get_last_diode_peak_current() : v_diode_peak_current.front();
+            diag["couplingCapRmsCurrent"] = v_coupling_cap_rms_current.empty() ? sepicInputs.get_last_coupling_cap_rms_current() : v_coupling_cap_rms_current.front();
+            diag["isCcm"] = v_is_ccm.empty() ? sepicInputs.get_last_is_ccm() : (bool)v_is_ccm.front();
+            diag["sizedCs"] = v_sized_cs.empty() ? sepicInputs.get_last_sized_cs() : v_sized_cs.front();
+            diag["sizedCo"] = v_sized_co.empty() ? sepicInputs.get_last_sized_co() : v_sized_co.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_duty_cycle.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"] = v_duty_cycle[i];
+                row["conversionRatio"] = v_conversion_ratio[i];
+                row["couplingCapVoltage"] = v_coupling_cap_voltage[i];
+                row["inputInductorAverage"] = v_input_inductor_average[i];
+                row["outputInductorAverage"] = v_output_inductor_average[i];
+                row["inputInductorRipple"] = v_input_inductor_ripple[i];
+                row["outputInductorRipple"] = v_output_inductor_ripple[i];
+                row["switchPeakVoltage"] = v_switch_peak_voltage[i];
+                row["switchPeakCurrent"] = v_switch_peak_current[i];
+                row["diodePeakReverseVoltage"] = v_diode_peak_reverse_voltage[i];
+                row["diodePeakCurrent"] = v_diode_peak_current[i];
+                row["couplingCapRmsCurrent"] = v_coupling_cap_rms_current[i];
+                row["isCcm"] = (bool)v_is_ccm[i];
+                row["sizedCs"] = v_sized_cs[i];
+                row["sizedCo"] = v_sized_co[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["sepicDiagnostics"] = diag;
         }
 
@@ -4877,21 +5088,60 @@ std::string calculate_advanced_sepic_inputs(std::string sepicInputsString){
         }
         {
             json diag;
-            diag["dutyCycle"]               = sepicInputs.get_last_duty_cycle();
-            diag["conversionRatio"]         = sepicInputs.get_last_conversion_ratio();
-            diag["couplingCapVoltage"]      = sepicInputs.get_last_coupling_cap_voltage();
-            diag["inputInductorAverage"]    = sepicInputs.get_last_input_inductor_average();
-            diag["outputInductorAverage"]   = sepicInputs.get_last_output_inductor_average();
-            diag["inputInductorRipple"]     = sepicInputs.get_last_input_inductor_ripple();
-            diag["outputInductorRipple"]    = sepicInputs.get_last_output_inductor_ripple();
-            diag["switchPeakVoltage"]       = sepicInputs.get_last_switch_peak_voltage();
-            diag["switchPeakCurrent"]       = sepicInputs.get_last_switch_peak_current();
-            diag["diodePeakReverseVoltage"] = sepicInputs.get_last_diode_peak_reverse_voltage();
-            diag["diodePeakCurrent"]        = sepicInputs.get_last_diode_peak_current();
-            diag["couplingCapRmsCurrent"]   = sepicInputs.get_last_coupling_cap_rms_current();
-            diag["isCcm"]                   = sepicInputs.get_last_is_ccm();
-            diag["sizedCs"]                 = sepicInputs.get_last_sized_cs();
-            diag["sizedCo"]                 = sepicInputs.get_last_sized_co();
+            const auto& names = sepicInputs.get_per_op_name();
+            const auto& v_duty_cycle = sepicInputs.get_per_op_duty_cycle();
+            const auto& v_conversion_ratio = sepicInputs.get_per_op_conversion_ratio();
+            const auto& v_coupling_cap_voltage = sepicInputs.get_per_op_coupling_cap_voltage();
+            const auto& v_input_inductor_average = sepicInputs.get_per_op_input_inductor_average();
+            const auto& v_output_inductor_average = sepicInputs.get_per_op_output_inductor_average();
+            const auto& v_input_inductor_ripple = sepicInputs.get_per_op_input_inductor_ripple();
+            const auto& v_output_inductor_ripple = sepicInputs.get_per_op_output_inductor_ripple();
+            const auto& v_switch_peak_voltage = sepicInputs.get_per_op_switch_peak_voltage();
+            const auto& v_switch_peak_current = sepicInputs.get_per_op_switch_peak_current();
+            const auto& v_diode_peak_reverse_voltage = sepicInputs.get_per_op_diode_peak_reverse_voltage();
+            const auto& v_diode_peak_current = sepicInputs.get_per_op_diode_peak_current();
+            const auto& v_coupling_cap_rms_current = sepicInputs.get_per_op_coupling_cap_rms_current();
+            const auto& v_is_ccm = sepicInputs.get_per_op_is_ccm();
+            const auto& v_sized_cs = sepicInputs.get_per_op_sized_cs();
+            const auto& v_sized_co = sepicInputs.get_per_op_sized_co();
+            diag["dutyCycle"] = v_duty_cycle.empty() ? sepicInputs.get_last_duty_cycle() : v_duty_cycle.front();
+            diag["conversionRatio"] = v_conversion_ratio.empty() ? sepicInputs.get_last_conversion_ratio() : v_conversion_ratio.front();
+            diag["couplingCapVoltage"] = v_coupling_cap_voltage.empty() ? sepicInputs.get_last_coupling_cap_voltage() : v_coupling_cap_voltage.front();
+            diag["inputInductorAverage"] = v_input_inductor_average.empty() ? sepicInputs.get_last_input_inductor_average() : v_input_inductor_average.front();
+            diag["outputInductorAverage"] = v_output_inductor_average.empty() ? sepicInputs.get_last_output_inductor_average() : v_output_inductor_average.front();
+            diag["inputInductorRipple"] = v_input_inductor_ripple.empty() ? sepicInputs.get_last_input_inductor_ripple() : v_input_inductor_ripple.front();
+            diag["outputInductorRipple"] = v_output_inductor_ripple.empty() ? sepicInputs.get_last_output_inductor_ripple() : v_output_inductor_ripple.front();
+            diag["switchPeakVoltage"] = v_switch_peak_voltage.empty() ? sepicInputs.get_last_switch_peak_voltage() : v_switch_peak_voltage.front();
+            diag["switchPeakCurrent"] = v_switch_peak_current.empty() ? sepicInputs.get_last_switch_peak_current() : v_switch_peak_current.front();
+            diag["diodePeakReverseVoltage"] = v_diode_peak_reverse_voltage.empty() ? sepicInputs.get_last_diode_peak_reverse_voltage() : v_diode_peak_reverse_voltage.front();
+            diag["diodePeakCurrent"] = v_diode_peak_current.empty() ? sepicInputs.get_last_diode_peak_current() : v_diode_peak_current.front();
+            diag["couplingCapRmsCurrent"] = v_coupling_cap_rms_current.empty() ? sepicInputs.get_last_coupling_cap_rms_current() : v_coupling_cap_rms_current.front();
+            diag["isCcm"] = v_is_ccm.empty() ? sepicInputs.get_last_is_ccm() : (bool)v_is_ccm.front();
+            diag["sizedCs"] = v_sized_cs.empty() ? sepicInputs.get_last_sized_cs() : v_sized_cs.front();
+            diag["sizedCo"] = v_sized_co.empty() ? sepicInputs.get_last_sized_co() : v_sized_co.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_duty_cycle.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"] = v_duty_cycle[i];
+                row["conversionRatio"] = v_conversion_ratio[i];
+                row["couplingCapVoltage"] = v_coupling_cap_voltage[i];
+                row["inputInductorAverage"] = v_input_inductor_average[i];
+                row["outputInductorAverage"] = v_output_inductor_average[i];
+                row["inputInductorRipple"] = v_input_inductor_ripple[i];
+                row["outputInductorRipple"] = v_output_inductor_ripple[i];
+                row["switchPeakVoltage"] = v_switch_peak_voltage[i];
+                row["switchPeakCurrent"] = v_switch_peak_current[i];
+                row["diodePeakReverseVoltage"] = v_diode_peak_reverse_voltage[i];
+                row["diodePeakCurrent"] = v_diode_peak_current[i];
+                row["couplingCapRmsCurrent"] = v_coupling_cap_rms_current[i];
+                row["isCcm"] = (bool)v_is_ccm[i];
+                row["sizedCs"] = v_sized_cs[i];
+                row["sizedCo"] = v_sized_co[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["sepicDiagnostics"] = diag;
         }
 
@@ -4999,11 +5249,33 @@ std::string simulate_buck_ideal_waveforms(std::string buckInputsString){
         buckPtr->process();
         {
             json diag;
-            diag["dutyCycle"]              = buckPtr->get_last_duty_cycle();
-            diag["inductorAverageCurrent"] = buckPtr->get_last_inductor_average_current();
-            diag["inductorPeakToPeak"]     = buckPtr->get_last_inductor_peak_to_peak();
-            diag["peakInductorCurrent"]    = buckPtr->get_last_peak_inductor_current();
-            diag["conductionRatio"]        = buckPtr->get_last_conduction_ratio();
+            const auto& names = buckPtr->get_per_op_name();
+            const auto& dC    = buckPtr->get_per_op_duty_cycle();
+            const auto& iAvg  = buckPtr->get_per_op_inductor_average_current();
+            const auto& iPP   = buckPtr->get_per_op_inductor_peak_to_peak();
+            const auto& iPk   = buckPtr->get_per_op_peak_inductor_current();
+            const auto& ccm   = buckPtr->get_per_op_is_ccm();
+            const auto& cRat  = buckPtr->get_per_op_conduction_ratio();
+            diag["dutyCycle"]              = dC.empty()   ? buckPtr->get_last_duty_cycle()              : dC.front();
+            diag["inductorAverageCurrent"] = iAvg.empty() ? buckPtr->get_last_inductor_average_current() : iAvg.front();
+            diag["inductorPeakToPeak"]     = iPP.empty()  ? buckPtr->get_last_inductor_peak_to_peak()    : iPP.front();
+            diag["peakInductorCurrent"]    = iPk.empty()  ? buckPtr->get_last_peak_inductor_current()    : iPk.front();
+            diag["conductionRatio"]        = cRat.empty() ? buckPtr->get_last_conduction_ratio()         : cRat.front();
+            diag["isCcm"]                  = ccm.empty()  ? buckPtr->get_last_is_ccm()                   : (bool)ccm.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < dC.size(); ++i) {
+                json row;
+                row["operatingPointName"]    = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"]             = dC[i];
+                row["inductorAverageCurrent"] = iAvg[i];
+                row["inductorPeakToPeak"]    = iPP[i];
+                row["peakInductorCurrent"]   = iPk[i];
+                row["conductionRatio"]       = cRat[i];
+                row["isCcm"]                 = (bool)ccm[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["buckDiagnostics"] = diag;
         }
 
@@ -5140,11 +5412,33 @@ std::string simulate_boost_ideal_waveforms(std::string boostInputsString){
         boostPtr->process();
         {
             json diag;
-            diag["dutyCycle"]              = boostPtr->get_last_duty_cycle();
-            diag["inductorAverageCurrent"] = boostPtr->get_last_inductor_average_current();
-            diag["inductorPeakToPeak"]     = boostPtr->get_last_inductor_peak_to_peak();
-            diag["peakInductorCurrent"]    = boostPtr->get_last_peak_inductor_current();
-            diag["conductionRatio"]        = boostPtr->get_last_conduction_ratio();
+            const auto& names = boostPtr->get_per_op_name();
+            const auto& dC    = boostPtr->get_per_op_duty_cycle();
+            const auto& iAvg  = boostPtr->get_per_op_inductor_average_current();
+            const auto& iPP   = boostPtr->get_per_op_inductor_peak_to_peak();
+            const auto& iPk   = boostPtr->get_per_op_peak_inductor_current();
+            const auto& ccm   = boostPtr->get_per_op_is_ccm();
+            const auto& cRat  = boostPtr->get_per_op_conduction_ratio();
+            diag["dutyCycle"]              = dC.empty()   ? boostPtr->get_last_duty_cycle()              : dC.front();
+            diag["inductorAverageCurrent"] = iAvg.empty() ? boostPtr->get_last_inductor_average_current() : iAvg.front();
+            diag["inductorPeakToPeak"]     = iPP.empty()  ? boostPtr->get_last_inductor_peak_to_peak()    : iPP.front();
+            diag["peakInductorCurrent"]    = iPk.empty()  ? boostPtr->get_last_peak_inductor_current()    : iPk.front();
+            diag["conductionRatio"]        = cRat.empty() ? boostPtr->get_last_conduction_ratio()         : cRat.front();
+            diag["isCcm"]                  = ccm.empty()  ? boostPtr->get_last_is_ccm()                   : (bool)ccm.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < dC.size(); ++i) {
+                json row;
+                row["operatingPointName"]    = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"]             = dC[i];
+                row["inductorAverageCurrent"] = iAvg[i];
+                row["inductorPeakToPeak"]    = iPP[i];
+                row["peakInductorCurrent"]   = iPk[i];
+                row["conductionRatio"]       = cRat[i];
+                row["isCcm"]                 = (bool)ccm[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["boostDiagnostics"] = diag;
         }
 
@@ -5247,21 +5541,60 @@ std::string simulate_sepic_ideal_waveforms(std::string sepicInputsString){
         sepicPtr->process();
         {
             json diag;
-            diag["dutyCycle"]               = sepicPtr->get_last_duty_cycle();
-            diag["conversionRatio"]         = sepicPtr->get_last_conversion_ratio();
-            diag["couplingCapVoltage"]      = sepicPtr->get_last_coupling_cap_voltage();
-            diag["inputInductorAverage"]    = sepicPtr->get_last_input_inductor_average();
-            diag["outputInductorAverage"]   = sepicPtr->get_last_output_inductor_average();
-            diag["inputInductorRipple"]     = sepicPtr->get_last_input_inductor_ripple();
-            diag["outputInductorRipple"]    = sepicPtr->get_last_output_inductor_ripple();
-            diag["switchPeakVoltage"]       = sepicPtr->get_last_switch_peak_voltage();
-            diag["switchPeakCurrent"]       = sepicPtr->get_last_switch_peak_current();
-            diag["diodePeakReverseVoltage"] = sepicPtr->get_last_diode_peak_reverse_voltage();
-            diag["diodePeakCurrent"]        = sepicPtr->get_last_diode_peak_current();
-            diag["couplingCapRmsCurrent"]   = sepicPtr->get_last_coupling_cap_rms_current();
-            diag["isCcm"]                   = sepicPtr->get_last_is_ccm();
-            diag["sizedCs"]                 = sepicPtr->get_last_sized_cs();
-            diag["sizedCo"]                 = sepicPtr->get_last_sized_co();
+            const auto& names = sepicPtr->get_per_op_name();
+            const auto& v_duty_cycle = sepicPtr->get_per_op_duty_cycle();
+            const auto& v_conversion_ratio = sepicPtr->get_per_op_conversion_ratio();
+            const auto& v_coupling_cap_voltage = sepicPtr->get_per_op_coupling_cap_voltage();
+            const auto& v_input_inductor_average = sepicPtr->get_per_op_input_inductor_average();
+            const auto& v_output_inductor_average = sepicPtr->get_per_op_output_inductor_average();
+            const auto& v_input_inductor_ripple = sepicPtr->get_per_op_input_inductor_ripple();
+            const auto& v_output_inductor_ripple = sepicPtr->get_per_op_output_inductor_ripple();
+            const auto& v_switch_peak_voltage = sepicPtr->get_per_op_switch_peak_voltage();
+            const auto& v_switch_peak_current = sepicPtr->get_per_op_switch_peak_current();
+            const auto& v_diode_peak_reverse_voltage = sepicPtr->get_per_op_diode_peak_reverse_voltage();
+            const auto& v_diode_peak_current = sepicPtr->get_per_op_diode_peak_current();
+            const auto& v_coupling_cap_rms_current = sepicPtr->get_per_op_coupling_cap_rms_current();
+            const auto& v_is_ccm = sepicPtr->get_per_op_is_ccm();
+            const auto& v_sized_cs = sepicPtr->get_per_op_sized_cs();
+            const auto& v_sized_co = sepicPtr->get_per_op_sized_co();
+            diag["dutyCycle"] = v_duty_cycle.empty() ? sepicPtr->get_last_duty_cycle() : v_duty_cycle.front();
+            diag["conversionRatio"] = v_conversion_ratio.empty() ? sepicPtr->get_last_conversion_ratio() : v_conversion_ratio.front();
+            diag["couplingCapVoltage"] = v_coupling_cap_voltage.empty() ? sepicPtr->get_last_coupling_cap_voltage() : v_coupling_cap_voltage.front();
+            diag["inputInductorAverage"] = v_input_inductor_average.empty() ? sepicPtr->get_last_input_inductor_average() : v_input_inductor_average.front();
+            diag["outputInductorAverage"] = v_output_inductor_average.empty() ? sepicPtr->get_last_output_inductor_average() : v_output_inductor_average.front();
+            diag["inputInductorRipple"] = v_input_inductor_ripple.empty() ? sepicPtr->get_last_input_inductor_ripple() : v_input_inductor_ripple.front();
+            diag["outputInductorRipple"] = v_output_inductor_ripple.empty() ? sepicPtr->get_last_output_inductor_ripple() : v_output_inductor_ripple.front();
+            diag["switchPeakVoltage"] = v_switch_peak_voltage.empty() ? sepicPtr->get_last_switch_peak_voltage() : v_switch_peak_voltage.front();
+            diag["switchPeakCurrent"] = v_switch_peak_current.empty() ? sepicPtr->get_last_switch_peak_current() : v_switch_peak_current.front();
+            diag["diodePeakReverseVoltage"] = v_diode_peak_reverse_voltage.empty() ? sepicPtr->get_last_diode_peak_reverse_voltage() : v_diode_peak_reverse_voltage.front();
+            diag["diodePeakCurrent"] = v_diode_peak_current.empty() ? sepicPtr->get_last_diode_peak_current() : v_diode_peak_current.front();
+            diag["couplingCapRmsCurrent"] = v_coupling_cap_rms_current.empty() ? sepicPtr->get_last_coupling_cap_rms_current() : v_coupling_cap_rms_current.front();
+            diag["isCcm"] = v_is_ccm.empty() ? sepicPtr->get_last_is_ccm() : (bool)v_is_ccm.front();
+            diag["sizedCs"] = v_sized_cs.empty() ? sepicPtr->get_last_sized_cs() : v_sized_cs.front();
+            diag["sizedCo"] = v_sized_co.empty() ? sepicPtr->get_last_sized_co() : v_sized_co.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_duty_cycle.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"] = v_duty_cycle[i];
+                row["conversionRatio"] = v_conversion_ratio[i];
+                row["couplingCapVoltage"] = v_coupling_cap_voltage[i];
+                row["inputInductorAverage"] = v_input_inductor_average[i];
+                row["outputInductorAverage"] = v_output_inductor_average[i];
+                row["inputInductorRipple"] = v_input_inductor_ripple[i];
+                row["outputInductorRipple"] = v_output_inductor_ripple[i];
+                row["switchPeakVoltage"] = v_switch_peak_voltage[i];
+                row["switchPeakCurrent"] = v_switch_peak_current[i];
+                row["diodePeakReverseVoltage"] = v_diode_peak_reverse_voltage[i];
+                row["diodePeakCurrent"] = v_diode_peak_current[i];
+                row["couplingCapRmsCurrent"] = v_coupling_cap_rms_current[i];
+                row["isCcm"] = (bool)v_is_ccm[i];
+                row["sizedCs"] = v_sized_cs[i];
+                row["sizedCo"] = v_sized_co[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["sepicDiagnostics"] = diag;
         }
 
@@ -5374,15 +5707,42 @@ std::string simulate_forward_ideal_waveforms(std::string forwardInputsString){
         forwardPtr->process();
         {
             json diag;
-            diag["maximumDutyCycle"]       = forwardPtr->get_last_maximum_duty_cycle();
-            diag["magnetizingInductance"]  = forwardPtr->get_last_computed_magnetizing_inductance();
-            diag["secondaryTurnsRatio"]    = forwardPtr->get_last_computed_secondary_turns_ratio();
-            diag["primaryPeakCurrent"]     = forwardPtr->get_last_primary_peak_current();
-            diag["secondaryPeakCurrent"]   = forwardPtr->get_last_secondary_peak_current();
-            diag["magnetizingPeakCurrent"] = forwardPtr->get_last_magnetizing_peak_current();
-            diag["isCcm"]                  = forwardPtr->get_last_is_ccm();
-            diag["primaryTurnsRatio"]      = forwardPtr->get_last_computed_primary_turns_ratio();
-            diag["resetVoltage"]           = forwardPtr->get_last_reset_voltage();
+            const auto& names = forwardPtr->get_per_op_name();
+            const auto& v_maximum_duty_cycle = forwardPtr->get_per_op_maximum_duty_cycle();
+            const auto& v_computed_magnetizing_inductance = forwardPtr->get_per_op_computed_magnetizing_inductance();
+            const auto& v_computed_secondary_turns_ratio = forwardPtr->get_per_op_computed_secondary_turns_ratio();
+            const auto& v_primary_peak_current = forwardPtr->get_per_op_primary_peak_current();
+            const auto& v_secondary_peak_current = forwardPtr->get_per_op_secondary_peak_current();
+            const auto& v_magnetizing_peak_current = forwardPtr->get_per_op_magnetizing_peak_current();
+            const auto& v_is_ccm = forwardPtr->get_per_op_is_ccm();
+            const auto& v_computed_primary_turns_ratio = forwardPtr->get_per_op_computed_primary_turns_ratio();
+            const auto& v_reset_voltage = forwardPtr->get_per_op_reset_voltage();
+            diag["maximumDutyCycle"] = v_maximum_duty_cycle.empty() ? forwardPtr->get_last_maximum_duty_cycle() : v_maximum_duty_cycle.front();
+            diag["magnetizingInductance"] = v_computed_magnetizing_inductance.empty() ? forwardPtr->get_last_computed_magnetizing_inductance() : v_computed_magnetizing_inductance.front();
+            diag["secondaryTurnsRatio"] = v_computed_secondary_turns_ratio.empty() ? forwardPtr->get_last_computed_secondary_turns_ratio() : v_computed_secondary_turns_ratio.front();
+            diag["primaryPeakCurrent"] = v_primary_peak_current.empty() ? forwardPtr->get_last_primary_peak_current() : v_primary_peak_current.front();
+            diag["secondaryPeakCurrent"] = v_secondary_peak_current.empty() ? forwardPtr->get_last_secondary_peak_current() : v_secondary_peak_current.front();
+            diag["magnetizingPeakCurrent"] = v_magnetizing_peak_current.empty() ? forwardPtr->get_last_magnetizing_peak_current() : v_magnetizing_peak_current.front();
+            diag["isCcm"] = v_is_ccm.empty() ? forwardPtr->get_last_is_ccm() : (bool)v_is_ccm.front();
+            diag["primaryTurnsRatio"] = v_computed_primary_turns_ratio.empty() ? forwardPtr->get_last_computed_primary_turns_ratio() : v_computed_primary_turns_ratio.front();
+            diag["resetVoltage"] = v_reset_voltage.empty() ? forwardPtr->get_last_reset_voltage() : v_reset_voltage.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_maximum_duty_cycle.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["maximumDutyCycle"] = v_maximum_duty_cycle[i];
+                row["magnetizingInductance"] = v_computed_magnetizing_inductance[i];
+                row["secondaryTurnsRatio"] = v_computed_secondary_turns_ratio[i];
+                row["primaryPeakCurrent"] = v_primary_peak_current[i];
+                row["secondaryPeakCurrent"] = v_secondary_peak_current[i];
+                row["magnetizingPeakCurrent"] = v_magnetizing_peak_current[i];
+                row["isCcm"] = (bool)v_is_ccm[i];
+                row["primaryTurnsRatio"] = v_computed_primary_turns_ratio[i];
+                row["resetVoltage"] = v_reset_voltage[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["singleSwitchForwardDiagnostics"] = diag;
         }
 
@@ -5493,13 +5853,36 @@ std::string simulate_two_switch_forward_ideal_waveforms(std::string forwardInput
         forwardPtr->process();
         {
             json diag;
-            diag["maximumDutyCycle"]       = forwardPtr->get_last_maximum_duty_cycle();
-            diag["magnetizingInductance"]  = forwardPtr->get_last_computed_magnetizing_inductance();
-            diag["secondaryTurnsRatio"]    = forwardPtr->get_last_computed_secondary_turns_ratio();
-            diag["primaryPeakCurrent"]     = forwardPtr->get_last_primary_peak_current();
-            diag["secondaryPeakCurrent"]   = forwardPtr->get_last_secondary_peak_current();
-            diag["magnetizingPeakCurrent"] = forwardPtr->get_last_magnetizing_peak_current();
-            diag["isCcm"]                  = forwardPtr->get_last_is_ccm();
+            const auto& names = forwardPtr->get_per_op_name();
+            const auto& v_maximum_duty_cycle = forwardPtr->get_per_op_maximum_duty_cycle();
+            const auto& v_computed_magnetizing_inductance = forwardPtr->get_per_op_computed_magnetizing_inductance();
+            const auto& v_computed_secondary_turns_ratio = forwardPtr->get_per_op_computed_secondary_turns_ratio();
+            const auto& v_primary_peak_current = forwardPtr->get_per_op_primary_peak_current();
+            const auto& v_secondary_peak_current = forwardPtr->get_per_op_secondary_peak_current();
+            const auto& v_magnetizing_peak_current = forwardPtr->get_per_op_magnetizing_peak_current();
+            const auto& v_is_ccm = forwardPtr->get_per_op_is_ccm();
+            diag["maximumDutyCycle"] = v_maximum_duty_cycle.empty() ? forwardPtr->get_last_maximum_duty_cycle() : v_maximum_duty_cycle.front();
+            diag["magnetizingInductance"] = v_computed_magnetizing_inductance.empty() ? forwardPtr->get_last_computed_magnetizing_inductance() : v_computed_magnetizing_inductance.front();
+            diag["secondaryTurnsRatio"] = v_computed_secondary_turns_ratio.empty() ? forwardPtr->get_last_computed_secondary_turns_ratio() : v_computed_secondary_turns_ratio.front();
+            diag["primaryPeakCurrent"] = v_primary_peak_current.empty() ? forwardPtr->get_last_primary_peak_current() : v_primary_peak_current.front();
+            diag["secondaryPeakCurrent"] = v_secondary_peak_current.empty() ? forwardPtr->get_last_secondary_peak_current() : v_secondary_peak_current.front();
+            diag["magnetizingPeakCurrent"] = v_magnetizing_peak_current.empty() ? forwardPtr->get_last_magnetizing_peak_current() : v_magnetizing_peak_current.front();
+            diag["isCcm"] = v_is_ccm.empty() ? forwardPtr->get_last_is_ccm() : (bool)v_is_ccm.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_maximum_duty_cycle.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["maximumDutyCycle"] = v_maximum_duty_cycle[i];
+                row["magnetizingInductance"] = v_computed_magnetizing_inductance[i];
+                row["secondaryTurnsRatio"] = v_computed_secondary_turns_ratio[i];
+                row["primaryPeakCurrent"] = v_primary_peak_current[i];
+                row["secondaryPeakCurrent"] = v_secondary_peak_current[i];
+                row["magnetizingPeakCurrent"] = v_magnetizing_peak_current[i];
+                row["isCcm"] = (bool)v_is_ccm[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["twoSwitchForwardDiagnostics"] = diag;
         }
 
@@ -5609,14 +5992,39 @@ std::string simulate_active_clamp_forward_ideal_waveforms(std::string forwardInp
         forwardPtr->process();
         {
             json diag;
-            diag["maximumDutyCycle"]       = forwardPtr->get_last_maximum_duty_cycle();
-            diag["magnetizingInductance"]  = forwardPtr->get_last_computed_magnetizing_inductance();
-            diag["secondaryTurnsRatio"]    = forwardPtr->get_last_computed_secondary_turns_ratio();
-            diag["primaryPeakCurrent"]     = forwardPtr->get_last_primary_peak_current();
-            diag["secondaryPeakCurrent"]   = forwardPtr->get_last_secondary_peak_current();
-            diag["magnetizingPeakCurrent"] = forwardPtr->get_last_magnetizing_peak_current();
-            diag["isCcm"]                  = forwardPtr->get_last_is_ccm();
-            diag["clampCapVoltage"]        = forwardPtr->get_last_clamp_cap_voltage();
+            const auto& names = forwardPtr->get_per_op_name();
+            const auto& v_maximum_duty_cycle = forwardPtr->get_per_op_maximum_duty_cycle();
+            const auto& v_computed_magnetizing_inductance = forwardPtr->get_per_op_computed_magnetizing_inductance();
+            const auto& v_computed_secondary_turns_ratio = forwardPtr->get_per_op_computed_secondary_turns_ratio();
+            const auto& v_primary_peak_current = forwardPtr->get_per_op_primary_peak_current();
+            const auto& v_secondary_peak_current = forwardPtr->get_per_op_secondary_peak_current();
+            const auto& v_magnetizing_peak_current = forwardPtr->get_per_op_magnetizing_peak_current();
+            const auto& v_is_ccm = forwardPtr->get_per_op_is_ccm();
+            const auto& v_clamp_cap_voltage = forwardPtr->get_per_op_clamp_cap_voltage();
+            diag["maximumDutyCycle"] = v_maximum_duty_cycle.empty() ? forwardPtr->get_last_maximum_duty_cycle() : v_maximum_duty_cycle.front();
+            diag["magnetizingInductance"] = v_computed_magnetizing_inductance.empty() ? forwardPtr->get_last_computed_magnetizing_inductance() : v_computed_magnetizing_inductance.front();
+            diag["secondaryTurnsRatio"] = v_computed_secondary_turns_ratio.empty() ? forwardPtr->get_last_computed_secondary_turns_ratio() : v_computed_secondary_turns_ratio.front();
+            diag["primaryPeakCurrent"] = v_primary_peak_current.empty() ? forwardPtr->get_last_primary_peak_current() : v_primary_peak_current.front();
+            diag["secondaryPeakCurrent"] = v_secondary_peak_current.empty() ? forwardPtr->get_last_secondary_peak_current() : v_secondary_peak_current.front();
+            diag["magnetizingPeakCurrent"] = v_magnetizing_peak_current.empty() ? forwardPtr->get_last_magnetizing_peak_current() : v_magnetizing_peak_current.front();
+            diag["isCcm"] = v_is_ccm.empty() ? forwardPtr->get_last_is_ccm() : (bool)v_is_ccm.front();
+            diag["clampCapVoltage"] = v_clamp_cap_voltage.empty() ? forwardPtr->get_last_clamp_cap_voltage() : v_clamp_cap_voltage.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_maximum_duty_cycle.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["maximumDutyCycle"] = v_maximum_duty_cycle[i];
+                row["magnetizingInductance"] = v_computed_magnetizing_inductance[i];
+                row["secondaryTurnsRatio"] = v_computed_secondary_turns_ratio[i];
+                row["primaryPeakCurrent"] = v_primary_peak_current[i];
+                row["secondaryPeakCurrent"] = v_secondary_peak_current[i];
+                row["magnetizingPeakCurrent"] = v_magnetizing_peak_current[i];
+                row["isCcm"] = (bool)v_is_ccm[i];
+                row["clampCapVoltage"] = v_clamp_cap_voltage[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["activeClampForwardDiagnostics"] = diag;
         }
 
@@ -5761,12 +6169,33 @@ std::string simulate_push_pull_ideal_waveforms(std::string pushPullInputsString)
         pushPullPtr->process();
         {
             json diag;
-            diag["dutyCycle"]              = pushPullPtr->get_last_duty_cycle();
-            diag["switchingFrequency"]     = pushPullPtr->get_last_switching_frequency();
-            diag["primaryAverageCurrent"]  = pushPullPtr->get_last_primary_average_current();
-            diag["primaryPeakCurrent"]     = pushPullPtr->get_last_primary_peak_current();
-            diag["magnetizingPeakCurrent"] = pushPullPtr->get_last_magnetizing_peak_current();
-            diag["isCcm"]                  = pushPullPtr->get_last_is_ccm();
+            const auto& names = pushPullPtr->get_per_op_name();
+            const auto& v_duty_cycle = pushPullPtr->get_per_op_duty_cycle();
+            const auto& v_switching_frequency = pushPullPtr->get_per_op_switching_frequency();
+            const auto& v_primary_average_current = pushPullPtr->get_per_op_primary_average_current();
+            const auto& v_primary_peak_current = pushPullPtr->get_per_op_primary_peak_current();
+            const auto& v_magnetizing_peak_current = pushPullPtr->get_per_op_magnetizing_peak_current();
+            const auto& v_is_ccm = pushPullPtr->get_per_op_is_ccm();
+            diag["dutyCycle"] = v_duty_cycle.empty() ? pushPullPtr->get_last_duty_cycle() : v_duty_cycle.front();
+            diag["switchingFrequency"] = v_switching_frequency.empty() ? pushPullPtr->get_last_switching_frequency() : v_switching_frequency.front();
+            diag["primaryAverageCurrent"] = v_primary_average_current.empty() ? pushPullPtr->get_last_primary_average_current() : v_primary_average_current.front();
+            diag["primaryPeakCurrent"] = v_primary_peak_current.empty() ? pushPullPtr->get_last_primary_peak_current() : v_primary_peak_current.front();
+            diag["magnetizingPeakCurrent"] = v_magnetizing_peak_current.empty() ? pushPullPtr->get_last_magnetizing_peak_current() : v_magnetizing_peak_current.front();
+            diag["isCcm"] = v_is_ccm.empty() ? pushPullPtr->get_last_is_ccm() : (bool)v_is_ccm.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_duty_cycle.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"] = v_duty_cycle[i];
+                row["switchingFrequency"] = v_switching_frequency[i];
+                row["primaryAverageCurrent"] = v_primary_average_current[i];
+                row["primaryPeakCurrent"] = v_primary_peak_current[i];
+                row["magnetizingPeakCurrent"] = v_magnetizing_peak_current[i];
+                row["isCcm"] = (bool)v_is_ccm[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["pushPullDiagnostics"] = diag;
         }
 
@@ -5880,12 +6309,33 @@ std::string simulate_isolated_buck_boost_ideal_waveforms(std::string ibbInputsSt
         ibbPtr->process();
         {
             json diag;
-            diag["dutyCycle"]                = ibbPtr->get_last_duty_cycle();
-            diag["magnetizingCurrentRipple"] = ibbPtr->get_last_magnetizing_current_ripple();
-            diag["primaryAverageCurrent"]    = ibbPtr->get_last_primary_average_current();
-            diag["primaryPeakCurrent"]       = ibbPtr->get_last_primary_peak_current();
-            diag["secondaryPeakCurrent"]     = ibbPtr->get_last_secondary_peak_current();
-            diag["isCcm"]                    = ibbPtr->get_last_is_ccm();
+            const auto& names = ibbPtr->get_per_op_name();
+            const auto& v_duty_cycle = ibbPtr->get_per_op_duty_cycle();
+            const auto& v_magnetizing_current_ripple = ibbPtr->get_per_op_magnetizing_current_ripple();
+            const auto& v_primary_average_current = ibbPtr->get_per_op_primary_average_current();
+            const auto& v_primary_peak_current = ibbPtr->get_per_op_primary_peak_current();
+            const auto& v_secondary_peak_current = ibbPtr->get_per_op_secondary_peak_current();
+            const auto& v_is_ccm = ibbPtr->get_per_op_is_ccm();
+            diag["dutyCycle"] = v_duty_cycle.empty() ? ibbPtr->get_last_duty_cycle() : v_duty_cycle.front();
+            diag["magnetizingCurrentRipple"] = v_magnetizing_current_ripple.empty() ? ibbPtr->get_last_magnetizing_current_ripple() : v_magnetizing_current_ripple.front();
+            diag["primaryAverageCurrent"] = v_primary_average_current.empty() ? ibbPtr->get_last_primary_average_current() : v_primary_average_current.front();
+            diag["primaryPeakCurrent"] = v_primary_peak_current.empty() ? ibbPtr->get_last_primary_peak_current() : v_primary_peak_current.front();
+            diag["secondaryPeakCurrent"] = v_secondary_peak_current.empty() ? ibbPtr->get_last_secondary_peak_current() : v_secondary_peak_current.front();
+            diag["isCcm"] = v_is_ccm.empty() ? ibbPtr->get_last_is_ccm() : (bool)v_is_ccm.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_duty_cycle.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"] = v_duty_cycle[i];
+                row["magnetizingCurrentRipple"] = v_magnetizing_current_ripple[i];
+                row["primaryAverageCurrent"] = v_primary_average_current[i];
+                row["primaryPeakCurrent"] = v_primary_peak_current[i];
+                row["secondaryPeakCurrent"] = v_secondary_peak_current[i];
+                row["isCcm"] = (bool)v_is_ccm[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["isolatedBuckBoostDiagnostics"] = diag;
         }
 
@@ -6038,12 +6488,33 @@ std::string simulate_isolated_buck_ideal_waveforms(std::string ibInputsString){
         ibPtr->process();
         {
             json diag;
-            diag["dutyCycle"]                = ibPtr->get_last_duty_cycle();
-            diag["magnetizingCurrentRipple"] = ibPtr->get_last_magnetizing_current_ripple();
-            diag["primaryAverageCurrent"]    = ibPtr->get_last_primary_average_current();
-            diag["primaryPeakCurrent"]       = ibPtr->get_last_primary_peak_current();
-            diag["secondaryPeakCurrent"]     = ibPtr->get_last_secondary_peak_current();
-            diag["isCcm"]                    = ibPtr->get_last_is_ccm();
+            const auto& names = ibPtr->get_per_op_name();
+            const auto& v_duty_cycle = ibPtr->get_per_op_duty_cycle();
+            const auto& v_magnetizing_current_ripple = ibPtr->get_per_op_magnetizing_current_ripple();
+            const auto& v_primary_average_current = ibPtr->get_per_op_primary_average_current();
+            const auto& v_primary_peak_current = ibPtr->get_per_op_primary_peak_current();
+            const auto& v_secondary_peak_current = ibPtr->get_per_op_secondary_peak_current();
+            const auto& v_is_ccm = ibPtr->get_per_op_is_ccm();
+            diag["dutyCycle"] = v_duty_cycle.empty() ? ibPtr->get_last_duty_cycle() : v_duty_cycle.front();
+            diag["magnetizingCurrentRipple"] = v_magnetizing_current_ripple.empty() ? ibPtr->get_last_magnetizing_current_ripple() : v_magnetizing_current_ripple.front();
+            diag["primaryAverageCurrent"] = v_primary_average_current.empty() ? ibPtr->get_last_primary_average_current() : v_primary_average_current.front();
+            diag["primaryPeakCurrent"] = v_primary_peak_current.empty() ? ibPtr->get_last_primary_peak_current() : v_primary_peak_current.front();
+            diag["secondaryPeakCurrent"] = v_secondary_peak_current.empty() ? ibPtr->get_last_secondary_peak_current() : v_secondary_peak_current.front();
+            diag["isCcm"] = v_is_ccm.empty() ? ibPtr->get_last_is_ccm() : (bool)v_is_ccm.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_duty_cycle.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"] = v_duty_cycle[i];
+                row["magnetizingCurrentRipple"] = v_magnetizing_current_ripple[i];
+                row["primaryAverageCurrent"] = v_primary_average_current[i];
+                row["primaryPeakCurrent"] = v_primary_peak_current[i];
+                row["secondaryPeakCurrent"] = v_secondary_peak_current[i];
+                row["isCcm"] = (bool)v_is_ccm[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["isolatedBuckDiagnostics"] = diag;
         }
 
@@ -6085,12 +6556,33 @@ std::string calculate_push_pull_inputs(std::string pushPullInputsString){
         }
         {
             json diag;
-            diag["dutyCycle"]              = pushPullInputs.get_last_duty_cycle();
-            diag["switchingFrequency"]     = pushPullInputs.get_last_switching_frequency();
-            diag["primaryAverageCurrent"]  = pushPullInputs.get_last_primary_average_current();
-            diag["primaryPeakCurrent"]     = pushPullInputs.get_last_primary_peak_current();
-            diag["magnetizingPeakCurrent"] = pushPullInputs.get_last_magnetizing_peak_current();
-            diag["isCcm"]                  = pushPullInputs.get_last_is_ccm();
+            const auto& names = pushPullInputs.get_per_op_name();
+            const auto& v_duty_cycle = pushPullInputs.get_per_op_duty_cycle();
+            const auto& v_switching_frequency = pushPullInputs.get_per_op_switching_frequency();
+            const auto& v_primary_average_current = pushPullInputs.get_per_op_primary_average_current();
+            const auto& v_primary_peak_current = pushPullInputs.get_per_op_primary_peak_current();
+            const auto& v_magnetizing_peak_current = pushPullInputs.get_per_op_magnetizing_peak_current();
+            const auto& v_is_ccm = pushPullInputs.get_per_op_is_ccm();
+            diag["dutyCycle"] = v_duty_cycle.empty() ? pushPullInputs.get_last_duty_cycle() : v_duty_cycle.front();
+            diag["switchingFrequency"] = v_switching_frequency.empty() ? pushPullInputs.get_last_switching_frequency() : v_switching_frequency.front();
+            diag["primaryAverageCurrent"] = v_primary_average_current.empty() ? pushPullInputs.get_last_primary_average_current() : v_primary_average_current.front();
+            diag["primaryPeakCurrent"] = v_primary_peak_current.empty() ? pushPullInputs.get_last_primary_peak_current() : v_primary_peak_current.front();
+            diag["magnetizingPeakCurrent"] = v_magnetizing_peak_current.empty() ? pushPullInputs.get_last_magnetizing_peak_current() : v_magnetizing_peak_current.front();
+            diag["isCcm"] = v_is_ccm.empty() ? pushPullInputs.get_last_is_ccm() : (bool)v_is_ccm.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_duty_cycle.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"] = v_duty_cycle[i];
+                row["switchingFrequency"] = v_switching_frequency[i];
+                row["primaryAverageCurrent"] = v_primary_average_current[i];
+                row["primaryPeakCurrent"] = v_primary_peak_current[i];
+                row["magnetizingPeakCurrent"] = v_magnetizing_peak_current[i];
+                row["isCcm"] = (bool)v_is_ccm[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["pushPullDiagnostics"] = diag;
         }
 
@@ -6153,12 +6645,33 @@ std::string calculate_advanced_push_pull_inputs(std::string pushPullInputsString
         }
         {
             json diag;
-            diag["dutyCycle"]              = pushPullInputs.get_last_duty_cycle();
-            diag["switchingFrequency"]     = pushPullInputs.get_last_switching_frequency();
-            diag["primaryAverageCurrent"]  = pushPullInputs.get_last_primary_average_current();
-            diag["primaryPeakCurrent"]     = pushPullInputs.get_last_primary_peak_current();
-            diag["magnetizingPeakCurrent"] = pushPullInputs.get_last_magnetizing_peak_current();
-            diag["isCcm"]                  = pushPullInputs.get_last_is_ccm();
+            const auto& names = pushPullInputs.get_per_op_name();
+            const auto& v_duty_cycle = pushPullInputs.get_per_op_duty_cycle();
+            const auto& v_switching_frequency = pushPullInputs.get_per_op_switching_frequency();
+            const auto& v_primary_average_current = pushPullInputs.get_per_op_primary_average_current();
+            const auto& v_primary_peak_current = pushPullInputs.get_per_op_primary_peak_current();
+            const auto& v_magnetizing_peak_current = pushPullInputs.get_per_op_magnetizing_peak_current();
+            const auto& v_is_ccm = pushPullInputs.get_per_op_is_ccm();
+            diag["dutyCycle"] = v_duty_cycle.empty() ? pushPullInputs.get_last_duty_cycle() : v_duty_cycle.front();
+            diag["switchingFrequency"] = v_switching_frequency.empty() ? pushPullInputs.get_last_switching_frequency() : v_switching_frequency.front();
+            diag["primaryAverageCurrent"] = v_primary_average_current.empty() ? pushPullInputs.get_last_primary_average_current() : v_primary_average_current.front();
+            diag["primaryPeakCurrent"] = v_primary_peak_current.empty() ? pushPullInputs.get_last_primary_peak_current() : v_primary_peak_current.front();
+            diag["magnetizingPeakCurrent"] = v_magnetizing_peak_current.empty() ? pushPullInputs.get_last_magnetizing_peak_current() : v_magnetizing_peak_current.front();
+            diag["isCcm"] = v_is_ccm.empty() ? pushPullInputs.get_last_is_ccm() : (bool)v_is_ccm.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_duty_cycle.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"] = v_duty_cycle[i];
+                row["switchingFrequency"] = v_switching_frequency[i];
+                row["primaryAverageCurrent"] = v_primary_average_current[i];
+                row["primaryPeakCurrent"] = v_primary_peak_current[i];
+                row["magnetizingPeakCurrent"] = v_magnetizing_peak_current[i];
+                row["isCcm"] = (bool)v_is_ccm[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["pushPullDiagnostics"] = diag;
         }
 
@@ -6262,15 +6775,42 @@ std::string calculate_single_switch_forward_inputs(std::string singleSwitchForwa
         }
         {
             json diag;
-            diag["maximumDutyCycle"]       = singleSwitchForwardInputs.get_last_maximum_duty_cycle();
-            diag["magnetizingInductance"]  = singleSwitchForwardInputs.get_last_computed_magnetizing_inductance();
-            diag["secondaryTurnsRatio"]    = singleSwitchForwardInputs.get_last_computed_secondary_turns_ratio();
-            diag["primaryPeakCurrent"]     = singleSwitchForwardInputs.get_last_primary_peak_current();
-            diag["secondaryPeakCurrent"]   = singleSwitchForwardInputs.get_last_secondary_peak_current();
-            diag["magnetizingPeakCurrent"] = singleSwitchForwardInputs.get_last_magnetizing_peak_current();
-            diag["isCcm"]                  = singleSwitchForwardInputs.get_last_is_ccm();
-            diag["primaryTurnsRatio"]      = singleSwitchForwardInputs.get_last_computed_primary_turns_ratio();
-            diag["resetVoltage"]           = singleSwitchForwardInputs.get_last_reset_voltage();
+            const auto& names = singleSwitchForwardInputs.get_per_op_name();
+            const auto& v_maximum_duty_cycle = singleSwitchForwardInputs.get_per_op_maximum_duty_cycle();
+            const auto& v_computed_magnetizing_inductance = singleSwitchForwardInputs.get_per_op_computed_magnetizing_inductance();
+            const auto& v_computed_secondary_turns_ratio = singleSwitchForwardInputs.get_per_op_computed_secondary_turns_ratio();
+            const auto& v_primary_peak_current = singleSwitchForwardInputs.get_per_op_primary_peak_current();
+            const auto& v_secondary_peak_current = singleSwitchForwardInputs.get_per_op_secondary_peak_current();
+            const auto& v_magnetizing_peak_current = singleSwitchForwardInputs.get_per_op_magnetizing_peak_current();
+            const auto& v_is_ccm = singleSwitchForwardInputs.get_per_op_is_ccm();
+            const auto& v_computed_primary_turns_ratio = singleSwitchForwardInputs.get_per_op_computed_primary_turns_ratio();
+            const auto& v_reset_voltage = singleSwitchForwardInputs.get_per_op_reset_voltage();
+            diag["maximumDutyCycle"] = v_maximum_duty_cycle.empty() ? singleSwitchForwardInputs.get_last_maximum_duty_cycle() : v_maximum_duty_cycle.front();
+            diag["magnetizingInductance"] = v_computed_magnetizing_inductance.empty() ? singleSwitchForwardInputs.get_last_computed_magnetizing_inductance() : v_computed_magnetizing_inductance.front();
+            diag["secondaryTurnsRatio"] = v_computed_secondary_turns_ratio.empty() ? singleSwitchForwardInputs.get_last_computed_secondary_turns_ratio() : v_computed_secondary_turns_ratio.front();
+            diag["primaryPeakCurrent"] = v_primary_peak_current.empty() ? singleSwitchForwardInputs.get_last_primary_peak_current() : v_primary_peak_current.front();
+            diag["secondaryPeakCurrent"] = v_secondary_peak_current.empty() ? singleSwitchForwardInputs.get_last_secondary_peak_current() : v_secondary_peak_current.front();
+            diag["magnetizingPeakCurrent"] = v_magnetizing_peak_current.empty() ? singleSwitchForwardInputs.get_last_magnetizing_peak_current() : v_magnetizing_peak_current.front();
+            diag["isCcm"] = v_is_ccm.empty() ? singleSwitchForwardInputs.get_last_is_ccm() : (bool)v_is_ccm.front();
+            diag["primaryTurnsRatio"] = v_computed_primary_turns_ratio.empty() ? singleSwitchForwardInputs.get_last_computed_primary_turns_ratio() : v_computed_primary_turns_ratio.front();
+            diag["resetVoltage"] = v_reset_voltage.empty() ? singleSwitchForwardInputs.get_last_reset_voltage() : v_reset_voltage.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_maximum_duty_cycle.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["maximumDutyCycle"] = v_maximum_duty_cycle[i];
+                row["magnetizingInductance"] = v_computed_magnetizing_inductance[i];
+                row["secondaryTurnsRatio"] = v_computed_secondary_turns_ratio[i];
+                row["primaryPeakCurrent"] = v_primary_peak_current[i];
+                row["secondaryPeakCurrent"] = v_secondary_peak_current[i];
+                row["magnetizingPeakCurrent"] = v_magnetizing_peak_current[i];
+                row["isCcm"] = (bool)v_is_ccm[i];
+                row["primaryTurnsRatio"] = v_computed_primary_turns_ratio[i];
+                row["resetVoltage"] = v_reset_voltage[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["singleSwitchForwardDiagnostics"] = diag;
         }
 
@@ -6370,15 +6910,42 @@ std::string calculate_advanced_single_switch_forward_inputs(std::string singleSw
         }
         {
             json diag;
-            diag["maximumDutyCycle"]       = singleSwitchForwardInputs.get_last_maximum_duty_cycle();
-            diag["magnetizingInductance"]  = singleSwitchForwardInputs.get_last_computed_magnetizing_inductance();
-            diag["secondaryTurnsRatio"]    = singleSwitchForwardInputs.get_last_computed_secondary_turns_ratio();
-            diag["primaryPeakCurrent"]     = singleSwitchForwardInputs.get_last_primary_peak_current();
-            diag["secondaryPeakCurrent"]   = singleSwitchForwardInputs.get_last_secondary_peak_current();
-            diag["magnetizingPeakCurrent"] = singleSwitchForwardInputs.get_last_magnetizing_peak_current();
-            diag["isCcm"]                  = singleSwitchForwardInputs.get_last_is_ccm();
-            diag["primaryTurnsRatio"]      = singleSwitchForwardInputs.get_last_computed_primary_turns_ratio();
-            diag["resetVoltage"]           = singleSwitchForwardInputs.get_last_reset_voltage();
+            const auto& names = singleSwitchForwardInputs.get_per_op_name();
+            const auto& v_maximum_duty_cycle = singleSwitchForwardInputs.get_per_op_maximum_duty_cycle();
+            const auto& v_computed_magnetizing_inductance = singleSwitchForwardInputs.get_per_op_computed_magnetizing_inductance();
+            const auto& v_computed_secondary_turns_ratio = singleSwitchForwardInputs.get_per_op_computed_secondary_turns_ratio();
+            const auto& v_primary_peak_current = singleSwitchForwardInputs.get_per_op_primary_peak_current();
+            const auto& v_secondary_peak_current = singleSwitchForwardInputs.get_per_op_secondary_peak_current();
+            const auto& v_magnetizing_peak_current = singleSwitchForwardInputs.get_per_op_magnetizing_peak_current();
+            const auto& v_is_ccm = singleSwitchForwardInputs.get_per_op_is_ccm();
+            const auto& v_computed_primary_turns_ratio = singleSwitchForwardInputs.get_per_op_computed_primary_turns_ratio();
+            const auto& v_reset_voltage = singleSwitchForwardInputs.get_per_op_reset_voltage();
+            diag["maximumDutyCycle"] = v_maximum_duty_cycle.empty() ? singleSwitchForwardInputs.get_last_maximum_duty_cycle() : v_maximum_duty_cycle.front();
+            diag["magnetizingInductance"] = v_computed_magnetizing_inductance.empty() ? singleSwitchForwardInputs.get_last_computed_magnetizing_inductance() : v_computed_magnetizing_inductance.front();
+            diag["secondaryTurnsRatio"] = v_computed_secondary_turns_ratio.empty() ? singleSwitchForwardInputs.get_last_computed_secondary_turns_ratio() : v_computed_secondary_turns_ratio.front();
+            diag["primaryPeakCurrent"] = v_primary_peak_current.empty() ? singleSwitchForwardInputs.get_last_primary_peak_current() : v_primary_peak_current.front();
+            diag["secondaryPeakCurrent"] = v_secondary_peak_current.empty() ? singleSwitchForwardInputs.get_last_secondary_peak_current() : v_secondary_peak_current.front();
+            diag["magnetizingPeakCurrent"] = v_magnetizing_peak_current.empty() ? singleSwitchForwardInputs.get_last_magnetizing_peak_current() : v_magnetizing_peak_current.front();
+            diag["isCcm"] = v_is_ccm.empty() ? singleSwitchForwardInputs.get_last_is_ccm() : (bool)v_is_ccm.front();
+            diag["primaryTurnsRatio"] = v_computed_primary_turns_ratio.empty() ? singleSwitchForwardInputs.get_last_computed_primary_turns_ratio() : v_computed_primary_turns_ratio.front();
+            diag["resetVoltage"] = v_reset_voltage.empty() ? singleSwitchForwardInputs.get_last_reset_voltage() : v_reset_voltage.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_maximum_duty_cycle.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["maximumDutyCycle"] = v_maximum_duty_cycle[i];
+                row["magnetizingInductance"] = v_computed_magnetizing_inductance[i];
+                row["secondaryTurnsRatio"] = v_computed_secondary_turns_ratio[i];
+                row["primaryPeakCurrent"] = v_primary_peak_current[i];
+                row["secondaryPeakCurrent"] = v_secondary_peak_current[i];
+                row["magnetizingPeakCurrent"] = v_magnetizing_peak_current[i];
+                row["isCcm"] = (bool)v_is_ccm[i];
+                row["primaryTurnsRatio"] = v_computed_primary_turns_ratio[i];
+                row["resetVoltage"] = v_reset_voltage[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["singleSwitchForwardDiagnostics"] = diag;
         }
 
@@ -6482,14 +7049,39 @@ std::string calculate_active_clamp_forward_inputs(std::string activeClampForward
         }
         {
             json diag;
-            diag["maximumDutyCycle"]       = activeClampForwardInputs.get_last_maximum_duty_cycle();
-            diag["magnetizingInductance"]  = activeClampForwardInputs.get_last_computed_magnetizing_inductance();
-            diag["secondaryTurnsRatio"]    = activeClampForwardInputs.get_last_computed_secondary_turns_ratio();
-            diag["primaryPeakCurrent"]     = activeClampForwardInputs.get_last_primary_peak_current();
-            diag["secondaryPeakCurrent"]   = activeClampForwardInputs.get_last_secondary_peak_current();
-            diag["magnetizingPeakCurrent"] = activeClampForwardInputs.get_last_magnetizing_peak_current();
-            diag["isCcm"]                  = activeClampForwardInputs.get_last_is_ccm();
-            diag["clampCapVoltage"]        = activeClampForwardInputs.get_last_clamp_cap_voltage();
+            const auto& names = activeClampForwardInputs.get_per_op_name();
+            const auto& v_maximum_duty_cycle = activeClampForwardInputs.get_per_op_maximum_duty_cycle();
+            const auto& v_computed_magnetizing_inductance = activeClampForwardInputs.get_per_op_computed_magnetizing_inductance();
+            const auto& v_computed_secondary_turns_ratio = activeClampForwardInputs.get_per_op_computed_secondary_turns_ratio();
+            const auto& v_primary_peak_current = activeClampForwardInputs.get_per_op_primary_peak_current();
+            const auto& v_secondary_peak_current = activeClampForwardInputs.get_per_op_secondary_peak_current();
+            const auto& v_magnetizing_peak_current = activeClampForwardInputs.get_per_op_magnetizing_peak_current();
+            const auto& v_is_ccm = activeClampForwardInputs.get_per_op_is_ccm();
+            const auto& v_clamp_cap_voltage = activeClampForwardInputs.get_per_op_clamp_cap_voltage();
+            diag["maximumDutyCycle"] = v_maximum_duty_cycle.empty() ? activeClampForwardInputs.get_last_maximum_duty_cycle() : v_maximum_duty_cycle.front();
+            diag["magnetizingInductance"] = v_computed_magnetizing_inductance.empty() ? activeClampForwardInputs.get_last_computed_magnetizing_inductance() : v_computed_magnetizing_inductance.front();
+            diag["secondaryTurnsRatio"] = v_computed_secondary_turns_ratio.empty() ? activeClampForwardInputs.get_last_computed_secondary_turns_ratio() : v_computed_secondary_turns_ratio.front();
+            diag["primaryPeakCurrent"] = v_primary_peak_current.empty() ? activeClampForwardInputs.get_last_primary_peak_current() : v_primary_peak_current.front();
+            diag["secondaryPeakCurrent"] = v_secondary_peak_current.empty() ? activeClampForwardInputs.get_last_secondary_peak_current() : v_secondary_peak_current.front();
+            diag["magnetizingPeakCurrent"] = v_magnetizing_peak_current.empty() ? activeClampForwardInputs.get_last_magnetizing_peak_current() : v_magnetizing_peak_current.front();
+            diag["isCcm"] = v_is_ccm.empty() ? activeClampForwardInputs.get_last_is_ccm() : (bool)v_is_ccm.front();
+            diag["clampCapVoltage"] = v_clamp_cap_voltage.empty() ? activeClampForwardInputs.get_last_clamp_cap_voltage() : v_clamp_cap_voltage.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_maximum_duty_cycle.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["maximumDutyCycle"] = v_maximum_duty_cycle[i];
+                row["magnetizingInductance"] = v_computed_magnetizing_inductance[i];
+                row["secondaryTurnsRatio"] = v_computed_secondary_turns_ratio[i];
+                row["primaryPeakCurrent"] = v_primary_peak_current[i];
+                row["secondaryPeakCurrent"] = v_secondary_peak_current[i];
+                row["magnetizingPeakCurrent"] = v_magnetizing_peak_current[i];
+                row["isCcm"] = (bool)v_is_ccm[i];
+                row["clampCapVoltage"] = v_clamp_cap_voltage[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["activeClampForwardDiagnostics"] = diag;
         }
 
@@ -6589,14 +7181,39 @@ std::string calculate_advanced_active_clamp_forward_inputs(std::string activeCla
         }
         {
             json diag;
-            diag["maximumDutyCycle"]       = activeClampForwardInputs.get_last_maximum_duty_cycle();
-            diag["magnetizingInductance"]  = activeClampForwardInputs.get_last_computed_magnetizing_inductance();
-            diag["secondaryTurnsRatio"]    = activeClampForwardInputs.get_last_computed_secondary_turns_ratio();
-            diag["primaryPeakCurrent"]     = activeClampForwardInputs.get_last_primary_peak_current();
-            diag["secondaryPeakCurrent"]   = activeClampForwardInputs.get_last_secondary_peak_current();
-            diag["magnetizingPeakCurrent"] = activeClampForwardInputs.get_last_magnetizing_peak_current();
-            diag["isCcm"]                  = activeClampForwardInputs.get_last_is_ccm();
-            diag["clampCapVoltage"]        = activeClampForwardInputs.get_last_clamp_cap_voltage();
+            const auto& names = activeClampForwardInputs.get_per_op_name();
+            const auto& v_maximum_duty_cycle = activeClampForwardInputs.get_per_op_maximum_duty_cycle();
+            const auto& v_computed_magnetizing_inductance = activeClampForwardInputs.get_per_op_computed_magnetizing_inductance();
+            const auto& v_computed_secondary_turns_ratio = activeClampForwardInputs.get_per_op_computed_secondary_turns_ratio();
+            const auto& v_primary_peak_current = activeClampForwardInputs.get_per_op_primary_peak_current();
+            const auto& v_secondary_peak_current = activeClampForwardInputs.get_per_op_secondary_peak_current();
+            const auto& v_magnetizing_peak_current = activeClampForwardInputs.get_per_op_magnetizing_peak_current();
+            const auto& v_is_ccm = activeClampForwardInputs.get_per_op_is_ccm();
+            const auto& v_clamp_cap_voltage = activeClampForwardInputs.get_per_op_clamp_cap_voltage();
+            diag["maximumDutyCycle"] = v_maximum_duty_cycle.empty() ? activeClampForwardInputs.get_last_maximum_duty_cycle() : v_maximum_duty_cycle.front();
+            diag["magnetizingInductance"] = v_computed_magnetizing_inductance.empty() ? activeClampForwardInputs.get_last_computed_magnetizing_inductance() : v_computed_magnetizing_inductance.front();
+            diag["secondaryTurnsRatio"] = v_computed_secondary_turns_ratio.empty() ? activeClampForwardInputs.get_last_computed_secondary_turns_ratio() : v_computed_secondary_turns_ratio.front();
+            diag["primaryPeakCurrent"] = v_primary_peak_current.empty() ? activeClampForwardInputs.get_last_primary_peak_current() : v_primary_peak_current.front();
+            diag["secondaryPeakCurrent"] = v_secondary_peak_current.empty() ? activeClampForwardInputs.get_last_secondary_peak_current() : v_secondary_peak_current.front();
+            diag["magnetizingPeakCurrent"] = v_magnetizing_peak_current.empty() ? activeClampForwardInputs.get_last_magnetizing_peak_current() : v_magnetizing_peak_current.front();
+            diag["isCcm"] = v_is_ccm.empty() ? activeClampForwardInputs.get_last_is_ccm() : (bool)v_is_ccm.front();
+            diag["clampCapVoltage"] = v_clamp_cap_voltage.empty() ? activeClampForwardInputs.get_last_clamp_cap_voltage() : v_clamp_cap_voltage.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_maximum_duty_cycle.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["maximumDutyCycle"] = v_maximum_duty_cycle[i];
+                row["magnetizingInductance"] = v_computed_magnetizing_inductance[i];
+                row["secondaryTurnsRatio"] = v_computed_secondary_turns_ratio[i];
+                row["primaryPeakCurrent"] = v_primary_peak_current[i];
+                row["secondaryPeakCurrent"] = v_secondary_peak_current[i];
+                row["magnetizingPeakCurrent"] = v_magnetizing_peak_current[i];
+                row["isCcm"] = (bool)v_is_ccm[i];
+                row["clampCapVoltage"] = v_clamp_cap_voltage[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["activeClampForwardDiagnostics"] = diag;
         }
 
@@ -6700,13 +7317,36 @@ std::string calculate_two_switch_forward_inputs(std::string twoSwitchForwardInpu
         }
         {
             json diag;
-            diag["maximumDutyCycle"]       = twoSwitchForwardInputs.get_last_maximum_duty_cycle();
-            diag["magnetizingInductance"]  = twoSwitchForwardInputs.get_last_computed_magnetizing_inductance();
-            diag["secondaryTurnsRatio"]    = twoSwitchForwardInputs.get_last_computed_secondary_turns_ratio();
-            diag["primaryPeakCurrent"]     = twoSwitchForwardInputs.get_last_primary_peak_current();
-            diag["secondaryPeakCurrent"]   = twoSwitchForwardInputs.get_last_secondary_peak_current();
-            diag["magnetizingPeakCurrent"] = twoSwitchForwardInputs.get_last_magnetizing_peak_current();
-            diag["isCcm"]                  = twoSwitchForwardInputs.get_last_is_ccm();
+            const auto& names = twoSwitchForwardInputs.get_per_op_name();
+            const auto& v_maximum_duty_cycle = twoSwitchForwardInputs.get_per_op_maximum_duty_cycle();
+            const auto& v_computed_magnetizing_inductance = twoSwitchForwardInputs.get_per_op_computed_magnetizing_inductance();
+            const auto& v_computed_secondary_turns_ratio = twoSwitchForwardInputs.get_per_op_computed_secondary_turns_ratio();
+            const auto& v_primary_peak_current = twoSwitchForwardInputs.get_per_op_primary_peak_current();
+            const auto& v_secondary_peak_current = twoSwitchForwardInputs.get_per_op_secondary_peak_current();
+            const auto& v_magnetizing_peak_current = twoSwitchForwardInputs.get_per_op_magnetizing_peak_current();
+            const auto& v_is_ccm = twoSwitchForwardInputs.get_per_op_is_ccm();
+            diag["maximumDutyCycle"] = v_maximum_duty_cycle.empty() ? twoSwitchForwardInputs.get_last_maximum_duty_cycle() : v_maximum_duty_cycle.front();
+            diag["magnetizingInductance"] = v_computed_magnetizing_inductance.empty() ? twoSwitchForwardInputs.get_last_computed_magnetizing_inductance() : v_computed_magnetizing_inductance.front();
+            diag["secondaryTurnsRatio"] = v_computed_secondary_turns_ratio.empty() ? twoSwitchForwardInputs.get_last_computed_secondary_turns_ratio() : v_computed_secondary_turns_ratio.front();
+            diag["primaryPeakCurrent"] = v_primary_peak_current.empty() ? twoSwitchForwardInputs.get_last_primary_peak_current() : v_primary_peak_current.front();
+            diag["secondaryPeakCurrent"] = v_secondary_peak_current.empty() ? twoSwitchForwardInputs.get_last_secondary_peak_current() : v_secondary_peak_current.front();
+            diag["magnetizingPeakCurrent"] = v_magnetizing_peak_current.empty() ? twoSwitchForwardInputs.get_last_magnetizing_peak_current() : v_magnetizing_peak_current.front();
+            diag["isCcm"] = v_is_ccm.empty() ? twoSwitchForwardInputs.get_last_is_ccm() : (bool)v_is_ccm.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_maximum_duty_cycle.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["maximumDutyCycle"] = v_maximum_duty_cycle[i];
+                row["magnetizingInductance"] = v_computed_magnetizing_inductance[i];
+                row["secondaryTurnsRatio"] = v_computed_secondary_turns_ratio[i];
+                row["primaryPeakCurrent"] = v_primary_peak_current[i];
+                row["secondaryPeakCurrent"] = v_secondary_peak_current[i];
+                row["magnetizingPeakCurrent"] = v_magnetizing_peak_current[i];
+                row["isCcm"] = (bool)v_is_ccm[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["twoSwitchForwardDiagnostics"] = diag;
         }
 
@@ -6806,13 +7446,36 @@ std::string calculate_advanced_two_switch_forward_inputs(std::string twoSwitchFo
         }
         {
             json diag;
-            diag["maximumDutyCycle"]       = twoSwitchForwardInputs.get_last_maximum_duty_cycle();
-            diag["magnetizingInductance"]  = twoSwitchForwardInputs.get_last_computed_magnetizing_inductance();
-            diag["secondaryTurnsRatio"]    = twoSwitchForwardInputs.get_last_computed_secondary_turns_ratio();
-            diag["primaryPeakCurrent"]     = twoSwitchForwardInputs.get_last_primary_peak_current();
-            diag["secondaryPeakCurrent"]   = twoSwitchForwardInputs.get_last_secondary_peak_current();
-            diag["magnetizingPeakCurrent"] = twoSwitchForwardInputs.get_last_magnetizing_peak_current();
-            diag["isCcm"]                  = twoSwitchForwardInputs.get_last_is_ccm();
+            const auto& names = twoSwitchForwardInputs.get_per_op_name();
+            const auto& v_maximum_duty_cycle = twoSwitchForwardInputs.get_per_op_maximum_duty_cycle();
+            const auto& v_computed_magnetizing_inductance = twoSwitchForwardInputs.get_per_op_computed_magnetizing_inductance();
+            const auto& v_computed_secondary_turns_ratio = twoSwitchForwardInputs.get_per_op_computed_secondary_turns_ratio();
+            const auto& v_primary_peak_current = twoSwitchForwardInputs.get_per_op_primary_peak_current();
+            const auto& v_secondary_peak_current = twoSwitchForwardInputs.get_per_op_secondary_peak_current();
+            const auto& v_magnetizing_peak_current = twoSwitchForwardInputs.get_per_op_magnetizing_peak_current();
+            const auto& v_is_ccm = twoSwitchForwardInputs.get_per_op_is_ccm();
+            diag["maximumDutyCycle"] = v_maximum_duty_cycle.empty() ? twoSwitchForwardInputs.get_last_maximum_duty_cycle() : v_maximum_duty_cycle.front();
+            diag["magnetizingInductance"] = v_computed_magnetizing_inductance.empty() ? twoSwitchForwardInputs.get_last_computed_magnetizing_inductance() : v_computed_magnetizing_inductance.front();
+            diag["secondaryTurnsRatio"] = v_computed_secondary_turns_ratio.empty() ? twoSwitchForwardInputs.get_last_computed_secondary_turns_ratio() : v_computed_secondary_turns_ratio.front();
+            diag["primaryPeakCurrent"] = v_primary_peak_current.empty() ? twoSwitchForwardInputs.get_last_primary_peak_current() : v_primary_peak_current.front();
+            diag["secondaryPeakCurrent"] = v_secondary_peak_current.empty() ? twoSwitchForwardInputs.get_last_secondary_peak_current() : v_secondary_peak_current.front();
+            diag["magnetizingPeakCurrent"] = v_magnetizing_peak_current.empty() ? twoSwitchForwardInputs.get_last_magnetizing_peak_current() : v_magnetizing_peak_current.front();
+            diag["isCcm"] = v_is_ccm.empty() ? twoSwitchForwardInputs.get_last_is_ccm() : (bool)v_is_ccm.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_maximum_duty_cycle.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["maximumDutyCycle"] = v_maximum_duty_cycle[i];
+                row["magnetizingInductance"] = v_computed_magnetizing_inductance[i];
+                row["secondaryTurnsRatio"] = v_computed_secondary_turns_ratio[i];
+                row["primaryPeakCurrent"] = v_primary_peak_current[i];
+                row["secondaryPeakCurrent"] = v_secondary_peak_current[i];
+                row["magnetizingPeakCurrent"] = v_magnetizing_peak_current[i];
+                row["isCcm"] = (bool)v_is_ccm[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["twoSwitchForwardDiagnostics"] = diag;
         }
 
@@ -6895,11 +7558,29 @@ EMSCRIPTEN_KEEPALIVE std::string calculate_pfc_inputs(std::string pfcInputsStrin
             json diag;
             diag["computedInductance"]      = pfcInputs.get_computed_inductance();
             diag["actualMode"]              = pfcInputs.get_computed_actual_mode();
-            diag["dutyCyclePeak"]           = pfcInputs.get_last_duty_cycle_peak();
-            diag["peakInductorCurrent"]     = pfcInputs.get_last_peak_inductor_current();
-            diag["inductorRipple"]          = pfcInputs.get_last_inductor_ripple();
-            diag["lineRmsCurrent"]          = pfcInputs.get_last_line_rms_current();
-            diag["inputPower"]              = pfcInputs.get_last_input_power();
+            const auto& names = pfcInputs.get_per_op_name();
+            const auto& dc    = pfcInputs.get_per_op_duty_cycle_peak();
+            const auto& ipk   = pfcInputs.get_per_op_peak_inductor_current();
+            const auto& ir    = pfcInputs.get_per_op_inductor_ripple();
+            const auto& irms  = pfcInputs.get_per_op_line_rms_current();
+            const auto& pin   = pfcInputs.get_per_op_input_power();
+            diag["dutyCyclePeak"]           = dc.empty()   ? pfcInputs.get_last_duty_cycle_peak()         : dc.front();
+            diag["peakInductorCurrent"]     = ipk.empty()  ? pfcInputs.get_last_peak_inductor_current()   : ipk.front();
+            diag["inductorRipple"]          = ir.empty()   ? pfcInputs.get_last_inductor_ripple()         : ir.front();
+            diag["lineRmsCurrent"]          = irms.empty() ? pfcInputs.get_last_line_rms_current()        : irms.front();
+            diag["inputPower"]              = pin.empty()  ? pfcInputs.get_last_input_power()             : pin.front();
+            json perOp = json::array();
+            for (size_t i = 0; i < dc.size(); ++i) {
+                json row;
+                row["operatingPointName"]   = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCyclePeak"]        = dc[i];
+                row["peakInductorCurrent"]  = ipk[i];
+                row["inductorRipple"]       = ir[i];
+                row["lineRmsCurrent"]       = irms[i];
+                row["inputPower"]           = pin[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["pfcDiagnostics"] = diag;
         }
 
@@ -7013,11 +7694,29 @@ EMSCRIPTEN_KEEPALIVE std::string simulate_pfc_waveforms(std::string pfcInputsStr
             json diag;
             diag["computedInductance"]      = pfcInputs.get_computed_inductance();
             diag["actualMode"]              = pfcInputs.get_computed_actual_mode();
-            diag["dutyCyclePeak"]           = pfcInputs.get_last_duty_cycle_peak();
-            diag["peakInductorCurrent"]     = pfcInputs.get_last_peak_inductor_current();
-            diag["inductorRipple"]          = pfcInputs.get_last_inductor_ripple();
-            diag["lineRmsCurrent"]          = pfcInputs.get_last_line_rms_current();
-            diag["inputPower"]              = pfcInputs.get_last_input_power();
+            const auto& names = pfcInputs.get_per_op_name();
+            const auto& dc    = pfcInputs.get_per_op_duty_cycle_peak();
+            const auto& ipk   = pfcInputs.get_per_op_peak_inductor_current();
+            const auto& ir    = pfcInputs.get_per_op_inductor_ripple();
+            const auto& irms  = pfcInputs.get_per_op_line_rms_current();
+            const auto& pin   = pfcInputs.get_per_op_input_power();
+            diag["dutyCyclePeak"]           = dc.empty()   ? pfcInputs.get_last_duty_cycle_peak()         : dc.front();
+            diag["peakInductorCurrent"]     = ipk.empty()  ? pfcInputs.get_last_peak_inductor_current()   : ipk.front();
+            diag["inductorRipple"]          = ir.empty()   ? pfcInputs.get_last_inductor_ripple()         : ir.front();
+            diag["lineRmsCurrent"]          = irms.empty() ? pfcInputs.get_last_line_rms_current()        : irms.front();
+            diag["inputPower"]              = pin.empty()  ? pfcInputs.get_last_input_power()             : pin.front();
+            json perOp = json::array();
+            for (size_t i = 0; i < dc.size(); ++i) {
+                json row;
+                row["operatingPointName"]   = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCyclePeak"]        = dc[i];
+                row["peakInductorCurrent"]  = ipk[i];
+                row["inductorRipple"]       = ir[i];
+                row["lineRmsCurrent"]       = irms[i];
+                row["inputPower"]           = pin[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["pfcDiagnostics"] = diag;
         }
 
@@ -8723,12 +9422,30 @@ std::string calculate_dab_inputs(std::string dabInputsString) {
         // Append per-op diagnostics from the Dab object (populated after process())
         {
             json dabDiag;
-            dabDiag["modulationType"]           = dabInputs.get_last_modulation_type();
-            dabDiag["computedD3Deg"]    = dabInputs.get_last_d3_rad() * 180.0 / M_PI;
-            dabDiag["zvsMarginPrimaryDeg"]      = dabInputs.get_last_zvs_margin_primary()   * 180.0 / M_PI;
-            dabDiag["zvsMarginSecondaryDeg"]    = dabInputs.get_last_zvs_margin_secondary() * 180.0 / M_PI;
+            const auto& names = dabInputs.get_per_op_name();
+            const auto& mt    = dabInputs.get_per_op_modulation_type();
+            const auto& zp    = dabInputs.get_per_op_zvs_margin_primary();
+            const auto& zs    = dabInputs.get_per_op_zvs_margin_secondary();
+            const auto& d3    = dabInputs.get_per_op_d3_rad();
+            const auto& vr    = dabInputs.get_per_op_voltage_conversion_ratio();
+            dabDiag["modulationType"]           = mt.empty() ? dabInputs.get_last_modulation_type()           : mt.front();
+            dabDiag["computedD3Deg"]            = (d3.empty() ? dabInputs.get_last_d3_rad()                   : d3.front()) * 180.0 / M_PI;
+            dabDiag["zvsMarginPrimaryDeg"]      = (zp.empty() ? dabInputs.get_last_zvs_margin_primary()       : zp.front()) * 180.0 / M_PI;
+            dabDiag["zvsMarginSecondaryDeg"]    = (zs.empty() ? dabInputs.get_last_zvs_margin_secondary()     : zs.front()) * 180.0 / M_PI;
             dabDiag["computedSeriesInductance"] = dabInputs.get_computed_series_inductance();
-            dabDiag["voltageConversionRatio"]   = dabInputs.get_last_voltage_conversion_ratio();
+            dabDiag["voltageConversionRatio"]   = vr.empty() ? dabInputs.get_last_voltage_conversion_ratio() : vr.front();
+            json perOp = json::array();
+            for (size_t i = 0; i < mt.size(); ++i) {
+                json row;
+                row["operatingPointName"]        = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["modulationType"]            = mt[i];
+                row["zvsMarginPrimaryDeg"]       = zp[i] * 180.0 / M_PI;
+                row["zvsMarginSecondaryDeg"]     = zs[i] * 180.0 / M_PI;
+                row["computedD3Deg"]             = d3[i] * 180.0 / M_PI;
+                row["voltageConversionRatio"]    = vr[i];
+                perOp.push_back(row);
+            }
+            dabDiag["perOp"] = perOp;
             result["dabDiagnostics"] = dabDiag;
         }
 
@@ -8782,11 +9499,31 @@ EMSCRIPTEN_KEEPALIVE std::string calculate_llc_inputs(std::string llcInputsStrin
         diag["computedResonantInductance"]  = llcInputs.get_computed_resonant_inductance();
         diag["computedResonantCapacitance"] = llcInputs.get_computed_resonant_capacitance();
         diag["computedInductanceRatio"]     = llcInputs.get_computed_inductance_ratio();
-        diag["lastMode"]                    = llcInputs.get_last_mode();
         diag["lipFrequency"]                = llcInputs.get_lip_frequency();
         diag["lipInputVoltage"]             = llcInputs.get_lip_input_voltage();
-        diag["lastSteadyStateResidual"]     = llcInputs.get_last_steady_state_residual();
         diag["lastSubStateSequence"]        = llcInputs.get_last_sub_state_sequence();
+        {
+            const auto& names = llcInputs.get_per_op_name();
+            const auto& mode  = llcInputs.get_per_op_mode();
+            const auto& res   = llcInputs.get_per_op_steady_state_residual();
+            const auto& zvs   = llcInputs.get_per_op_zvs_margin_lagging();
+            const auto& ipk   = llcInputs.get_per_op_primary_peak_current();
+            diag["lastMode"]                = mode.empty() ? llcInputs.get_last_mode()                  : mode.front();
+            diag["lastSteadyStateResidual"] = res.empty()  ? llcInputs.get_last_steady_state_residual() : res.front();
+            diag["lastZvsMarginLagging"]    = zvs.empty()  ? llcInputs.get_last_zvs_margin_lagging()    : zvs.front();
+            diag["lastPrimaryPeakCurrent"]  = ipk.empty()  ? llcInputs.get_last_primary_peak_current()  : ipk.front();
+            json perOp = json::array();
+            for (size_t i = 0; i < mode.size(); ++i) {
+                json row;
+                row["operatingPointName"]    = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["lastMode"]              = mode[i];
+                row["steadyStateResidual"]   = res[i];
+                row["zvsMarginLagging"]      = zvs[i];
+                row["primaryPeakCurrent"]    = ipk[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
+        }
         result["llcDiagnostics"] = diag;
 
         return result.dump(4);
@@ -8884,11 +9621,31 @@ std::string simulate_llc_ideal_waveforms(std::string llcInputsString) {
         diag["computedResonantInductance"]  = llcInputs.get_computed_resonant_inductance();
         diag["computedResonantCapacitance"] = llcInputs.get_computed_resonant_capacitance();
         diag["computedInductanceRatio"]     = llcInputs.get_computed_inductance_ratio();
-        diag["lastMode"]                    = llcInputs.get_last_mode();
         diag["lipFrequency"]                = llcInputs.get_lip_frequency();
         diag["lipInputVoltage"]             = llcInputs.get_lip_input_voltage();
-        diag["lastSteadyStateResidual"]     = llcInputs.get_last_steady_state_residual();
         diag["lastSubStateSequence"]        = llcInputs.get_last_sub_state_sequence();
+        {
+            const auto& names = llcInputs.get_per_op_name();
+            const auto& mode  = llcInputs.get_per_op_mode();
+            const auto& res   = llcInputs.get_per_op_steady_state_residual();
+            const auto& zvs   = llcInputs.get_per_op_zvs_margin_lagging();
+            const auto& ipk   = llcInputs.get_per_op_primary_peak_current();
+            diag["lastMode"]                = mode.empty() ? llcInputs.get_last_mode()                  : mode.front();
+            diag["lastSteadyStateResidual"] = res.empty()  ? llcInputs.get_last_steady_state_residual() : res.front();
+            diag["lastZvsMarginLagging"]    = zvs.empty()  ? llcInputs.get_last_zvs_margin_lagging()    : zvs.front();
+            diag["lastPrimaryPeakCurrent"]  = ipk.empty()  ? llcInputs.get_last_primary_peak_current()  : ipk.front();
+            json perOp = json::array();
+            for (size_t i = 0; i < mode.size(); ++i) {
+                json row;
+                row["operatingPointName"]    = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["lastMode"]              = mode[i];
+                row["steadyStateResidual"]   = res[i];
+                row["zvsMarginLagging"]      = zvs[i];
+                row["primaryPeakCurrent"]    = ipk[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
+        }
         result["llcDiagnostics"] = diag;
 
         return result.dump(4);
@@ -8993,12 +9750,30 @@ std::string simulate_dab_ideal_waveforms(std::string dabInputsString) {
         // DAB diagnostics (post-simulation, from last solved op point)
         {
             json dabDiag;
-            dabDiag["modulationType"]           = dabInputs.get_last_modulation_type();
-            dabDiag["computedD3Deg"]    = dabInputs.get_last_d3_rad() * 180.0 / M_PI;
-            dabDiag["zvsMarginPrimaryDeg"]      = dabInputs.get_last_zvs_margin_primary()   * 180.0 / M_PI;
-            dabDiag["zvsMarginSecondaryDeg"]    = dabInputs.get_last_zvs_margin_secondary() * 180.0 / M_PI;
+            const auto& names = dabInputs.get_per_op_name();
+            const auto& mt    = dabInputs.get_per_op_modulation_type();
+            const auto& zp    = dabInputs.get_per_op_zvs_margin_primary();
+            const auto& zs    = dabInputs.get_per_op_zvs_margin_secondary();
+            const auto& d3    = dabInputs.get_per_op_d3_rad();
+            const auto& vr    = dabInputs.get_per_op_voltage_conversion_ratio();
+            dabDiag["modulationType"]           = mt.empty() ? dabInputs.get_last_modulation_type()           : mt.front();
+            dabDiag["computedD3Deg"]            = (d3.empty() ? dabInputs.get_last_d3_rad()                   : d3.front()) * 180.0 / M_PI;
+            dabDiag["zvsMarginPrimaryDeg"]      = (zp.empty() ? dabInputs.get_last_zvs_margin_primary()       : zp.front()) * 180.0 / M_PI;
+            dabDiag["zvsMarginSecondaryDeg"]    = (zs.empty() ? dabInputs.get_last_zvs_margin_secondary()     : zs.front()) * 180.0 / M_PI;
             dabDiag["computedSeriesInductance"] = dabInputs.get_computed_series_inductance();
-            dabDiag["voltageConversionRatio"]   = dabInputs.get_last_voltage_conversion_ratio();
+            dabDiag["voltageConversionRatio"]   = vr.empty() ? dabInputs.get_last_voltage_conversion_ratio() : vr.front();
+            json perOp = json::array();
+            for (size_t i = 0; i < mt.size(); ++i) {
+                json row;
+                row["operatingPointName"]        = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["modulationType"]            = mt[i];
+                row["zvsMarginPrimaryDeg"]       = zp[i] * 180.0 / M_PI;
+                row["zvsMarginSecondaryDeg"]     = zs[i] * 180.0 / M_PI;
+                row["computedD3Deg"]             = d3[i] * 180.0 / M_PI;
+                row["voltageConversionRatio"]    = vr[i];
+                perOp.push_back(row);
+            }
+            dabDiag["perOp"] = perOp;
             result["dabDiagnostics"] = dabDiag;
         }
 
@@ -9099,16 +9874,36 @@ std::string simulate_psfb_ideal_waveforms(std::string psfbInputsString) {
         // PSFB diagnostics — process() was called above so members are already set.
         {
             json diag;
-            diag["effectiveDutyCycle"]            = psfbInputs.get_last_effective_duty_cycle();
-            diag["dutyCycleLoss"]                 = psfbInputs.get_last_duty_cycle_loss();
-            diag["zvsMarginLagging"]              = psfbInputs.get_last_zvs_margin_lagging();
-            diag["zvsLoadThreshold"]              = psfbInputs.get_last_zvs_load_threshold();
-            diag["resonantTransitionTime"]        = psfbInputs.get_last_resonant_transition_time();
-            diag["primaryPeakCurrent"]            = psfbInputs.get_last_primary_peak_current();
+            const auto& names = psfbInputs.get_per_op_name();
+            const auto& dcl   = psfbInputs.get_per_op_duty_cycle_loss();
+            const auto& deff  = psfbInputs.get_per_op_effective_duty_cycle();
+            const auto& zvs   = psfbInputs.get_per_op_zvs_margin_lagging();
+            const auto& zlt   = psfbInputs.get_per_op_zvs_load_threshold();
+            const auto& rtt   = psfbInputs.get_per_op_resonant_transition_time();
+            const auto& ipk   = psfbInputs.get_per_op_primary_peak_current();
+            diag["effectiveDutyCycle"]            = deff.empty() ? psfbInputs.get_last_effective_duty_cycle()     : deff.front();
+            diag["dutyCycleLoss"]                 = dcl.empty()  ? psfbInputs.get_last_duty_cycle_loss()          : dcl.front();
+            diag["zvsMarginLagging"]              = zvs.empty()  ? psfbInputs.get_last_zvs_margin_lagging()       : zvs.front();
+            diag["zvsLoadThreshold"]              = zlt.empty()  ? psfbInputs.get_last_zvs_load_threshold()       : zlt.front();
+            diag["resonantTransitionTime"]        = rtt.empty()  ? psfbInputs.get_last_resonant_transition_time() : rtt.front();
+            diag["primaryPeakCurrent"]            = ipk.empty()  ? psfbInputs.get_last_primary_peak_current()     : ipk.front();
             diag["computedSeriesInductance"]      = psfbInputs.get_computed_series_inductance();
             diag["computedOutputInductance"]      = psfbInputs.get_computed_output_inductance();
             diag["computedMagnetizingInductance"] = psfbInputs.get_computed_magnetizing_inductance();
             diag["computedDeadTime"]              = psfbInputs.get_computed_dead_time();
+            json perOp = json::array();
+            for (size_t i = 0; i < dcl.size(); ++i) {
+                json row;
+                row["operatingPointName"]    = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycleLoss"]         = dcl[i];
+                row["effectiveDutyCycle"]    = deff[i];
+                row["zvsMarginLagging"]      = zvs[i];
+                row["zvsLoadThreshold"]      = zlt[i];
+                row["resonantTransitionTime"]= rtt[i];
+                row["primaryPeakCurrent"]    = ipk[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["psfbDiagnostics"] = diag;
         }
 
@@ -9145,16 +9940,36 @@ std::string calculate_pshb_inputs(std::string pshbInputsString) {
         // PSHB diagnostics — populated by process() above.
         {
             json diag;
-            diag["effectiveDutyCycle"]            = pshbInputs.get_last_effective_duty_cycle();
-            diag["dutyCycleLoss"]                 = pshbInputs.get_last_duty_cycle_loss();
-            diag["zvsMarginLagging"]              = pshbInputs.get_last_zvs_margin_lagging();
-            diag["zvsLoadThreshold"]              = pshbInputs.get_last_zvs_load_threshold();
-            diag["resonantTransitionTime"]        = pshbInputs.get_last_resonant_transition_time();
-            diag["primaryPeakCurrent"]            = pshbInputs.get_last_primary_peak_current();
+            const auto& names = pshbInputs.get_per_op_name();
+            const auto& dcl   = pshbInputs.get_per_op_duty_cycle_loss();
+            const auto& deff  = pshbInputs.get_per_op_effective_duty_cycle();
+            const auto& zvs   = pshbInputs.get_per_op_zvs_margin_lagging();
+            const auto& zlt   = pshbInputs.get_per_op_zvs_load_threshold();
+            const auto& rtt   = pshbInputs.get_per_op_resonant_transition_time();
+            const auto& ipk   = pshbInputs.get_per_op_primary_peak_current();
+            diag["effectiveDutyCycle"]            = deff.empty() ? pshbInputs.get_last_effective_duty_cycle()     : deff.front();
+            diag["dutyCycleLoss"]                 = dcl.empty()  ? pshbInputs.get_last_duty_cycle_loss()          : dcl.front();
+            diag["zvsMarginLagging"]              = zvs.empty()  ? pshbInputs.get_last_zvs_margin_lagging()       : zvs.front();
+            diag["zvsLoadThreshold"]              = zlt.empty()  ? pshbInputs.get_last_zvs_load_threshold()       : zlt.front();
+            diag["resonantTransitionTime"]        = rtt.empty()  ? pshbInputs.get_last_resonant_transition_time() : rtt.front();
+            diag["primaryPeakCurrent"]            = ipk.empty()  ? pshbInputs.get_last_primary_peak_current()     : ipk.front();
             diag["computedSeriesInductance"]      = pshbInputs.get_computed_series_inductance();
             diag["computedOutputInductance"]      = pshbInputs.get_computed_output_inductance();
             diag["computedMagnetizingInductance"] = pshbInputs.get_computed_magnetizing_inductance();
             diag["computedDeadTime"]              = pshbInputs.get_computed_dead_time();
+            json perOp = json::array();
+            for (size_t i = 0; i < dcl.size(); ++i) {
+                json row;
+                row["operatingPointName"]    = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycleLoss"]         = dcl[i];
+                row["effectiveDutyCycle"]    = deff[i];
+                row["zvsMarginLagging"]      = zvs[i];
+                row["zvsLoadThreshold"]      = zlt[i];
+                row["resonantTransitionTime"]= rtt[i];
+                row["primaryPeakCurrent"]    = ipk[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["pshbDiagnostics"] = diag;
         }
 
@@ -9243,16 +10058,36 @@ std::string simulate_pshb_ideal_waveforms(std::string pshbInputsString) {
         // PSHB diagnostics — process() was called above so members are already set.
         {
             json diag;
-            diag["effectiveDutyCycle"]            = pshbInputs.get_last_effective_duty_cycle();
-            diag["dutyCycleLoss"]                 = pshbInputs.get_last_duty_cycle_loss();
-            diag["zvsMarginLagging"]              = pshbInputs.get_last_zvs_margin_lagging();
-            diag["zvsLoadThreshold"]              = pshbInputs.get_last_zvs_load_threshold();
-            diag["resonantTransitionTime"]        = pshbInputs.get_last_resonant_transition_time();
-            diag["primaryPeakCurrent"]            = pshbInputs.get_last_primary_peak_current();
+            const auto& names = pshbInputs.get_per_op_name();
+            const auto& dcl   = pshbInputs.get_per_op_duty_cycle_loss();
+            const auto& deff  = pshbInputs.get_per_op_effective_duty_cycle();
+            const auto& zvs   = pshbInputs.get_per_op_zvs_margin_lagging();
+            const auto& zlt   = pshbInputs.get_per_op_zvs_load_threshold();
+            const auto& rtt   = pshbInputs.get_per_op_resonant_transition_time();
+            const auto& ipk   = pshbInputs.get_per_op_primary_peak_current();
+            diag["effectiveDutyCycle"]            = deff.empty() ? pshbInputs.get_last_effective_duty_cycle()     : deff.front();
+            diag["dutyCycleLoss"]                 = dcl.empty()  ? pshbInputs.get_last_duty_cycle_loss()          : dcl.front();
+            diag["zvsMarginLagging"]              = zvs.empty()  ? pshbInputs.get_last_zvs_margin_lagging()       : zvs.front();
+            diag["zvsLoadThreshold"]              = zlt.empty()  ? pshbInputs.get_last_zvs_load_threshold()       : zlt.front();
+            diag["resonantTransitionTime"]        = rtt.empty()  ? pshbInputs.get_last_resonant_transition_time() : rtt.front();
+            diag["primaryPeakCurrent"]            = ipk.empty()  ? pshbInputs.get_last_primary_peak_current()     : ipk.front();
             diag["computedSeriesInductance"]      = pshbInputs.get_computed_series_inductance();
             diag["computedOutputInductance"]      = pshbInputs.get_computed_output_inductance();
             diag["computedMagnetizingInductance"] = pshbInputs.get_computed_magnetizing_inductance();
             diag["computedDeadTime"]              = pshbInputs.get_computed_dead_time();
+            json perOp = json::array();
+            for (size_t i = 0; i < dcl.size(); ++i) {
+                json row;
+                row["operatingPointName"]    = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycleLoss"]         = dcl[i];
+                row["effectiveDutyCycle"]    = deff[i];
+                row["zvsMarginLagging"]      = zvs[i];
+                row["zvsLoadThreshold"]      = zlt[i];
+                row["resonantTransitionTime"]= rtt[i];
+                row["primaryPeakCurrent"]    = ipk[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["pshbDiagnostics"] = diag;
         }
 
@@ -9289,23 +10124,68 @@ std::string calculate_ahb_inputs(std::string ahbInputsString) {
         // AHB diagnostics — populated by process() above.
         {
             json diag;
-            diag["operatingMode"]                = ahbInputs.get_last_operating_mode();
-            diag["rectifierType"]                = ahbInputs.get_last_rectifier_type();
-            diag["dutyCycle"]                    = ahbInputs.get_last_duty_cycle();
-            diag["conversionRatio"]              = ahbInputs.get_last_conversion_ratio();
-            diag["dcBlockingCapVoltage"]         = ahbInputs.get_last_dc_blocking_cap_voltage();
-            diag["dcBlockingCapRipple"]          = ahbInputs.get_last_dc_blocking_cap_ripple();
-            diag["primaryPeakVoltagePositive"]   = ahbInputs.get_last_primary_peak_voltage_positive();
-            diag["primaryPeakVoltageNegative"]   = ahbInputs.get_last_primary_peak_voltage_negative();
-            diag["switchPeakVoltageQ1"]          = ahbInputs.get_last_switch_peak_voltage_q1();
-            diag["switchPeakVoltageQ2"]          = ahbInputs.get_last_switch_peak_voltage_q2();
-            diag["switchRmsCurrentQ1"]           = ahbInputs.get_last_switch_rms_current_q1();
-            diag["switchRmsCurrentQ2"]           = ahbInputs.get_last_switch_rms_current_q2();
-            diag["zvsMargin"]                    = ahbInputs.get_last_zvs_margin();
-            diag["resonantTransitionTime"]       = ahbInputs.get_last_resonant_transition_time();
-            diag["steadyStateFluxExcursion"]     = ahbInputs.get_last_steady_state_flux_excursion();
-            diag["transientFluxExcursionEstimate"] = ahbInputs.get_last_transient_flux_excursion_estimate();
-            diag["magnetizingCurrentRipple"]     = ahbInputs.get_last_magnetizing_current_ripple();
+            const auto& names = ahbInputs.get_per_op_name();
+            const auto& dc    = ahbInputs.get_per_op_duty_cycle();
+            const auto& cr    = ahbInputs.get_per_op_conversion_ratio();
+            const auto& cbv   = ahbInputs.get_per_op_dc_blocking_cap_voltage();
+            const auto& cbr   = ahbInputs.get_per_op_dc_blocking_cap_ripple();
+            const auto& ppvp  = ahbInputs.get_per_op_primary_peak_voltage_positive();
+            const auto& ppvn  = ahbInputs.get_per_op_primary_peak_voltage_negative();
+            const auto& spvq1 = ahbInputs.get_per_op_switch_peak_voltage_q1();
+            const auto& spvq2 = ahbInputs.get_per_op_switch_peak_voltage_q2();
+            const auto& sirq1 = ahbInputs.get_per_op_switch_rms_current_q1();
+            const auto& sirq2 = ahbInputs.get_per_op_switch_rms_current_q2();
+            const auto& zm    = ahbInputs.get_per_op_zvs_margin();
+            const auto& rtt   = ahbInputs.get_per_op_resonant_transition_time();
+            const auto& ssfe  = ahbInputs.get_per_op_steady_state_flux_excursion();
+            const auto& tfee  = ahbInputs.get_per_op_transient_flux_excursion_estimate();
+            const auto& mcr   = ahbInputs.get_per_op_magnetizing_current_ripple();
+            const auto& oir   = ahbInputs.get_per_op_output_inductor_ripple();
+            const auto& om    = ahbInputs.get_per_op_operating_mode();
+            const auto& rt    = ahbInputs.get_per_op_rectifier_type();
+            diag["operatingMode"]                = om.empty()    ? ahbInputs.get_last_operating_mode()                     : om.front();
+            diag["rectifierType"]                = rt.empty()    ? ahbInputs.get_last_rectifier_type()                     : rt.front();
+            diag["dutyCycle"]                    = dc.empty()    ? ahbInputs.get_last_duty_cycle()                         : dc.front();
+            diag["conversionRatio"]              = cr.empty()    ? ahbInputs.get_last_conversion_ratio()                   : cr.front();
+            diag["dcBlockingCapVoltage"]         = cbv.empty()   ? ahbInputs.get_last_dc_blocking_cap_voltage()             : cbv.front();
+            diag["dcBlockingCapRipple"]          = cbr.empty()   ? ahbInputs.get_last_dc_blocking_cap_ripple()              : cbr.front();
+            diag["primaryPeakVoltagePositive"]   = ppvp.empty()  ? ahbInputs.get_last_primary_peak_voltage_positive()       : ppvp.front();
+            diag["primaryPeakVoltageNegative"]   = ppvn.empty()  ? ahbInputs.get_last_primary_peak_voltage_negative()       : ppvn.front();
+            diag["switchPeakVoltageQ1"]          = spvq1.empty() ? ahbInputs.get_last_switch_peak_voltage_q1()              : spvq1.front();
+            diag["switchPeakVoltageQ2"]          = spvq2.empty() ? ahbInputs.get_last_switch_peak_voltage_q2()              : spvq2.front();
+            diag["switchRmsCurrentQ1"]           = sirq1.empty() ? ahbInputs.get_last_switch_rms_current_q1()               : sirq1.front();
+            diag["switchRmsCurrentQ2"]           = sirq2.empty() ? ahbInputs.get_last_switch_rms_current_q2()               : sirq2.front();
+            diag["zvsMargin"]                    = zm.empty()    ? ahbInputs.get_last_zvs_margin()                          : zm.front();
+            diag["resonantTransitionTime"]       = rtt.empty()   ? ahbInputs.get_last_resonant_transition_time()            : rtt.front();
+            diag["steadyStateFluxExcursion"]     = ssfe.empty()  ? ahbInputs.get_last_steady_state_flux_excursion()         : ssfe.front();
+            diag["transientFluxExcursionEstimate"] = tfee.empty() ? ahbInputs.get_last_transient_flux_excursion_estimate()  : tfee.front();
+            diag["magnetizingCurrentRipple"]     = mcr.empty()   ? ahbInputs.get_last_magnetizing_current_ripple()          : mcr.front();
+            diag["outputInductorRipple"]         = oir.empty()   ? ahbInputs.get_last_output_inductor_ripple()              : oir.front();
+            json perOp = json::array();
+            for (size_t i = 0; i < dc.size(); ++i) {
+                json row;
+                row["operatingPointName"]            = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"]                     = dc[i];
+                row["conversionRatio"]               = cr[i];
+                row["dcBlockingCapVoltage"]          = cbv[i];
+                row["dcBlockingCapRipple"]           = cbr[i];
+                row["primaryPeakVoltagePositive"]    = ppvp[i];
+                row["primaryPeakVoltageNegative"]    = ppvn[i];
+                row["switchPeakVoltageQ1"]           = spvq1[i];
+                row["switchPeakVoltageQ2"]           = spvq2[i];
+                row["switchRmsCurrentQ1"]            = sirq1[i];
+                row["switchRmsCurrentQ2"]            = sirq2[i];
+                row["zvsMargin"]                     = zm[i];
+                row["resonantTransitionTime"]        = rtt[i];
+                row["steadyStateFluxExcursion"]      = ssfe[i];
+                row["transientFluxExcursionEstimate"]= tfee[i];
+                row["magnetizingCurrentRipple"]      = mcr[i];
+                row["outputInductorRipple"]          = oir[i];
+                row["operatingMode"]                 = om[i];
+                row["rectifierType"]                 = rt[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["ahbDiagnostics"] = diag;
         }
 
@@ -9383,23 +10263,68 @@ std::string simulate_ahb_ideal_waveforms(std::string ahbInputsString) {
         // AHB diagnostics — process() was called above so members are already set.
         {
             json diag;
-            diag["operatingMode"]                = ahbInputs.get_last_operating_mode();
-            diag["rectifierType"]                = ahbInputs.get_last_rectifier_type();
-            diag["dutyCycle"]                    = ahbInputs.get_last_duty_cycle();
-            diag["conversionRatio"]              = ahbInputs.get_last_conversion_ratio();
-            diag["dcBlockingCapVoltage"]         = ahbInputs.get_last_dc_blocking_cap_voltage();
-            diag["dcBlockingCapRipple"]          = ahbInputs.get_last_dc_blocking_cap_ripple();
-            diag["primaryPeakVoltagePositive"]   = ahbInputs.get_last_primary_peak_voltage_positive();
-            diag["primaryPeakVoltageNegative"]   = ahbInputs.get_last_primary_peak_voltage_negative();
-            diag["switchPeakVoltageQ1"]          = ahbInputs.get_last_switch_peak_voltage_q1();
-            diag["switchPeakVoltageQ2"]          = ahbInputs.get_last_switch_peak_voltage_q2();
-            diag["switchRmsCurrentQ1"]           = ahbInputs.get_last_switch_rms_current_q1();
-            diag["switchRmsCurrentQ2"]           = ahbInputs.get_last_switch_rms_current_q2();
-            diag["zvsMargin"]                    = ahbInputs.get_last_zvs_margin();
-            diag["resonantTransitionTime"]       = ahbInputs.get_last_resonant_transition_time();
-            diag["steadyStateFluxExcursion"]     = ahbInputs.get_last_steady_state_flux_excursion();
-            diag["transientFluxExcursionEstimate"] = ahbInputs.get_last_transient_flux_excursion_estimate();
-            diag["magnetizingCurrentRipple"]     = ahbInputs.get_last_magnetizing_current_ripple();
+            const auto& names = ahbInputs.get_per_op_name();
+            const auto& dc    = ahbInputs.get_per_op_duty_cycle();
+            const auto& cr    = ahbInputs.get_per_op_conversion_ratio();
+            const auto& cbv   = ahbInputs.get_per_op_dc_blocking_cap_voltage();
+            const auto& cbr   = ahbInputs.get_per_op_dc_blocking_cap_ripple();
+            const auto& ppvp  = ahbInputs.get_per_op_primary_peak_voltage_positive();
+            const auto& ppvn  = ahbInputs.get_per_op_primary_peak_voltage_negative();
+            const auto& spvq1 = ahbInputs.get_per_op_switch_peak_voltage_q1();
+            const auto& spvq2 = ahbInputs.get_per_op_switch_peak_voltage_q2();
+            const auto& sirq1 = ahbInputs.get_per_op_switch_rms_current_q1();
+            const auto& sirq2 = ahbInputs.get_per_op_switch_rms_current_q2();
+            const auto& zm    = ahbInputs.get_per_op_zvs_margin();
+            const auto& rtt   = ahbInputs.get_per_op_resonant_transition_time();
+            const auto& ssfe  = ahbInputs.get_per_op_steady_state_flux_excursion();
+            const auto& tfee  = ahbInputs.get_per_op_transient_flux_excursion_estimate();
+            const auto& mcr   = ahbInputs.get_per_op_magnetizing_current_ripple();
+            const auto& oir   = ahbInputs.get_per_op_output_inductor_ripple();
+            const auto& om    = ahbInputs.get_per_op_operating_mode();
+            const auto& rt    = ahbInputs.get_per_op_rectifier_type();
+            diag["operatingMode"]                = om.empty()    ? ahbInputs.get_last_operating_mode()                     : om.front();
+            diag["rectifierType"]                = rt.empty()    ? ahbInputs.get_last_rectifier_type()                     : rt.front();
+            diag["dutyCycle"]                    = dc.empty()    ? ahbInputs.get_last_duty_cycle()                         : dc.front();
+            diag["conversionRatio"]              = cr.empty()    ? ahbInputs.get_last_conversion_ratio()                   : cr.front();
+            diag["dcBlockingCapVoltage"]         = cbv.empty()   ? ahbInputs.get_last_dc_blocking_cap_voltage()             : cbv.front();
+            diag["dcBlockingCapRipple"]          = cbr.empty()   ? ahbInputs.get_last_dc_blocking_cap_ripple()              : cbr.front();
+            diag["primaryPeakVoltagePositive"]   = ppvp.empty()  ? ahbInputs.get_last_primary_peak_voltage_positive()       : ppvp.front();
+            diag["primaryPeakVoltageNegative"]   = ppvn.empty()  ? ahbInputs.get_last_primary_peak_voltage_negative()       : ppvn.front();
+            diag["switchPeakVoltageQ1"]          = spvq1.empty() ? ahbInputs.get_last_switch_peak_voltage_q1()              : spvq1.front();
+            diag["switchPeakVoltageQ2"]          = spvq2.empty() ? ahbInputs.get_last_switch_peak_voltage_q2()              : spvq2.front();
+            diag["switchRmsCurrentQ1"]           = sirq1.empty() ? ahbInputs.get_last_switch_rms_current_q1()               : sirq1.front();
+            diag["switchRmsCurrentQ2"]           = sirq2.empty() ? ahbInputs.get_last_switch_rms_current_q2()               : sirq2.front();
+            diag["zvsMargin"]                    = zm.empty()    ? ahbInputs.get_last_zvs_margin()                          : zm.front();
+            diag["resonantTransitionTime"]       = rtt.empty()   ? ahbInputs.get_last_resonant_transition_time()            : rtt.front();
+            diag["steadyStateFluxExcursion"]     = ssfe.empty()  ? ahbInputs.get_last_steady_state_flux_excursion()         : ssfe.front();
+            diag["transientFluxExcursionEstimate"] = tfee.empty() ? ahbInputs.get_last_transient_flux_excursion_estimate()  : tfee.front();
+            diag["magnetizingCurrentRipple"]     = mcr.empty()   ? ahbInputs.get_last_magnetizing_current_ripple()          : mcr.front();
+            diag["outputInductorRipple"]         = oir.empty()   ? ahbInputs.get_last_output_inductor_ripple()              : oir.front();
+            json perOp = json::array();
+            for (size_t i = 0; i < dc.size(); ++i) {
+                json row;
+                row["operatingPointName"]            = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"]                     = dc[i];
+                row["conversionRatio"]               = cr[i];
+                row["dcBlockingCapVoltage"]          = cbv[i];
+                row["dcBlockingCapRipple"]           = cbr[i];
+                row["primaryPeakVoltagePositive"]    = ppvp[i];
+                row["primaryPeakVoltageNegative"]    = ppvn[i];
+                row["switchPeakVoltageQ1"]           = spvq1[i];
+                row["switchPeakVoltageQ2"]           = spvq2[i];
+                row["switchRmsCurrentQ1"]            = sirq1[i];
+                row["switchRmsCurrentQ2"]            = sirq2[i];
+                row["zvsMargin"]                     = zm[i];
+                row["resonantTransitionTime"]        = rtt[i];
+                row["steadyStateFluxExcursion"]      = ssfe[i];
+                row["transientFluxExcursionEstimate"]= tfee[i];
+                row["magnetizingCurrentRipple"]      = mcr[i];
+                row["outputInductorRipple"]          = oir[i];
+                row["operatingMode"]                 = om[i];
+                row["rectifierType"]                 = rt[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["ahbDiagnostics"] = diag;
         }
 
@@ -9503,16 +10428,40 @@ std::string calculate_cllc_inputs(std::string cllcInputsString) {
         // CLLC diagnostics — populated by process_operating_point_for_input_voltage
         // (called inside process_operating_points above). Mirrors simulate_cllc_ideal_waveforms.
         json diag;
-        diag["lastMode"]                   = cllcInputs.get_last_mode();
         diag["lipFrequency"]               = cllcInputs.get_lip_frequency();
-        diag["lastSteadyStateResidual"]    = cllcInputs.get_last_steady_state_residual();
-        diag["lastZvsMarginPrimary"]       = cllcInputs.get_last_zvs_margin_primary();
-        diag["lastZvsMarginSecondary"]     = cllcInputs.get_last_zvs_margin_secondary();
-        diag["lastResonantTransitionTime"] = cllcInputs.get_last_resonant_transition_time();
-        diag["lastPrimaryPeakCurrent"]     = cllcInputs.get_last_primary_peak_current();
-        diag["lastResonantCapPeakVoltage"] = cllcInputs.get_last_resonant_cap_peak_voltage();
         diag["lastSubStateSequence"]       = cllcInputs.get_last_sub_state_sequence();
         diag["bridgeVoltageFactor"]        = cllcInputs.get_bridge_voltage_factor();
+        {
+            const auto& names = cllcInputs.get_per_op_name();
+            const auto& mode  = cllcInputs.get_per_op_mode();
+            const auto& res   = cllcInputs.get_per_op_steady_state_residual();
+            const auto& zp    = cllcInputs.get_per_op_zvs_margin_primary();
+            const auto& zs    = cllcInputs.get_per_op_zvs_margin_secondary();
+            const auto& rtt   = cllcInputs.get_per_op_resonant_transition_time();
+            const auto& ipk   = cllcInputs.get_per_op_primary_peak_current();
+            const auto& vcr   = cllcInputs.get_per_op_resonant_cap_peak_voltage();
+            diag["lastMode"]                   = mode.empty() ? cllcInputs.get_last_mode()                       : mode.front();
+            diag["lastSteadyStateResidual"]    = res.empty()  ? cllcInputs.get_last_steady_state_residual()      : res.front();
+            diag["lastZvsMarginPrimary"]       = zp.empty()   ? cllcInputs.get_last_zvs_margin_primary()         : zp.front();
+            diag["lastZvsMarginSecondary"]     = zs.empty()   ? cllcInputs.get_last_zvs_margin_secondary()       : zs.front();
+            diag["lastResonantTransitionTime"] = rtt.empty()  ? cllcInputs.get_last_resonant_transition_time()   : rtt.front();
+            diag["lastPrimaryPeakCurrent"]     = ipk.empty()  ? cllcInputs.get_last_primary_peak_current()       : ipk.front();
+            diag["lastResonantCapPeakVoltage"] = vcr.empty()  ? cllcInputs.get_last_resonant_cap_peak_voltage()  : vcr.front();
+            json perOp = json::array();
+            for (size_t i = 0; i < mode.size(); ++i) {
+                json row;
+                row["operatingPointName"]      = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["lastMode"]                = mode[i];
+                row["steadyStateResidual"]     = res[i];
+                row["zvsMarginPrimary"]        = zp[i];
+                row["zvsMarginSecondary"]      = zs[i];
+                row["resonantTransitionTime"]  = rtt[i];
+                row["primaryPeakCurrent"]      = ipk[i];
+                row["resonantCapPeakVoltage"]  = vcr[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
+        }
         result["cllcDiagnostics"] = diag;
 
         return result.dump(4);
@@ -9632,16 +10581,40 @@ std::string simulate_cllc_ideal_waveforms(std::string cllcInputsString) {
 
         // CLLC diagnostics — richer than LLC's. Mirrors plan §5.4.
         json diag;
-        diag["lastMode"]                  = cllc.get_last_mode();
         diag["lipFrequency"]              = cllc.get_lip_frequency();
-        diag["lastSteadyStateResidual"]   = cllc.get_last_steady_state_residual();
-        diag["lastZvsMarginPrimary"]      = cllc.get_last_zvs_margin_primary();
-        diag["lastZvsMarginSecondary"]    = cllc.get_last_zvs_margin_secondary();
-        diag["lastResonantTransitionTime"]= cllc.get_last_resonant_transition_time();
-        diag["lastPrimaryPeakCurrent"]    = cllc.get_last_primary_peak_current();
-        diag["lastResonantCapPeakVoltage"]= cllc.get_last_resonant_cap_peak_voltage();
         diag["lastSubStateSequence"]      = cllc.get_last_sub_state_sequence();
         diag["bridgeVoltageFactor"]       = cllc.get_bridge_voltage_factor();
+        {
+            const auto& names = cllc.get_per_op_name();
+            const auto& mode  = cllc.get_per_op_mode();
+            const auto& res   = cllc.get_per_op_steady_state_residual();
+            const auto& zp    = cllc.get_per_op_zvs_margin_primary();
+            const auto& zs    = cllc.get_per_op_zvs_margin_secondary();
+            const auto& rtt   = cllc.get_per_op_resonant_transition_time();
+            const auto& ipk   = cllc.get_per_op_primary_peak_current();
+            const auto& vcr   = cllc.get_per_op_resonant_cap_peak_voltage();
+            diag["lastMode"]                  = mode.empty() ? cllc.get_last_mode()                      : mode.front();
+            diag["lastSteadyStateResidual"]   = res.empty()  ? cllc.get_last_steady_state_residual()     : res.front();
+            diag["lastZvsMarginPrimary"]      = zp.empty()   ? cllc.get_last_zvs_margin_primary()        : zp.front();
+            diag["lastZvsMarginSecondary"]    = zs.empty()   ? cllc.get_last_zvs_margin_secondary()      : zs.front();
+            diag["lastResonantTransitionTime"]= rtt.empty()  ? cllc.get_last_resonant_transition_time()  : rtt.front();
+            diag["lastPrimaryPeakCurrent"]    = ipk.empty()  ? cllc.get_last_primary_peak_current()      : ipk.front();
+            diag["lastResonantCapPeakVoltage"]= vcr.empty()  ? cllc.get_last_resonant_cap_peak_voltage() : vcr.front();
+            json perOp = json::array();
+            for (size_t i = 0; i < mode.size(); ++i) {
+                json row;
+                row["operatingPointName"]     = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["lastMode"]               = mode[i];
+                row["steadyStateResidual"]    = res[i];
+                row["zvsMarginPrimary"]       = zp[i];
+                row["zvsMarginSecondary"]     = zs[i];
+                row["resonantTransitionTime"] = rtt[i];
+                row["primaryPeakCurrent"]     = ipk[i];
+                row["resonantCapPeakVoltage"] = vcr[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
+        }
         result["cllcDiagnostics"] = diag;
 
         return result.dump(4);
@@ -9732,16 +10705,36 @@ std::string calculate_psfb_inputs(std::string psfbInputsString) {
         // PSFB diagnostics — populated by process_operating_points above.
         {
             json diag;
-            diag["effectiveDutyCycle"]          = psfbInputs.get_last_effective_duty_cycle();
-            diag["dutyCycleLoss"]               = psfbInputs.get_last_duty_cycle_loss();
-            diag["zvsMarginLagging"]            = psfbInputs.get_last_zvs_margin_lagging();
-            diag["zvsLoadThreshold"]            = psfbInputs.get_last_zvs_load_threshold();
-            diag["resonantTransitionTime"]      = psfbInputs.get_last_resonant_transition_time();
-            diag["primaryPeakCurrent"]          = psfbInputs.get_last_primary_peak_current();
+            const auto& names = psfbInputs.get_per_op_name();
+            const auto& dcl   = psfbInputs.get_per_op_duty_cycle_loss();
+            const auto& deff  = psfbInputs.get_per_op_effective_duty_cycle();
+            const auto& zvs   = psfbInputs.get_per_op_zvs_margin_lagging();
+            const auto& zlt   = psfbInputs.get_per_op_zvs_load_threshold();
+            const auto& rtt   = psfbInputs.get_per_op_resonant_transition_time();
+            const auto& ipk   = psfbInputs.get_per_op_primary_peak_current();
+            diag["effectiveDutyCycle"]          = deff.empty() ? psfbInputs.get_last_effective_duty_cycle()     : deff.front();
+            diag["dutyCycleLoss"]               = dcl.empty()  ? psfbInputs.get_last_duty_cycle_loss()          : dcl.front();
+            diag["zvsMarginLagging"]            = zvs.empty()  ? psfbInputs.get_last_zvs_margin_lagging()       : zvs.front();
+            diag["zvsLoadThreshold"]            = zlt.empty()  ? psfbInputs.get_last_zvs_load_threshold()       : zlt.front();
+            diag["resonantTransitionTime"]      = rtt.empty()  ? psfbInputs.get_last_resonant_transition_time() : rtt.front();
+            diag["primaryPeakCurrent"]          = ipk.empty()  ? psfbInputs.get_last_primary_peak_current()     : ipk.front();
             diag["computedSeriesInductance"]    = psfbInputs.get_computed_series_inductance();
             diag["computedOutputInductance"]    = psfbInputs.get_computed_output_inductance();
             diag["computedMagnetizingInductance"] = psfbInputs.get_computed_magnetizing_inductance();
             diag["computedDeadTime"]            = psfbInputs.get_computed_dead_time();
+            json perOp = json::array();
+            for (size_t i = 0; i < dcl.size(); ++i) {
+                json row;
+                row["operatingPointName"]    = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycleLoss"]         = dcl[i];
+                row["effectiveDutyCycle"]    = deff[i];
+                row["zvsMarginLagging"]      = zvs[i];
+                row["zvsLoadThreshold"]      = zlt[i];
+                row["resonantTransitionTime"]= rtt[i];
+                row["primaryPeakCurrent"]    = ipk[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["psfbDiagnostics"] = diag;
         }
 
@@ -10081,8 +11074,64 @@ std::string calculate_clllc_inputs(std::string clllcInputsString) {
             diag["computedInductanceRatioK"]             = model.get_computed_inductance_ratio_k();
             diag["computedQualityFactor"]                = model.get_computed_quality_factor();
             diag["computedPrimaryResonantFrequency"]     = model.get_computed_primary_resonant_frequency();
-            diag["lastPrimaryPeakCurrent"]               = model.get_last_primary_peak_current();
-            diag["lastZvsMarginPrimaryLagging"]          = model.get_last_zvs_margin_primary_lagging();
+            {
+                const auto& names = model.get_per_op_name();
+                const auto& mf    = model.get_per_op_mode_forward();
+                const auto& mr    = model.get_per_op_mode_reverse();
+                const auto& zpl   = model.get_per_op_zvs_margin_primary_lagging();
+                const auto& zsl   = model.get_per_op_zvs_margin_secondary_lagging();
+                const auto& zltp  = model.get_per_op_zvs_load_threshold_primary();
+                const auto& zlts  = model.get_per_op_zvs_load_threshold_secondary();
+                const auto& rtt   = model.get_per_op_resonant_transition_time();
+                const auto& ipk   = model.get_per_op_primary_peak_current();
+                const auto& spk   = model.get_per_op_secondary_peak_current();
+                const auto& irms  = model.get_per_op_primary_rms_current();
+                const auto& srms  = model.get_per_op_secondary_rms_current();
+                const auto& mpk   = model.get_per_op_magnetizing_peak_current();
+                const auto& vc1   = model.get_per_op_cr1_peak_voltage();
+                const auto& vc2   = model.get_per_op_cr2_peak_voltage();
+                const auto& shr   = model.get_per_op_current_sharing_ratio();
+                const auto& res   = model.get_per_op_steady_state_residual();
+                diag["lastModeForward"]                = mf.empty()   ? model.get_last_mode_forward()                  : mf.front();
+                diag["lastModeReverse"]                = mr.empty()   ? model.get_last_mode_reverse()                  : mr.front();
+                diag["lastZvsMarginPrimaryLagging"]    = zpl.empty()  ? model.get_last_zvs_margin_primary_lagging()    : zpl.front();
+                diag["lastZvsMarginSecondaryLagging"]  = zsl.empty()  ? model.get_last_zvs_margin_secondary_lagging()  : zsl.front();
+                diag["lastZvsLoadThresholdPrimary"]    = zltp.empty() ? model.get_last_zvs_load_threshold_primary()    : zltp.front();
+                diag["lastZvsLoadThresholdSecondary"]  = zlts.empty() ? model.get_last_zvs_load_threshold_secondary()  : zlts.front();
+                diag["lastResonantTransitionTime"]     = rtt.empty()  ? model.get_last_resonant_transition_time()      : rtt.front();
+                diag["lastPrimaryPeakCurrent"]         = ipk.empty()  ? model.get_last_primary_peak_current()          : ipk.front();
+                diag["lastSecondaryPeakCurrent"]       = spk.empty()  ? model.get_last_secondary_peak_current()        : spk.front();
+                diag["lastPrimaryRmsCurrent"]          = irms.empty() ? model.get_last_primary_rms_current()           : irms.front();
+                diag["lastSecondaryRmsCurrent"]        = srms.empty() ? model.get_last_secondary_rms_current()         : srms.front();
+                diag["lastMagnetizingPeakCurrent"]     = mpk.empty()  ? model.get_last_magnetizing_peak_current()      : mpk.front();
+                diag["lastCr1PeakVoltage"]             = vc1.empty()  ? model.get_last_cr1_peak_voltage()              : vc1.front();
+                diag["lastCr2PeakVoltage"]             = vc2.empty()  ? model.get_last_cr2_peak_voltage()              : vc2.front();
+                diag["lastCurrentSharingRatio"]        = shr.empty()  ? model.get_last_current_sharing_ratio()         : shr.front();
+                diag["lastSteadyStateResidual"]        = res.empty()  ? model.get_last_steady_state_residual()         : res.front();
+                json perOp = json::array();
+                for (size_t i = 0; i < mf.size(); ++i) {
+                    json row;
+                    row["operatingPointName"]              = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                    row["modeForward"]                     = mf[i];
+                    row["modeReverse"]                     = mr[i];
+                    row["zvsMarginPrimaryLagging"]         = zpl[i];
+                    row["zvsMarginSecondaryLagging"]       = zsl[i];
+                    row["zvsLoadThresholdPrimary"]         = zltp[i];
+                    row["zvsLoadThresholdSecondary"]       = zlts[i];
+                    row["resonantTransitionTime"]          = rtt[i];
+                    row["primaryPeakCurrent"]              = ipk[i];
+                    row["secondaryPeakCurrent"]            = spk[i];
+                    row["primaryRmsCurrent"]               = irms[i];
+                    row["secondaryRmsCurrent"]             = srms[i];
+                    row["magnetizingPeakCurrent"]          = mpk[i];
+                    row["cr1PeakVoltage"]                  = vc1[i];
+                    row["cr2PeakVoltage"]                  = vc2[i];
+                    row["currentSharingRatio"]             = shr[i];
+                    row["steadyStateResidual"]             = res[i];
+                    perOp.push_back(row);
+                }
+                diag["perOp"] = perOp;
+            }
             result["clllcDiagnostics"] = diag;
         }
 
@@ -10121,8 +11170,64 @@ std::string calculate_advanced_clllc_inputs(std::string clllcInputsString) {
             diag["computedInductanceRatioK"]             = model.get_computed_inductance_ratio_k();
             diag["computedQualityFactor"]                = model.get_computed_quality_factor();
             diag["computedPrimaryResonantFrequency"]     = model.get_computed_primary_resonant_frequency();
-            diag["lastPrimaryPeakCurrent"]               = model.get_last_primary_peak_current();
-            diag["lastZvsMarginPrimaryLagging"]          = model.get_last_zvs_margin_primary_lagging();
+            {
+                const auto& names = model.get_per_op_name();
+                const auto& mf    = model.get_per_op_mode_forward();
+                const auto& mr    = model.get_per_op_mode_reverse();
+                const auto& zpl   = model.get_per_op_zvs_margin_primary_lagging();
+                const auto& zsl   = model.get_per_op_zvs_margin_secondary_lagging();
+                const auto& zltp  = model.get_per_op_zvs_load_threshold_primary();
+                const auto& zlts  = model.get_per_op_zvs_load_threshold_secondary();
+                const auto& rtt   = model.get_per_op_resonant_transition_time();
+                const auto& ipk   = model.get_per_op_primary_peak_current();
+                const auto& spk   = model.get_per_op_secondary_peak_current();
+                const auto& irms  = model.get_per_op_primary_rms_current();
+                const auto& srms  = model.get_per_op_secondary_rms_current();
+                const auto& mpk   = model.get_per_op_magnetizing_peak_current();
+                const auto& vc1   = model.get_per_op_cr1_peak_voltage();
+                const auto& vc2   = model.get_per_op_cr2_peak_voltage();
+                const auto& shr   = model.get_per_op_current_sharing_ratio();
+                const auto& res   = model.get_per_op_steady_state_residual();
+                diag["lastModeForward"]                = mf.empty()   ? model.get_last_mode_forward()                  : mf.front();
+                diag["lastModeReverse"]                = mr.empty()   ? model.get_last_mode_reverse()                  : mr.front();
+                diag["lastZvsMarginPrimaryLagging"]    = zpl.empty()  ? model.get_last_zvs_margin_primary_lagging()    : zpl.front();
+                diag["lastZvsMarginSecondaryLagging"]  = zsl.empty()  ? model.get_last_zvs_margin_secondary_lagging()  : zsl.front();
+                diag["lastZvsLoadThresholdPrimary"]    = zltp.empty() ? model.get_last_zvs_load_threshold_primary()    : zltp.front();
+                diag["lastZvsLoadThresholdSecondary"]  = zlts.empty() ? model.get_last_zvs_load_threshold_secondary()  : zlts.front();
+                diag["lastResonantTransitionTime"]     = rtt.empty()  ? model.get_last_resonant_transition_time()      : rtt.front();
+                diag["lastPrimaryPeakCurrent"]         = ipk.empty()  ? model.get_last_primary_peak_current()          : ipk.front();
+                diag["lastSecondaryPeakCurrent"]       = spk.empty()  ? model.get_last_secondary_peak_current()        : spk.front();
+                diag["lastPrimaryRmsCurrent"]          = irms.empty() ? model.get_last_primary_rms_current()           : irms.front();
+                diag["lastSecondaryRmsCurrent"]        = srms.empty() ? model.get_last_secondary_rms_current()         : srms.front();
+                diag["lastMagnetizingPeakCurrent"]     = mpk.empty()  ? model.get_last_magnetizing_peak_current()      : mpk.front();
+                diag["lastCr1PeakVoltage"]             = vc1.empty()  ? model.get_last_cr1_peak_voltage()              : vc1.front();
+                diag["lastCr2PeakVoltage"]             = vc2.empty()  ? model.get_last_cr2_peak_voltage()              : vc2.front();
+                diag["lastCurrentSharingRatio"]        = shr.empty()  ? model.get_last_current_sharing_ratio()         : shr.front();
+                diag["lastSteadyStateResidual"]        = res.empty()  ? model.get_last_steady_state_residual()         : res.front();
+                json perOp = json::array();
+                for (size_t i = 0; i < mf.size(); ++i) {
+                    json row;
+                    row["operatingPointName"]              = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                    row["modeForward"]                     = mf[i];
+                    row["modeReverse"]                     = mr[i];
+                    row["zvsMarginPrimaryLagging"]         = zpl[i];
+                    row["zvsMarginSecondaryLagging"]       = zsl[i];
+                    row["zvsLoadThresholdPrimary"]         = zltp[i];
+                    row["zvsLoadThresholdSecondary"]       = zlts[i];
+                    row["resonantTransitionTime"]          = rtt[i];
+                    row["primaryPeakCurrent"]              = ipk[i];
+                    row["secondaryPeakCurrent"]            = spk[i];
+                    row["primaryRmsCurrent"]               = irms[i];
+                    row["secondaryRmsCurrent"]             = srms[i];
+                    row["magnetizingPeakCurrent"]          = mpk[i];
+                    row["cr1PeakVoltage"]                  = vc1[i];
+                    row["cr2PeakVoltage"]                  = vc2[i];
+                    row["currentSharingRatio"]             = shr[i];
+                    row["steadyStateResidual"]             = res[i];
+                    perOp.push_back(row);
+                }
+                diag["perOp"] = perOp;
+            }
             result["clllcDiagnostics"] = diag;
         }
 
@@ -10191,8 +11296,64 @@ std::string simulate_clllc_ideal_waveforms(std::string clllcInputsString) {
             diag["computedInductanceRatioK"]             = model.get_computed_inductance_ratio_k();
             diag["computedQualityFactor"]                = model.get_computed_quality_factor();
             diag["computedPrimaryResonantFrequency"]     = model.get_computed_primary_resonant_frequency();
-            diag["lastPrimaryPeakCurrent"]               = model.get_last_primary_peak_current();
-            diag["lastZvsMarginPrimaryLagging"]          = model.get_last_zvs_margin_primary_lagging();
+            {
+                const auto& names = model.get_per_op_name();
+                const auto& mf    = model.get_per_op_mode_forward();
+                const auto& mr    = model.get_per_op_mode_reverse();
+                const auto& zpl   = model.get_per_op_zvs_margin_primary_lagging();
+                const auto& zsl   = model.get_per_op_zvs_margin_secondary_lagging();
+                const auto& zltp  = model.get_per_op_zvs_load_threshold_primary();
+                const auto& zlts  = model.get_per_op_zvs_load_threshold_secondary();
+                const auto& rtt   = model.get_per_op_resonant_transition_time();
+                const auto& ipk   = model.get_per_op_primary_peak_current();
+                const auto& spk   = model.get_per_op_secondary_peak_current();
+                const auto& irms  = model.get_per_op_primary_rms_current();
+                const auto& srms  = model.get_per_op_secondary_rms_current();
+                const auto& mpk   = model.get_per_op_magnetizing_peak_current();
+                const auto& vc1   = model.get_per_op_cr1_peak_voltage();
+                const auto& vc2   = model.get_per_op_cr2_peak_voltage();
+                const auto& shr   = model.get_per_op_current_sharing_ratio();
+                const auto& res   = model.get_per_op_steady_state_residual();
+                diag["lastModeForward"]                = mf.empty()   ? model.get_last_mode_forward()                  : mf.front();
+                diag["lastModeReverse"]                = mr.empty()   ? model.get_last_mode_reverse()                  : mr.front();
+                diag["lastZvsMarginPrimaryLagging"]    = zpl.empty()  ? model.get_last_zvs_margin_primary_lagging()    : zpl.front();
+                diag["lastZvsMarginSecondaryLagging"]  = zsl.empty()  ? model.get_last_zvs_margin_secondary_lagging()  : zsl.front();
+                diag["lastZvsLoadThresholdPrimary"]    = zltp.empty() ? model.get_last_zvs_load_threshold_primary()    : zltp.front();
+                diag["lastZvsLoadThresholdSecondary"]  = zlts.empty() ? model.get_last_zvs_load_threshold_secondary()  : zlts.front();
+                diag["lastResonantTransitionTime"]     = rtt.empty()  ? model.get_last_resonant_transition_time()      : rtt.front();
+                diag["lastPrimaryPeakCurrent"]         = ipk.empty()  ? model.get_last_primary_peak_current()          : ipk.front();
+                diag["lastSecondaryPeakCurrent"]       = spk.empty()  ? model.get_last_secondary_peak_current()        : spk.front();
+                diag["lastPrimaryRmsCurrent"]          = irms.empty() ? model.get_last_primary_rms_current()           : irms.front();
+                diag["lastSecondaryRmsCurrent"]        = srms.empty() ? model.get_last_secondary_rms_current()         : srms.front();
+                diag["lastMagnetizingPeakCurrent"]     = mpk.empty()  ? model.get_last_magnetizing_peak_current()      : mpk.front();
+                diag["lastCr1PeakVoltage"]             = vc1.empty()  ? model.get_last_cr1_peak_voltage()              : vc1.front();
+                diag["lastCr2PeakVoltage"]             = vc2.empty()  ? model.get_last_cr2_peak_voltage()              : vc2.front();
+                diag["lastCurrentSharingRatio"]        = shr.empty()  ? model.get_last_current_sharing_ratio()         : shr.front();
+                diag["lastSteadyStateResidual"]        = res.empty()  ? model.get_last_steady_state_residual()         : res.front();
+                json perOp = json::array();
+                for (size_t i = 0; i < mf.size(); ++i) {
+                    json row;
+                    row["operatingPointName"]              = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                    row["modeForward"]                     = mf[i];
+                    row["modeReverse"]                     = mr[i];
+                    row["zvsMarginPrimaryLagging"]         = zpl[i];
+                    row["zvsMarginSecondaryLagging"]       = zsl[i];
+                    row["zvsLoadThresholdPrimary"]         = zltp[i];
+                    row["zvsLoadThresholdSecondary"]       = zlts[i];
+                    row["resonantTransitionTime"]          = rtt[i];
+                    row["primaryPeakCurrent"]              = ipk[i];
+                    row["secondaryPeakCurrent"]            = spk[i];
+                    row["primaryRmsCurrent"]               = irms[i];
+                    row["secondaryRmsCurrent"]             = srms[i];
+                    row["magnetizingPeakCurrent"]          = mpk[i];
+                    row["cr1PeakVoltage"]                  = vc1[i];
+                    row["cr2PeakVoltage"]                  = vc2[i];
+                    row["currentSharingRatio"]             = shr[i];
+                    row["steadyStateResidual"]             = res[i];
+                    perOp.push_back(row);
+                }
+                diag["perOp"] = perOp;
+            }
             result["clllcDiagnostics"] = diag;
         }
         return result.dump(4);
@@ -10221,23 +11382,66 @@ std::string calculate_cuk_inputs(std::string cukInputsString) {
         }
         {
             json diag;
-            diag["dutyCycle"]               = model.get_last_duty_cycle();
-            diag["conversionRatio"]         = model.get_last_conversion_ratio();
-            diag["couplingCapVoltage"]      = model.get_last_coupling_cap_voltage();
-            diag["inputInductorAverage"]    = model.get_last_input_inductor_average();
-            diag["outputInductorAverage"]   = model.get_last_output_inductor_average();
-            diag["inputInductorRipple"]     = model.get_last_input_inductor_ripple();
-            diag["outputInductorRipple"]    = model.get_last_output_inductor_ripple();
-            diag["switchPeakVoltage"]       = model.get_last_switch_peak_voltage();
-            diag["switchPeakCurrent"]       = model.get_last_switch_peak_current();
-            diag["diodePeakReverseVoltage"] = model.get_last_diode_peak_reverse_voltage();
-            diag["diodePeakCurrent"]        = model.get_last_diode_peak_current();
-            diag["couplingCapRmsCurrent"]   = model.get_last_coupling_cap_rms_current();
-            diag["isCcm"]                   = model.get_last_is_ccm();
-            diag["sizedCa"]                 = model.get_last_sized_ca();
-            diag["sizedCb"]                 = model.get_last_sized_cb();
-            diag["sizedCo"]                 = model.get_last_sized_co();
-            diag["rhpZeroFrequency"]        = model.get_last_rhp_zero_frequency();
+            const auto& names = model.get_per_op_name();
+            const auto& v_duty_cycle = model.get_per_op_duty_cycle();
+            const auto& v_conversion_ratio = model.get_per_op_conversion_ratio();
+            const auto& v_coupling_cap_voltage = model.get_per_op_coupling_cap_voltage();
+            const auto& v_input_inductor_average = model.get_per_op_input_inductor_average();
+            const auto& v_output_inductor_average = model.get_per_op_output_inductor_average();
+            const auto& v_input_inductor_ripple = model.get_per_op_input_inductor_ripple();
+            const auto& v_output_inductor_ripple = model.get_per_op_output_inductor_ripple();
+            const auto& v_switch_peak_voltage = model.get_per_op_switch_peak_voltage();
+            const auto& v_switch_peak_current = model.get_per_op_switch_peak_current();
+            const auto& v_diode_peak_reverse_voltage = model.get_per_op_diode_peak_reverse_voltage();
+            const auto& v_diode_peak_current = model.get_per_op_diode_peak_current();
+            const auto& v_coupling_cap_rms_current = model.get_per_op_coupling_cap_rms_current();
+            const auto& v_is_ccm = model.get_per_op_is_ccm();
+            const auto& v_sized_ca = model.get_per_op_sized_ca();
+            const auto& v_sized_cb = model.get_per_op_sized_cb();
+            const auto& v_sized_co = model.get_per_op_sized_co();
+            const auto& v_rhp_zero_frequency = model.get_per_op_rhp_zero_frequency();
+            diag["dutyCycle"] = v_duty_cycle.empty() ? model.get_last_duty_cycle() : v_duty_cycle.front();
+            diag["conversionRatio"] = v_conversion_ratio.empty() ? model.get_last_conversion_ratio() : v_conversion_ratio.front();
+            diag["couplingCapVoltage"] = v_coupling_cap_voltage.empty() ? model.get_last_coupling_cap_voltage() : v_coupling_cap_voltage.front();
+            diag["inputInductorAverage"] = v_input_inductor_average.empty() ? model.get_last_input_inductor_average() : v_input_inductor_average.front();
+            diag["outputInductorAverage"] = v_output_inductor_average.empty() ? model.get_last_output_inductor_average() : v_output_inductor_average.front();
+            diag["inputInductorRipple"] = v_input_inductor_ripple.empty() ? model.get_last_input_inductor_ripple() : v_input_inductor_ripple.front();
+            diag["outputInductorRipple"] = v_output_inductor_ripple.empty() ? model.get_last_output_inductor_ripple() : v_output_inductor_ripple.front();
+            diag["switchPeakVoltage"] = v_switch_peak_voltage.empty() ? model.get_last_switch_peak_voltage() : v_switch_peak_voltage.front();
+            diag["switchPeakCurrent"] = v_switch_peak_current.empty() ? model.get_last_switch_peak_current() : v_switch_peak_current.front();
+            diag["diodePeakReverseVoltage"] = v_diode_peak_reverse_voltage.empty() ? model.get_last_diode_peak_reverse_voltage() : v_diode_peak_reverse_voltage.front();
+            diag["diodePeakCurrent"] = v_diode_peak_current.empty() ? model.get_last_diode_peak_current() : v_diode_peak_current.front();
+            diag["couplingCapRmsCurrent"] = v_coupling_cap_rms_current.empty() ? model.get_last_coupling_cap_rms_current() : v_coupling_cap_rms_current.front();
+            diag["isCcm"] = v_is_ccm.empty() ? model.get_last_is_ccm() : (bool)v_is_ccm.front();
+            diag["sizedCa"] = v_sized_ca.empty() ? model.get_last_sized_ca() : v_sized_ca.front();
+            diag["sizedCb"] = v_sized_cb.empty() ? model.get_last_sized_cb() : v_sized_cb.front();
+            diag["sizedCo"] = v_sized_co.empty() ? model.get_last_sized_co() : v_sized_co.front();
+            diag["rhpZeroFrequency"] = v_rhp_zero_frequency.empty() ? model.get_last_rhp_zero_frequency() : v_rhp_zero_frequency.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_duty_cycle.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"] = v_duty_cycle[i];
+                row["conversionRatio"] = v_conversion_ratio[i];
+                row["couplingCapVoltage"] = v_coupling_cap_voltage[i];
+                row["inputInductorAverage"] = v_input_inductor_average[i];
+                row["outputInductorAverage"] = v_output_inductor_average[i];
+                row["inputInductorRipple"] = v_input_inductor_ripple[i];
+                row["outputInductorRipple"] = v_output_inductor_ripple[i];
+                row["switchPeakVoltage"] = v_switch_peak_voltage[i];
+                row["switchPeakCurrent"] = v_switch_peak_current[i];
+                row["diodePeakReverseVoltage"] = v_diode_peak_reverse_voltage[i];
+                row["diodePeakCurrent"] = v_diode_peak_current[i];
+                row["couplingCapRmsCurrent"] = v_coupling_cap_rms_current[i];
+                row["isCcm"] = (bool)v_is_ccm[i];
+                row["sizedCa"] = v_sized_ca[i];
+                row["sizedCb"] = v_sized_cb[i];
+                row["sizedCo"] = v_sized_co[i];
+                row["rhpZeroFrequency"] = v_rhp_zero_frequency[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["cukDiagnostics"] = diag;
         }
 
@@ -10266,23 +11470,66 @@ std::string calculate_advanced_cuk_inputs(std::string cukInputsString) {
         }
         {
             json diag;
-            diag["dutyCycle"]               = model.get_last_duty_cycle();
-            diag["conversionRatio"]         = model.get_last_conversion_ratio();
-            diag["couplingCapVoltage"]      = model.get_last_coupling_cap_voltage();
-            diag["inputInductorAverage"]    = model.get_last_input_inductor_average();
-            diag["outputInductorAverage"]   = model.get_last_output_inductor_average();
-            diag["inputInductorRipple"]     = model.get_last_input_inductor_ripple();
-            diag["outputInductorRipple"]    = model.get_last_output_inductor_ripple();
-            diag["switchPeakVoltage"]       = model.get_last_switch_peak_voltage();
-            diag["switchPeakCurrent"]       = model.get_last_switch_peak_current();
-            diag["diodePeakReverseVoltage"] = model.get_last_diode_peak_reverse_voltage();
-            diag["diodePeakCurrent"]        = model.get_last_diode_peak_current();
-            diag["couplingCapRmsCurrent"]   = model.get_last_coupling_cap_rms_current();
-            diag["isCcm"]                   = model.get_last_is_ccm();
-            diag["sizedCa"]                 = model.get_last_sized_ca();
-            diag["sizedCb"]                 = model.get_last_sized_cb();
-            diag["sizedCo"]                 = model.get_last_sized_co();
-            diag["rhpZeroFrequency"]        = model.get_last_rhp_zero_frequency();
+            const auto& names = model.get_per_op_name();
+            const auto& v_duty_cycle = model.get_per_op_duty_cycle();
+            const auto& v_conversion_ratio = model.get_per_op_conversion_ratio();
+            const auto& v_coupling_cap_voltage = model.get_per_op_coupling_cap_voltage();
+            const auto& v_input_inductor_average = model.get_per_op_input_inductor_average();
+            const auto& v_output_inductor_average = model.get_per_op_output_inductor_average();
+            const auto& v_input_inductor_ripple = model.get_per_op_input_inductor_ripple();
+            const auto& v_output_inductor_ripple = model.get_per_op_output_inductor_ripple();
+            const auto& v_switch_peak_voltage = model.get_per_op_switch_peak_voltage();
+            const auto& v_switch_peak_current = model.get_per_op_switch_peak_current();
+            const auto& v_diode_peak_reverse_voltage = model.get_per_op_diode_peak_reverse_voltage();
+            const auto& v_diode_peak_current = model.get_per_op_diode_peak_current();
+            const auto& v_coupling_cap_rms_current = model.get_per_op_coupling_cap_rms_current();
+            const auto& v_is_ccm = model.get_per_op_is_ccm();
+            const auto& v_sized_ca = model.get_per_op_sized_ca();
+            const auto& v_sized_cb = model.get_per_op_sized_cb();
+            const auto& v_sized_co = model.get_per_op_sized_co();
+            const auto& v_rhp_zero_frequency = model.get_per_op_rhp_zero_frequency();
+            diag["dutyCycle"] = v_duty_cycle.empty() ? model.get_last_duty_cycle() : v_duty_cycle.front();
+            diag["conversionRatio"] = v_conversion_ratio.empty() ? model.get_last_conversion_ratio() : v_conversion_ratio.front();
+            diag["couplingCapVoltage"] = v_coupling_cap_voltage.empty() ? model.get_last_coupling_cap_voltage() : v_coupling_cap_voltage.front();
+            diag["inputInductorAverage"] = v_input_inductor_average.empty() ? model.get_last_input_inductor_average() : v_input_inductor_average.front();
+            diag["outputInductorAverage"] = v_output_inductor_average.empty() ? model.get_last_output_inductor_average() : v_output_inductor_average.front();
+            diag["inputInductorRipple"] = v_input_inductor_ripple.empty() ? model.get_last_input_inductor_ripple() : v_input_inductor_ripple.front();
+            diag["outputInductorRipple"] = v_output_inductor_ripple.empty() ? model.get_last_output_inductor_ripple() : v_output_inductor_ripple.front();
+            diag["switchPeakVoltage"] = v_switch_peak_voltage.empty() ? model.get_last_switch_peak_voltage() : v_switch_peak_voltage.front();
+            diag["switchPeakCurrent"] = v_switch_peak_current.empty() ? model.get_last_switch_peak_current() : v_switch_peak_current.front();
+            diag["diodePeakReverseVoltage"] = v_diode_peak_reverse_voltage.empty() ? model.get_last_diode_peak_reverse_voltage() : v_diode_peak_reverse_voltage.front();
+            diag["diodePeakCurrent"] = v_diode_peak_current.empty() ? model.get_last_diode_peak_current() : v_diode_peak_current.front();
+            diag["couplingCapRmsCurrent"] = v_coupling_cap_rms_current.empty() ? model.get_last_coupling_cap_rms_current() : v_coupling_cap_rms_current.front();
+            diag["isCcm"] = v_is_ccm.empty() ? model.get_last_is_ccm() : (bool)v_is_ccm.front();
+            diag["sizedCa"] = v_sized_ca.empty() ? model.get_last_sized_ca() : v_sized_ca.front();
+            diag["sizedCb"] = v_sized_cb.empty() ? model.get_last_sized_cb() : v_sized_cb.front();
+            diag["sizedCo"] = v_sized_co.empty() ? model.get_last_sized_co() : v_sized_co.front();
+            diag["rhpZeroFrequency"] = v_rhp_zero_frequency.empty() ? model.get_last_rhp_zero_frequency() : v_rhp_zero_frequency.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_duty_cycle.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"] = v_duty_cycle[i];
+                row["conversionRatio"] = v_conversion_ratio[i];
+                row["couplingCapVoltage"] = v_coupling_cap_voltage[i];
+                row["inputInductorAverage"] = v_input_inductor_average[i];
+                row["outputInductorAverage"] = v_output_inductor_average[i];
+                row["inputInductorRipple"] = v_input_inductor_ripple[i];
+                row["outputInductorRipple"] = v_output_inductor_ripple[i];
+                row["switchPeakVoltage"] = v_switch_peak_voltage[i];
+                row["switchPeakCurrent"] = v_switch_peak_current[i];
+                row["diodePeakReverseVoltage"] = v_diode_peak_reverse_voltage[i];
+                row["diodePeakCurrent"] = v_diode_peak_current[i];
+                row["couplingCapRmsCurrent"] = v_coupling_cap_rms_current[i];
+                row["isCcm"] = (bool)v_is_ccm[i];
+                row["sizedCa"] = v_sized_ca[i];
+                row["sizedCb"] = v_sized_cb[i];
+                row["sizedCo"] = v_sized_co[i];
+                row["rhpZeroFrequency"] = v_rhp_zero_frequency[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["cukDiagnostics"] = diag;
         }
 
@@ -10334,23 +11581,66 @@ std::string simulate_cuk_ideal_waveforms(std::string cukInputsString) {
         // Path B field schema:
         {
             json diag;
-            diag["dutyCycle"]               = model.get_last_duty_cycle();
-            diag["conversionRatio"]         = model.get_last_conversion_ratio();
-            diag["couplingCapVoltage"]      = model.get_last_coupling_cap_voltage();
-            diag["inputInductorAverage"]    = model.get_last_input_inductor_average();
-            diag["outputInductorAverage"]   = model.get_last_output_inductor_average();
-            diag["inputInductorRipple"]     = model.get_last_input_inductor_ripple();
-            diag["outputInductorRipple"]    = model.get_last_output_inductor_ripple();
-            diag["switchPeakVoltage"]       = model.get_last_switch_peak_voltage();
-            diag["switchPeakCurrent"]       = model.get_last_switch_peak_current();
-            diag["diodePeakReverseVoltage"] = model.get_last_diode_peak_reverse_voltage();
-            diag["diodePeakCurrent"]        = model.get_last_diode_peak_current();
-            diag["couplingCapRmsCurrent"]   = model.get_last_coupling_cap_rms_current();
-            diag["isCcm"]                   = model.get_last_is_ccm();
-            diag["sizedCa"]                 = model.get_last_sized_ca();
-            diag["sizedCb"]                 = model.get_last_sized_cb();
-            diag["sizedCo"]                 = model.get_last_sized_co();
-            diag["rhpZeroFrequency"]        = model.get_last_rhp_zero_frequency();
+            const auto& names = model.get_per_op_name();
+            const auto& v_duty_cycle = model.get_per_op_duty_cycle();
+            const auto& v_conversion_ratio = model.get_per_op_conversion_ratio();
+            const auto& v_coupling_cap_voltage = model.get_per_op_coupling_cap_voltage();
+            const auto& v_input_inductor_average = model.get_per_op_input_inductor_average();
+            const auto& v_output_inductor_average = model.get_per_op_output_inductor_average();
+            const auto& v_input_inductor_ripple = model.get_per_op_input_inductor_ripple();
+            const auto& v_output_inductor_ripple = model.get_per_op_output_inductor_ripple();
+            const auto& v_switch_peak_voltage = model.get_per_op_switch_peak_voltage();
+            const auto& v_switch_peak_current = model.get_per_op_switch_peak_current();
+            const auto& v_diode_peak_reverse_voltage = model.get_per_op_diode_peak_reverse_voltage();
+            const auto& v_diode_peak_current = model.get_per_op_diode_peak_current();
+            const auto& v_coupling_cap_rms_current = model.get_per_op_coupling_cap_rms_current();
+            const auto& v_is_ccm = model.get_per_op_is_ccm();
+            const auto& v_sized_ca = model.get_per_op_sized_ca();
+            const auto& v_sized_cb = model.get_per_op_sized_cb();
+            const auto& v_sized_co = model.get_per_op_sized_co();
+            const auto& v_rhp_zero_frequency = model.get_per_op_rhp_zero_frequency();
+            diag["dutyCycle"] = v_duty_cycle.empty() ? model.get_last_duty_cycle() : v_duty_cycle.front();
+            diag["conversionRatio"] = v_conversion_ratio.empty() ? model.get_last_conversion_ratio() : v_conversion_ratio.front();
+            diag["couplingCapVoltage"] = v_coupling_cap_voltage.empty() ? model.get_last_coupling_cap_voltage() : v_coupling_cap_voltage.front();
+            diag["inputInductorAverage"] = v_input_inductor_average.empty() ? model.get_last_input_inductor_average() : v_input_inductor_average.front();
+            diag["outputInductorAverage"] = v_output_inductor_average.empty() ? model.get_last_output_inductor_average() : v_output_inductor_average.front();
+            diag["inputInductorRipple"] = v_input_inductor_ripple.empty() ? model.get_last_input_inductor_ripple() : v_input_inductor_ripple.front();
+            diag["outputInductorRipple"] = v_output_inductor_ripple.empty() ? model.get_last_output_inductor_ripple() : v_output_inductor_ripple.front();
+            diag["switchPeakVoltage"] = v_switch_peak_voltage.empty() ? model.get_last_switch_peak_voltage() : v_switch_peak_voltage.front();
+            diag["switchPeakCurrent"] = v_switch_peak_current.empty() ? model.get_last_switch_peak_current() : v_switch_peak_current.front();
+            diag["diodePeakReverseVoltage"] = v_diode_peak_reverse_voltage.empty() ? model.get_last_diode_peak_reverse_voltage() : v_diode_peak_reverse_voltage.front();
+            diag["diodePeakCurrent"] = v_diode_peak_current.empty() ? model.get_last_diode_peak_current() : v_diode_peak_current.front();
+            diag["couplingCapRmsCurrent"] = v_coupling_cap_rms_current.empty() ? model.get_last_coupling_cap_rms_current() : v_coupling_cap_rms_current.front();
+            diag["isCcm"] = v_is_ccm.empty() ? model.get_last_is_ccm() : (bool)v_is_ccm.front();
+            diag["sizedCa"] = v_sized_ca.empty() ? model.get_last_sized_ca() : v_sized_ca.front();
+            diag["sizedCb"] = v_sized_cb.empty() ? model.get_last_sized_cb() : v_sized_cb.front();
+            diag["sizedCo"] = v_sized_co.empty() ? model.get_last_sized_co() : v_sized_co.front();
+            diag["rhpZeroFrequency"] = v_rhp_zero_frequency.empty() ? model.get_last_rhp_zero_frequency() : v_rhp_zero_frequency.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_duty_cycle.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"] = v_duty_cycle[i];
+                row["conversionRatio"] = v_conversion_ratio[i];
+                row["couplingCapVoltage"] = v_coupling_cap_voltage[i];
+                row["inputInductorAverage"] = v_input_inductor_average[i];
+                row["outputInductorAverage"] = v_output_inductor_average[i];
+                row["inputInductorRipple"] = v_input_inductor_ripple[i];
+                row["outputInductorRipple"] = v_output_inductor_ripple[i];
+                row["switchPeakVoltage"] = v_switch_peak_voltage[i];
+                row["switchPeakCurrent"] = v_switch_peak_current[i];
+                row["diodePeakReverseVoltage"] = v_diode_peak_reverse_voltage[i];
+                row["diodePeakCurrent"] = v_diode_peak_current[i];
+                row["couplingCapRmsCurrent"] = v_coupling_cap_rms_current[i];
+                row["isCcm"] = (bool)v_is_ccm[i];
+                row["sizedCa"] = v_sized_ca[i];
+                row["sizedCb"] = v_sized_cb[i];
+                row["sizedCo"] = v_sized_co[i];
+                row["rhpZeroFrequency"] = v_rhp_zero_frequency[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["cukDiagnostics"] = diag;
         }
         return result.dump(4);
@@ -10379,8 +11669,21 @@ std::string calculate_four_switch_buck_boost_inputs(std::string fsbbInputsString
         }
         {
             json diag;
-            diag["inductorAverageCurrent"] = model.get_last_inductor_average_current();
-            diag["sizedOutputCapacitance"] = model.get_last_sized_output_capacitance();
+            const auto& names = model.get_per_op_name();
+            const auto& v_inductor_average_current = model.get_per_op_inductor_average_current();
+            const auto& v_sized_output_capacitance = model.get_per_op_sized_output_capacitance();
+            diag["inductorAverageCurrent"] = v_inductor_average_current.empty() ? model.get_last_inductor_average_current() : v_inductor_average_current.front();
+            diag["sizedOutputCapacitance"] = v_sized_output_capacitance.empty() ? model.get_last_sized_output_capacitance() : v_sized_output_capacitance.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_inductor_average_current.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["inductorAverageCurrent"] = v_inductor_average_current[i];
+                row["sizedOutputCapacitance"] = v_sized_output_capacitance[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["fsbbDiagnostics"] = diag;
         }
 
@@ -10409,8 +11712,21 @@ std::string calculate_advanced_four_switch_buck_boost_inputs(std::string fsbbInp
         }
         {
             json diag;
-            diag["inductorAverageCurrent"] = model.get_last_inductor_average_current();
-            diag["sizedOutputCapacitance"] = model.get_last_sized_output_capacitance();
+            const auto& names = model.get_per_op_name();
+            const auto& v_inductor_average_current = model.get_per_op_inductor_average_current();
+            const auto& v_sized_output_capacitance = model.get_per_op_sized_output_capacitance();
+            diag["inductorAverageCurrent"] = v_inductor_average_current.empty() ? model.get_last_inductor_average_current() : v_inductor_average_current.front();
+            diag["sizedOutputCapacitance"] = v_sized_output_capacitance.empty() ? model.get_last_sized_output_capacitance() : v_sized_output_capacitance.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_inductor_average_current.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["inductorAverageCurrent"] = v_inductor_average_current[i];
+                row["sizedOutputCapacitance"] = v_sized_output_capacitance[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["fsbbDiagnostics"] = diag;
         }
 
@@ -10462,8 +11778,21 @@ std::string simulate_four_switch_buck_boost_ideal_waveforms(std::string fsbbInpu
         // Path B field schema:
         {
             json diag;
-            diag["inductorAverageCurrent"] = model.get_last_inductor_average_current();
-            diag["sizedOutputCapacitance"] = model.get_last_sized_output_capacitance();
+            const auto& names = model.get_per_op_name();
+            const auto& v_inductor_average_current = model.get_per_op_inductor_average_current();
+            const auto& v_sized_output_capacitance = model.get_per_op_sized_output_capacitance();
+            diag["inductorAverageCurrent"] = v_inductor_average_current.empty() ? model.get_last_inductor_average_current() : v_inductor_average_current.front();
+            diag["sizedOutputCapacitance"] = v_sized_output_capacitance.empty() ? model.get_last_sized_output_capacitance() : v_sized_output_capacitance.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_inductor_average_current.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["inductorAverageCurrent"] = v_inductor_average_current[i];
+                row["sizedOutputCapacitance"] = v_sized_output_capacitance[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["fsbbDiagnostics"] = diag;
         }
         return result.dump(4);
@@ -10492,23 +11821,66 @@ std::string calculate_weinberg_inputs(std::string weinbergInputsString) {
         }
         {
             json diag;
-            diag["dutyCycle"]                = model.get_last_duty_cycle();
-            diag["conversionRatio"]          = model.get_last_conversion_ratio();
-            diag["operatingRegime"]          = model.get_last_operating_regime();
-            diag["overlapFraction"]          = model.get_last_overlap_fraction();
-            diag["switchPeakVoltage"]        = model.get_last_switch_peak_voltage();
-            diag["switchPeakCurrent"]        = model.get_last_switch_peak_current();
-            diag["diodePeakReverseVoltage"]  = model.get_last_diode_peak_reverse_voltage();
-            diag["diodePeakCurrent"]         = model.get_last_diode_peak_current();
-            diag["energyRecoveryAvgCurrent"] = model.get_last_energy_recovery_avg_current();
-            diag["inputInductorAverage"]     = model.get_last_input_inductor_average();
-            diag["inputInductorRipple"]      = model.get_last_input_inductor_ripple();
-            diag["magnetizingRipple"]        = model.get_last_magnetizing_ripple();
-            diag["fluxImbalanceMargin"]      = model.get_last_flux_imbalance_margin();
-            diag["rhpZeroFrequency"]         = model.get_last_rhp_zero_frequency();
-            diag["isCcm"]                    = model.get_last_is_ccm();
-            diag["sizedCo"]                  = model.get_last_sized_co();
-            diag["outputVoltageRipple"]      = model.get_last_output_voltage_ripple();
+            const auto& names = model.get_per_op_name();
+            const auto& v_duty_cycle = model.get_per_op_duty_cycle();
+            const auto& v_conversion_ratio = model.get_per_op_conversion_ratio();
+            const auto& v_operating_regime = model.get_per_op_operating_regime();
+            const auto& v_overlap_fraction = model.get_per_op_overlap_fraction();
+            const auto& v_switch_peak_voltage = model.get_per_op_switch_peak_voltage();
+            const auto& v_switch_peak_current = model.get_per_op_switch_peak_current();
+            const auto& v_diode_peak_reverse_voltage = model.get_per_op_diode_peak_reverse_voltage();
+            const auto& v_diode_peak_current = model.get_per_op_diode_peak_current();
+            const auto& v_energy_recovery_avg_current = model.get_per_op_energy_recovery_avg_current();
+            const auto& v_input_inductor_average = model.get_per_op_input_inductor_average();
+            const auto& v_input_inductor_ripple = model.get_per_op_input_inductor_ripple();
+            const auto& v_magnetizing_ripple = model.get_per_op_magnetizing_ripple();
+            const auto& v_flux_imbalance_margin = model.get_per_op_flux_imbalance_margin();
+            const auto& v_rhp_zero_frequency = model.get_per_op_rhp_zero_frequency();
+            const auto& v_is_ccm = model.get_per_op_is_ccm();
+            const auto& v_sized_co = model.get_per_op_sized_co();
+            const auto& v_output_voltage_ripple = model.get_per_op_output_voltage_ripple();
+            diag["dutyCycle"] = v_duty_cycle.empty() ? model.get_last_duty_cycle() : v_duty_cycle.front();
+            diag["conversionRatio"] = v_conversion_ratio.empty() ? model.get_last_conversion_ratio() : v_conversion_ratio.front();
+            diag["operatingRegime"] = v_operating_regime.empty() ? model.get_last_operating_regime() : v_operating_regime.front();
+            diag["overlapFraction"] = v_overlap_fraction.empty() ? model.get_last_overlap_fraction() : v_overlap_fraction.front();
+            diag["switchPeakVoltage"] = v_switch_peak_voltage.empty() ? model.get_last_switch_peak_voltage() : v_switch_peak_voltage.front();
+            diag["switchPeakCurrent"] = v_switch_peak_current.empty() ? model.get_last_switch_peak_current() : v_switch_peak_current.front();
+            diag["diodePeakReverseVoltage"] = v_diode_peak_reverse_voltage.empty() ? model.get_last_diode_peak_reverse_voltage() : v_diode_peak_reverse_voltage.front();
+            diag["diodePeakCurrent"] = v_diode_peak_current.empty() ? model.get_last_diode_peak_current() : v_diode_peak_current.front();
+            diag["energyRecoveryAvgCurrent"] = v_energy_recovery_avg_current.empty() ? model.get_last_energy_recovery_avg_current() : v_energy_recovery_avg_current.front();
+            diag["inputInductorAverage"] = v_input_inductor_average.empty() ? model.get_last_input_inductor_average() : v_input_inductor_average.front();
+            diag["inputInductorRipple"] = v_input_inductor_ripple.empty() ? model.get_last_input_inductor_ripple() : v_input_inductor_ripple.front();
+            diag["magnetizingRipple"] = v_magnetizing_ripple.empty() ? model.get_last_magnetizing_ripple() : v_magnetizing_ripple.front();
+            diag["fluxImbalanceMargin"] = v_flux_imbalance_margin.empty() ? model.get_last_flux_imbalance_margin() : v_flux_imbalance_margin.front();
+            diag["rhpZeroFrequency"] = v_rhp_zero_frequency.empty() ? model.get_last_rhp_zero_frequency() : v_rhp_zero_frequency.front();
+            diag["isCcm"] = v_is_ccm.empty() ? model.get_last_is_ccm() : (bool)v_is_ccm.front();
+            diag["sizedCo"] = v_sized_co.empty() ? model.get_last_sized_co() : v_sized_co.front();
+            diag["outputVoltageRipple"] = v_output_voltage_ripple.empty() ? model.get_last_output_voltage_ripple() : v_output_voltage_ripple.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_duty_cycle.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"] = v_duty_cycle[i];
+                row["conversionRatio"] = v_conversion_ratio[i];
+                row["operatingRegime"] = v_operating_regime[i];
+                row["overlapFraction"] = v_overlap_fraction[i];
+                row["switchPeakVoltage"] = v_switch_peak_voltage[i];
+                row["switchPeakCurrent"] = v_switch_peak_current[i];
+                row["diodePeakReverseVoltage"] = v_diode_peak_reverse_voltage[i];
+                row["diodePeakCurrent"] = v_diode_peak_current[i];
+                row["energyRecoveryAvgCurrent"] = v_energy_recovery_avg_current[i];
+                row["inputInductorAverage"] = v_input_inductor_average[i];
+                row["inputInductorRipple"] = v_input_inductor_ripple[i];
+                row["magnetizingRipple"] = v_magnetizing_ripple[i];
+                row["fluxImbalanceMargin"] = v_flux_imbalance_margin[i];
+                row["rhpZeroFrequency"] = v_rhp_zero_frequency[i];
+                row["isCcm"] = (bool)v_is_ccm[i];
+                row["sizedCo"] = v_sized_co[i];
+                row["outputVoltageRipple"] = v_output_voltage_ripple[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["weinbergDiagnostics"] = diag;
         }
 
@@ -10537,23 +11909,66 @@ std::string calculate_advanced_weinberg_inputs(std::string weinbergInputsString)
         }
         {
             json diag;
-            diag["dutyCycle"]                = model.get_last_duty_cycle();
-            diag["conversionRatio"]          = model.get_last_conversion_ratio();
-            diag["operatingRegime"]          = model.get_last_operating_regime();
-            diag["overlapFraction"]          = model.get_last_overlap_fraction();
-            diag["switchPeakVoltage"]        = model.get_last_switch_peak_voltage();
-            diag["switchPeakCurrent"]        = model.get_last_switch_peak_current();
-            diag["diodePeakReverseVoltage"]  = model.get_last_diode_peak_reverse_voltage();
-            diag["diodePeakCurrent"]         = model.get_last_diode_peak_current();
-            diag["energyRecoveryAvgCurrent"] = model.get_last_energy_recovery_avg_current();
-            diag["inputInductorAverage"]     = model.get_last_input_inductor_average();
-            diag["inputInductorRipple"]      = model.get_last_input_inductor_ripple();
-            diag["magnetizingRipple"]        = model.get_last_magnetizing_ripple();
-            diag["fluxImbalanceMargin"]      = model.get_last_flux_imbalance_margin();
-            diag["rhpZeroFrequency"]         = model.get_last_rhp_zero_frequency();
-            diag["isCcm"]                    = model.get_last_is_ccm();
-            diag["sizedCo"]                  = model.get_last_sized_co();
-            diag["outputVoltageRipple"]      = model.get_last_output_voltage_ripple();
+            const auto& names = model.get_per_op_name();
+            const auto& v_duty_cycle = model.get_per_op_duty_cycle();
+            const auto& v_conversion_ratio = model.get_per_op_conversion_ratio();
+            const auto& v_operating_regime = model.get_per_op_operating_regime();
+            const auto& v_overlap_fraction = model.get_per_op_overlap_fraction();
+            const auto& v_switch_peak_voltage = model.get_per_op_switch_peak_voltage();
+            const auto& v_switch_peak_current = model.get_per_op_switch_peak_current();
+            const auto& v_diode_peak_reverse_voltage = model.get_per_op_diode_peak_reverse_voltage();
+            const auto& v_diode_peak_current = model.get_per_op_diode_peak_current();
+            const auto& v_energy_recovery_avg_current = model.get_per_op_energy_recovery_avg_current();
+            const auto& v_input_inductor_average = model.get_per_op_input_inductor_average();
+            const auto& v_input_inductor_ripple = model.get_per_op_input_inductor_ripple();
+            const auto& v_magnetizing_ripple = model.get_per_op_magnetizing_ripple();
+            const auto& v_flux_imbalance_margin = model.get_per_op_flux_imbalance_margin();
+            const auto& v_rhp_zero_frequency = model.get_per_op_rhp_zero_frequency();
+            const auto& v_is_ccm = model.get_per_op_is_ccm();
+            const auto& v_sized_co = model.get_per_op_sized_co();
+            const auto& v_output_voltage_ripple = model.get_per_op_output_voltage_ripple();
+            diag["dutyCycle"] = v_duty_cycle.empty() ? model.get_last_duty_cycle() : v_duty_cycle.front();
+            diag["conversionRatio"] = v_conversion_ratio.empty() ? model.get_last_conversion_ratio() : v_conversion_ratio.front();
+            diag["operatingRegime"] = v_operating_regime.empty() ? model.get_last_operating_regime() : v_operating_regime.front();
+            diag["overlapFraction"] = v_overlap_fraction.empty() ? model.get_last_overlap_fraction() : v_overlap_fraction.front();
+            diag["switchPeakVoltage"] = v_switch_peak_voltage.empty() ? model.get_last_switch_peak_voltage() : v_switch_peak_voltage.front();
+            diag["switchPeakCurrent"] = v_switch_peak_current.empty() ? model.get_last_switch_peak_current() : v_switch_peak_current.front();
+            diag["diodePeakReverseVoltage"] = v_diode_peak_reverse_voltage.empty() ? model.get_last_diode_peak_reverse_voltage() : v_diode_peak_reverse_voltage.front();
+            diag["diodePeakCurrent"] = v_diode_peak_current.empty() ? model.get_last_diode_peak_current() : v_diode_peak_current.front();
+            diag["energyRecoveryAvgCurrent"] = v_energy_recovery_avg_current.empty() ? model.get_last_energy_recovery_avg_current() : v_energy_recovery_avg_current.front();
+            diag["inputInductorAverage"] = v_input_inductor_average.empty() ? model.get_last_input_inductor_average() : v_input_inductor_average.front();
+            diag["inputInductorRipple"] = v_input_inductor_ripple.empty() ? model.get_last_input_inductor_ripple() : v_input_inductor_ripple.front();
+            diag["magnetizingRipple"] = v_magnetizing_ripple.empty() ? model.get_last_magnetizing_ripple() : v_magnetizing_ripple.front();
+            diag["fluxImbalanceMargin"] = v_flux_imbalance_margin.empty() ? model.get_last_flux_imbalance_margin() : v_flux_imbalance_margin.front();
+            diag["rhpZeroFrequency"] = v_rhp_zero_frequency.empty() ? model.get_last_rhp_zero_frequency() : v_rhp_zero_frequency.front();
+            diag["isCcm"] = v_is_ccm.empty() ? model.get_last_is_ccm() : (bool)v_is_ccm.front();
+            diag["sizedCo"] = v_sized_co.empty() ? model.get_last_sized_co() : v_sized_co.front();
+            diag["outputVoltageRipple"] = v_output_voltage_ripple.empty() ? model.get_last_output_voltage_ripple() : v_output_voltage_ripple.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_duty_cycle.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"] = v_duty_cycle[i];
+                row["conversionRatio"] = v_conversion_ratio[i];
+                row["operatingRegime"] = v_operating_regime[i];
+                row["overlapFraction"] = v_overlap_fraction[i];
+                row["switchPeakVoltage"] = v_switch_peak_voltage[i];
+                row["switchPeakCurrent"] = v_switch_peak_current[i];
+                row["diodePeakReverseVoltage"] = v_diode_peak_reverse_voltage[i];
+                row["diodePeakCurrent"] = v_diode_peak_current[i];
+                row["energyRecoveryAvgCurrent"] = v_energy_recovery_avg_current[i];
+                row["inputInductorAverage"] = v_input_inductor_average[i];
+                row["inputInductorRipple"] = v_input_inductor_ripple[i];
+                row["magnetizingRipple"] = v_magnetizing_ripple[i];
+                row["fluxImbalanceMargin"] = v_flux_imbalance_margin[i];
+                row["rhpZeroFrequency"] = v_rhp_zero_frequency[i];
+                row["isCcm"] = (bool)v_is_ccm[i];
+                row["sizedCo"] = v_sized_co[i];
+                row["outputVoltageRipple"] = v_output_voltage_ripple[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["weinbergDiagnostics"] = diag;
         }
 
@@ -10612,23 +12027,66 @@ std::string simulate_weinberg_ideal_waveforms(std::string weinbergInputsString) 
         // Path B field schema:
         {
             json diag;
-            diag["dutyCycle"]                = model.get_last_duty_cycle();
-            diag["conversionRatio"]          = model.get_last_conversion_ratio();
-            diag["operatingRegime"]          = model.get_last_operating_regime();
-            diag["overlapFraction"]          = model.get_last_overlap_fraction();
-            diag["switchPeakVoltage"]        = model.get_last_switch_peak_voltage();
-            diag["switchPeakCurrent"]        = model.get_last_switch_peak_current();
-            diag["diodePeakReverseVoltage"]  = model.get_last_diode_peak_reverse_voltage();
-            diag["diodePeakCurrent"]         = model.get_last_diode_peak_current();
-            diag["energyRecoveryAvgCurrent"] = model.get_last_energy_recovery_avg_current();
-            diag["inputInductorAverage"]     = model.get_last_input_inductor_average();
-            diag["inputInductorRipple"]      = model.get_last_input_inductor_ripple();
-            diag["magnetizingRipple"]        = model.get_last_magnetizing_ripple();
-            diag["fluxImbalanceMargin"]      = model.get_last_flux_imbalance_margin();
-            diag["rhpZeroFrequency"]         = model.get_last_rhp_zero_frequency();
-            diag["isCcm"]                    = model.get_last_is_ccm();
-            diag["sizedCo"]                  = model.get_last_sized_co();
-            diag["outputVoltageRipple"]      = model.get_last_output_voltage_ripple();
+            const auto& names = model.get_per_op_name();
+            const auto& v_duty_cycle = model.get_per_op_duty_cycle();
+            const auto& v_conversion_ratio = model.get_per_op_conversion_ratio();
+            const auto& v_operating_regime = model.get_per_op_operating_regime();
+            const auto& v_overlap_fraction = model.get_per_op_overlap_fraction();
+            const auto& v_switch_peak_voltage = model.get_per_op_switch_peak_voltage();
+            const auto& v_switch_peak_current = model.get_per_op_switch_peak_current();
+            const auto& v_diode_peak_reverse_voltage = model.get_per_op_diode_peak_reverse_voltage();
+            const auto& v_diode_peak_current = model.get_per_op_diode_peak_current();
+            const auto& v_energy_recovery_avg_current = model.get_per_op_energy_recovery_avg_current();
+            const auto& v_input_inductor_average = model.get_per_op_input_inductor_average();
+            const auto& v_input_inductor_ripple = model.get_per_op_input_inductor_ripple();
+            const auto& v_magnetizing_ripple = model.get_per_op_magnetizing_ripple();
+            const auto& v_flux_imbalance_margin = model.get_per_op_flux_imbalance_margin();
+            const auto& v_rhp_zero_frequency = model.get_per_op_rhp_zero_frequency();
+            const auto& v_is_ccm = model.get_per_op_is_ccm();
+            const auto& v_sized_co = model.get_per_op_sized_co();
+            const auto& v_output_voltage_ripple = model.get_per_op_output_voltage_ripple();
+            diag["dutyCycle"] = v_duty_cycle.empty() ? model.get_last_duty_cycle() : v_duty_cycle.front();
+            diag["conversionRatio"] = v_conversion_ratio.empty() ? model.get_last_conversion_ratio() : v_conversion_ratio.front();
+            diag["operatingRegime"] = v_operating_regime.empty() ? model.get_last_operating_regime() : v_operating_regime.front();
+            diag["overlapFraction"] = v_overlap_fraction.empty() ? model.get_last_overlap_fraction() : v_overlap_fraction.front();
+            diag["switchPeakVoltage"] = v_switch_peak_voltage.empty() ? model.get_last_switch_peak_voltage() : v_switch_peak_voltage.front();
+            diag["switchPeakCurrent"] = v_switch_peak_current.empty() ? model.get_last_switch_peak_current() : v_switch_peak_current.front();
+            diag["diodePeakReverseVoltage"] = v_diode_peak_reverse_voltage.empty() ? model.get_last_diode_peak_reverse_voltage() : v_diode_peak_reverse_voltage.front();
+            diag["diodePeakCurrent"] = v_diode_peak_current.empty() ? model.get_last_diode_peak_current() : v_diode_peak_current.front();
+            diag["energyRecoveryAvgCurrent"] = v_energy_recovery_avg_current.empty() ? model.get_last_energy_recovery_avg_current() : v_energy_recovery_avg_current.front();
+            diag["inputInductorAverage"] = v_input_inductor_average.empty() ? model.get_last_input_inductor_average() : v_input_inductor_average.front();
+            diag["inputInductorRipple"] = v_input_inductor_ripple.empty() ? model.get_last_input_inductor_ripple() : v_input_inductor_ripple.front();
+            diag["magnetizingRipple"] = v_magnetizing_ripple.empty() ? model.get_last_magnetizing_ripple() : v_magnetizing_ripple.front();
+            diag["fluxImbalanceMargin"] = v_flux_imbalance_margin.empty() ? model.get_last_flux_imbalance_margin() : v_flux_imbalance_margin.front();
+            diag["rhpZeroFrequency"] = v_rhp_zero_frequency.empty() ? model.get_last_rhp_zero_frequency() : v_rhp_zero_frequency.front();
+            diag["isCcm"] = v_is_ccm.empty() ? model.get_last_is_ccm() : (bool)v_is_ccm.front();
+            diag["sizedCo"] = v_sized_co.empty() ? model.get_last_sized_co() : v_sized_co.front();
+            diag["outputVoltageRipple"] = v_output_voltage_ripple.empty() ? model.get_last_output_voltage_ripple() : v_output_voltage_ripple.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_duty_cycle.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"] = v_duty_cycle[i];
+                row["conversionRatio"] = v_conversion_ratio[i];
+                row["operatingRegime"] = v_operating_regime[i];
+                row["overlapFraction"] = v_overlap_fraction[i];
+                row["switchPeakVoltage"] = v_switch_peak_voltage[i];
+                row["switchPeakCurrent"] = v_switch_peak_current[i];
+                row["diodePeakReverseVoltage"] = v_diode_peak_reverse_voltage[i];
+                row["diodePeakCurrent"] = v_diode_peak_current[i];
+                row["energyRecoveryAvgCurrent"] = v_energy_recovery_avg_current[i];
+                row["inputInductorAverage"] = v_input_inductor_average[i];
+                row["inputInductorRipple"] = v_input_inductor_ripple[i];
+                row["magnetizingRipple"] = v_magnetizing_ripple[i];
+                row["fluxImbalanceMargin"] = v_flux_imbalance_margin[i];
+                row["rhpZeroFrequency"] = v_rhp_zero_frequency[i];
+                row["isCcm"] = (bool)v_is_ccm[i];
+                row["sizedCo"] = v_sized_co[i];
+                row["outputVoltageRipple"] = v_output_voltage_ripple[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["weinbergDiagnostics"] = diag;
         }
         return result.dump(4);
@@ -10657,23 +12115,66 @@ std::string calculate_zeta_inputs(std::string zetaInputsString) {
         }
         {
             json diag;
-            diag["dutyCycle"]               = model.get_last_duty_cycle();
-            diag["conversionRatio"]         = model.get_last_conversion_ratio();
-            diag["couplingCapVoltage"]      = model.get_last_coupling_cap_voltage();
-            diag["inputInductorAverage"]    = model.get_last_input_inductor_average();
-            diag["outputInductorAverage"]   = model.get_last_output_inductor_average();
-            diag["inputInductorRipple"]     = model.get_last_input_inductor_ripple();
-            diag["outputInductorRipple"]    = model.get_last_output_inductor_ripple();
-            diag["switchPeakVoltage"]       = model.get_last_switch_peak_voltage();
-            diag["switchPeakCurrent"]       = model.get_last_switch_peak_current();
-            diag["diodePeakReverseVoltage"] = model.get_last_diode_peak_reverse_voltage();
-            diag["diodePeakCurrent"]        = model.get_last_diode_peak_current();
-            diag["couplingCapRmsCurrent"]   = model.get_last_coupling_cap_rms_current();
-            diag["isCcm"]                   = model.get_last_is_ccm();
-            diag["sizedCc"]                 = model.get_last_sized_cc();
-            diag["sizedCo"]                 = model.get_last_sized_co();
-            diag["outputVoltageRipple"]     = model.get_last_output_voltage_ripple();
-            diag["inputCurrentRipple"]      = model.get_last_input_current_ripple();
+            const auto& names = model.get_per_op_name();
+            const auto& v_duty_cycle = model.get_per_op_duty_cycle();
+            const auto& v_conversion_ratio = model.get_per_op_conversion_ratio();
+            const auto& v_coupling_cap_voltage = model.get_per_op_coupling_cap_voltage();
+            const auto& v_input_inductor_average = model.get_per_op_input_inductor_average();
+            const auto& v_output_inductor_average = model.get_per_op_output_inductor_average();
+            const auto& v_input_inductor_ripple = model.get_per_op_input_inductor_ripple();
+            const auto& v_output_inductor_ripple = model.get_per_op_output_inductor_ripple();
+            const auto& v_switch_peak_voltage = model.get_per_op_switch_peak_voltage();
+            const auto& v_switch_peak_current = model.get_per_op_switch_peak_current();
+            const auto& v_diode_peak_reverse_voltage = model.get_per_op_diode_peak_reverse_voltage();
+            const auto& v_diode_peak_current = model.get_per_op_diode_peak_current();
+            const auto& v_coupling_cap_rms_current = model.get_per_op_coupling_cap_rms_current();
+            const auto& v_is_ccm = model.get_per_op_is_ccm();
+            const auto& v_sized_cc = model.get_per_op_sized_cc();
+            const auto& v_sized_co = model.get_per_op_sized_co();
+            const auto& v_output_voltage_ripple = model.get_per_op_output_voltage_ripple();
+            const auto& v_input_current_ripple = model.get_per_op_input_current_ripple();
+            diag["dutyCycle"] = v_duty_cycle.empty() ? model.get_last_duty_cycle() : v_duty_cycle.front();
+            diag["conversionRatio"] = v_conversion_ratio.empty() ? model.get_last_conversion_ratio() : v_conversion_ratio.front();
+            diag["couplingCapVoltage"] = v_coupling_cap_voltage.empty() ? model.get_last_coupling_cap_voltage() : v_coupling_cap_voltage.front();
+            diag["inputInductorAverage"] = v_input_inductor_average.empty() ? model.get_last_input_inductor_average() : v_input_inductor_average.front();
+            diag["outputInductorAverage"] = v_output_inductor_average.empty() ? model.get_last_output_inductor_average() : v_output_inductor_average.front();
+            diag["inputInductorRipple"] = v_input_inductor_ripple.empty() ? model.get_last_input_inductor_ripple() : v_input_inductor_ripple.front();
+            diag["outputInductorRipple"] = v_output_inductor_ripple.empty() ? model.get_last_output_inductor_ripple() : v_output_inductor_ripple.front();
+            diag["switchPeakVoltage"] = v_switch_peak_voltage.empty() ? model.get_last_switch_peak_voltage() : v_switch_peak_voltage.front();
+            diag["switchPeakCurrent"] = v_switch_peak_current.empty() ? model.get_last_switch_peak_current() : v_switch_peak_current.front();
+            diag["diodePeakReverseVoltage"] = v_diode_peak_reverse_voltage.empty() ? model.get_last_diode_peak_reverse_voltage() : v_diode_peak_reverse_voltage.front();
+            diag["diodePeakCurrent"] = v_diode_peak_current.empty() ? model.get_last_diode_peak_current() : v_diode_peak_current.front();
+            diag["couplingCapRmsCurrent"] = v_coupling_cap_rms_current.empty() ? model.get_last_coupling_cap_rms_current() : v_coupling_cap_rms_current.front();
+            diag["isCcm"] = v_is_ccm.empty() ? model.get_last_is_ccm() : (bool)v_is_ccm.front();
+            diag["sizedCc"] = v_sized_cc.empty() ? model.get_last_sized_cc() : v_sized_cc.front();
+            diag["sizedCo"] = v_sized_co.empty() ? model.get_last_sized_co() : v_sized_co.front();
+            diag["outputVoltageRipple"] = v_output_voltage_ripple.empty() ? model.get_last_output_voltage_ripple() : v_output_voltage_ripple.front();
+            diag["inputCurrentRipple"] = v_input_current_ripple.empty() ? model.get_last_input_current_ripple() : v_input_current_ripple.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_duty_cycle.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"] = v_duty_cycle[i];
+                row["conversionRatio"] = v_conversion_ratio[i];
+                row["couplingCapVoltage"] = v_coupling_cap_voltage[i];
+                row["inputInductorAverage"] = v_input_inductor_average[i];
+                row["outputInductorAverage"] = v_output_inductor_average[i];
+                row["inputInductorRipple"] = v_input_inductor_ripple[i];
+                row["outputInductorRipple"] = v_output_inductor_ripple[i];
+                row["switchPeakVoltage"] = v_switch_peak_voltage[i];
+                row["switchPeakCurrent"] = v_switch_peak_current[i];
+                row["diodePeakReverseVoltage"] = v_diode_peak_reverse_voltage[i];
+                row["diodePeakCurrent"] = v_diode_peak_current[i];
+                row["couplingCapRmsCurrent"] = v_coupling_cap_rms_current[i];
+                row["isCcm"] = (bool)v_is_ccm[i];
+                row["sizedCc"] = v_sized_cc[i];
+                row["sizedCo"] = v_sized_co[i];
+                row["outputVoltageRipple"] = v_output_voltage_ripple[i];
+                row["inputCurrentRipple"] = v_input_current_ripple[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["zetaDiagnostics"] = diag;
         }
 
@@ -10702,23 +12203,66 @@ std::string calculate_advanced_zeta_inputs(std::string zetaInputsString) {
         }
         {
             json diag;
-            diag["dutyCycle"]               = model.get_last_duty_cycle();
-            diag["conversionRatio"]         = model.get_last_conversion_ratio();
-            diag["couplingCapVoltage"]      = model.get_last_coupling_cap_voltage();
-            diag["inputInductorAverage"]    = model.get_last_input_inductor_average();
-            diag["outputInductorAverage"]   = model.get_last_output_inductor_average();
-            diag["inputInductorRipple"]     = model.get_last_input_inductor_ripple();
-            diag["outputInductorRipple"]    = model.get_last_output_inductor_ripple();
-            diag["switchPeakVoltage"]       = model.get_last_switch_peak_voltage();
-            diag["switchPeakCurrent"]       = model.get_last_switch_peak_current();
-            diag["diodePeakReverseVoltage"] = model.get_last_diode_peak_reverse_voltage();
-            diag["diodePeakCurrent"]        = model.get_last_diode_peak_current();
-            diag["couplingCapRmsCurrent"]   = model.get_last_coupling_cap_rms_current();
-            diag["isCcm"]                   = model.get_last_is_ccm();
-            diag["sizedCc"]                 = model.get_last_sized_cc();
-            diag["sizedCo"]                 = model.get_last_sized_co();
-            diag["outputVoltageRipple"]     = model.get_last_output_voltage_ripple();
-            diag["inputCurrentRipple"]      = model.get_last_input_current_ripple();
+            const auto& names = model.get_per_op_name();
+            const auto& v_duty_cycle = model.get_per_op_duty_cycle();
+            const auto& v_conversion_ratio = model.get_per_op_conversion_ratio();
+            const auto& v_coupling_cap_voltage = model.get_per_op_coupling_cap_voltage();
+            const auto& v_input_inductor_average = model.get_per_op_input_inductor_average();
+            const auto& v_output_inductor_average = model.get_per_op_output_inductor_average();
+            const auto& v_input_inductor_ripple = model.get_per_op_input_inductor_ripple();
+            const auto& v_output_inductor_ripple = model.get_per_op_output_inductor_ripple();
+            const auto& v_switch_peak_voltage = model.get_per_op_switch_peak_voltage();
+            const auto& v_switch_peak_current = model.get_per_op_switch_peak_current();
+            const auto& v_diode_peak_reverse_voltage = model.get_per_op_diode_peak_reverse_voltage();
+            const auto& v_diode_peak_current = model.get_per_op_diode_peak_current();
+            const auto& v_coupling_cap_rms_current = model.get_per_op_coupling_cap_rms_current();
+            const auto& v_is_ccm = model.get_per_op_is_ccm();
+            const auto& v_sized_cc = model.get_per_op_sized_cc();
+            const auto& v_sized_co = model.get_per_op_sized_co();
+            const auto& v_output_voltage_ripple = model.get_per_op_output_voltage_ripple();
+            const auto& v_input_current_ripple = model.get_per_op_input_current_ripple();
+            diag["dutyCycle"] = v_duty_cycle.empty() ? model.get_last_duty_cycle() : v_duty_cycle.front();
+            diag["conversionRatio"] = v_conversion_ratio.empty() ? model.get_last_conversion_ratio() : v_conversion_ratio.front();
+            diag["couplingCapVoltage"] = v_coupling_cap_voltage.empty() ? model.get_last_coupling_cap_voltage() : v_coupling_cap_voltage.front();
+            diag["inputInductorAverage"] = v_input_inductor_average.empty() ? model.get_last_input_inductor_average() : v_input_inductor_average.front();
+            diag["outputInductorAverage"] = v_output_inductor_average.empty() ? model.get_last_output_inductor_average() : v_output_inductor_average.front();
+            diag["inputInductorRipple"] = v_input_inductor_ripple.empty() ? model.get_last_input_inductor_ripple() : v_input_inductor_ripple.front();
+            diag["outputInductorRipple"] = v_output_inductor_ripple.empty() ? model.get_last_output_inductor_ripple() : v_output_inductor_ripple.front();
+            diag["switchPeakVoltage"] = v_switch_peak_voltage.empty() ? model.get_last_switch_peak_voltage() : v_switch_peak_voltage.front();
+            diag["switchPeakCurrent"] = v_switch_peak_current.empty() ? model.get_last_switch_peak_current() : v_switch_peak_current.front();
+            diag["diodePeakReverseVoltage"] = v_diode_peak_reverse_voltage.empty() ? model.get_last_diode_peak_reverse_voltage() : v_diode_peak_reverse_voltage.front();
+            diag["diodePeakCurrent"] = v_diode_peak_current.empty() ? model.get_last_diode_peak_current() : v_diode_peak_current.front();
+            diag["couplingCapRmsCurrent"] = v_coupling_cap_rms_current.empty() ? model.get_last_coupling_cap_rms_current() : v_coupling_cap_rms_current.front();
+            diag["isCcm"] = v_is_ccm.empty() ? model.get_last_is_ccm() : (bool)v_is_ccm.front();
+            diag["sizedCc"] = v_sized_cc.empty() ? model.get_last_sized_cc() : v_sized_cc.front();
+            diag["sizedCo"] = v_sized_co.empty() ? model.get_last_sized_co() : v_sized_co.front();
+            diag["outputVoltageRipple"] = v_output_voltage_ripple.empty() ? model.get_last_output_voltage_ripple() : v_output_voltage_ripple.front();
+            diag["inputCurrentRipple"] = v_input_current_ripple.empty() ? model.get_last_input_current_ripple() : v_input_current_ripple.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_duty_cycle.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"] = v_duty_cycle[i];
+                row["conversionRatio"] = v_conversion_ratio[i];
+                row["couplingCapVoltage"] = v_coupling_cap_voltage[i];
+                row["inputInductorAverage"] = v_input_inductor_average[i];
+                row["outputInductorAverage"] = v_output_inductor_average[i];
+                row["inputInductorRipple"] = v_input_inductor_ripple[i];
+                row["outputInductorRipple"] = v_output_inductor_ripple[i];
+                row["switchPeakVoltage"] = v_switch_peak_voltage[i];
+                row["switchPeakCurrent"] = v_switch_peak_current[i];
+                row["diodePeakReverseVoltage"] = v_diode_peak_reverse_voltage[i];
+                row["diodePeakCurrent"] = v_diode_peak_current[i];
+                row["couplingCapRmsCurrent"] = v_coupling_cap_rms_current[i];
+                row["isCcm"] = (bool)v_is_ccm[i];
+                row["sizedCc"] = v_sized_cc[i];
+                row["sizedCo"] = v_sized_co[i];
+                row["outputVoltageRipple"] = v_output_voltage_ripple[i];
+                row["inputCurrentRipple"] = v_input_current_ripple[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["zetaDiagnostics"] = diag;
         }
 
@@ -10770,23 +12314,66 @@ std::string simulate_zeta_ideal_waveforms(std::string zetaInputsString) {
         // Path B field schema:
         {
             json diag;
-            diag["dutyCycle"]               = model.get_last_duty_cycle();
-            diag["conversionRatio"]         = model.get_last_conversion_ratio();
-            diag["couplingCapVoltage"]      = model.get_last_coupling_cap_voltage();
-            diag["inputInductorAverage"]    = model.get_last_input_inductor_average();
-            diag["outputInductorAverage"]   = model.get_last_output_inductor_average();
-            diag["inputInductorRipple"]     = model.get_last_input_inductor_ripple();
-            diag["outputInductorRipple"]    = model.get_last_output_inductor_ripple();
-            diag["switchPeakVoltage"]       = model.get_last_switch_peak_voltage();
-            diag["switchPeakCurrent"]       = model.get_last_switch_peak_current();
-            diag["diodePeakReverseVoltage"] = model.get_last_diode_peak_reverse_voltage();
-            diag["diodePeakCurrent"]        = model.get_last_diode_peak_current();
-            diag["couplingCapRmsCurrent"]   = model.get_last_coupling_cap_rms_current();
-            diag["isCcm"]                   = model.get_last_is_ccm();
-            diag["sizedCc"]                 = model.get_last_sized_cc();
-            diag["sizedCo"]                 = model.get_last_sized_co();
-            diag["outputVoltageRipple"]     = model.get_last_output_voltage_ripple();
-            diag["inputCurrentRipple"]      = model.get_last_input_current_ripple();
+            const auto& names = model.get_per_op_name();
+            const auto& v_duty_cycle = model.get_per_op_duty_cycle();
+            const auto& v_conversion_ratio = model.get_per_op_conversion_ratio();
+            const auto& v_coupling_cap_voltage = model.get_per_op_coupling_cap_voltage();
+            const auto& v_input_inductor_average = model.get_per_op_input_inductor_average();
+            const auto& v_output_inductor_average = model.get_per_op_output_inductor_average();
+            const auto& v_input_inductor_ripple = model.get_per_op_input_inductor_ripple();
+            const auto& v_output_inductor_ripple = model.get_per_op_output_inductor_ripple();
+            const auto& v_switch_peak_voltage = model.get_per_op_switch_peak_voltage();
+            const auto& v_switch_peak_current = model.get_per_op_switch_peak_current();
+            const auto& v_diode_peak_reverse_voltage = model.get_per_op_diode_peak_reverse_voltage();
+            const auto& v_diode_peak_current = model.get_per_op_diode_peak_current();
+            const auto& v_coupling_cap_rms_current = model.get_per_op_coupling_cap_rms_current();
+            const auto& v_is_ccm = model.get_per_op_is_ccm();
+            const auto& v_sized_cc = model.get_per_op_sized_cc();
+            const auto& v_sized_co = model.get_per_op_sized_co();
+            const auto& v_output_voltage_ripple = model.get_per_op_output_voltage_ripple();
+            const auto& v_input_current_ripple = model.get_per_op_input_current_ripple();
+            diag["dutyCycle"] = v_duty_cycle.empty() ? model.get_last_duty_cycle() : v_duty_cycle.front();
+            diag["conversionRatio"] = v_conversion_ratio.empty() ? model.get_last_conversion_ratio() : v_conversion_ratio.front();
+            diag["couplingCapVoltage"] = v_coupling_cap_voltage.empty() ? model.get_last_coupling_cap_voltage() : v_coupling_cap_voltage.front();
+            diag["inputInductorAverage"] = v_input_inductor_average.empty() ? model.get_last_input_inductor_average() : v_input_inductor_average.front();
+            diag["outputInductorAverage"] = v_output_inductor_average.empty() ? model.get_last_output_inductor_average() : v_output_inductor_average.front();
+            diag["inputInductorRipple"] = v_input_inductor_ripple.empty() ? model.get_last_input_inductor_ripple() : v_input_inductor_ripple.front();
+            diag["outputInductorRipple"] = v_output_inductor_ripple.empty() ? model.get_last_output_inductor_ripple() : v_output_inductor_ripple.front();
+            diag["switchPeakVoltage"] = v_switch_peak_voltage.empty() ? model.get_last_switch_peak_voltage() : v_switch_peak_voltage.front();
+            diag["switchPeakCurrent"] = v_switch_peak_current.empty() ? model.get_last_switch_peak_current() : v_switch_peak_current.front();
+            diag["diodePeakReverseVoltage"] = v_diode_peak_reverse_voltage.empty() ? model.get_last_diode_peak_reverse_voltage() : v_diode_peak_reverse_voltage.front();
+            diag["diodePeakCurrent"] = v_diode_peak_current.empty() ? model.get_last_diode_peak_current() : v_diode_peak_current.front();
+            diag["couplingCapRmsCurrent"] = v_coupling_cap_rms_current.empty() ? model.get_last_coupling_cap_rms_current() : v_coupling_cap_rms_current.front();
+            diag["isCcm"] = v_is_ccm.empty() ? model.get_last_is_ccm() : (bool)v_is_ccm.front();
+            diag["sizedCc"] = v_sized_cc.empty() ? model.get_last_sized_cc() : v_sized_cc.front();
+            diag["sizedCo"] = v_sized_co.empty() ? model.get_last_sized_co() : v_sized_co.front();
+            diag["outputVoltageRipple"] = v_output_voltage_ripple.empty() ? model.get_last_output_voltage_ripple() : v_output_voltage_ripple.front();
+            diag["inputCurrentRipple"] = v_input_current_ripple.empty() ? model.get_last_input_current_ripple() : v_input_current_ripple.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < v_duty_cycle.size(); ++i) {
+                json row;
+                row["operatingPointName"] = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"] = v_duty_cycle[i];
+                row["conversionRatio"] = v_conversion_ratio[i];
+                row["couplingCapVoltage"] = v_coupling_cap_voltage[i];
+                row["inputInductorAverage"] = v_input_inductor_average[i];
+                row["outputInductorAverage"] = v_output_inductor_average[i];
+                row["inputInductorRipple"] = v_input_inductor_ripple[i];
+                row["outputInductorRipple"] = v_output_inductor_ripple[i];
+                row["switchPeakVoltage"] = v_switch_peak_voltage[i];
+                row["switchPeakCurrent"] = v_switch_peak_current[i];
+                row["diodePeakReverseVoltage"] = v_diode_peak_reverse_voltage[i];
+                row["diodePeakCurrent"] = v_diode_peak_current[i];
+                row["couplingCapRmsCurrent"] = v_coupling_cap_rms_current[i];
+                row["isCcm"] = (bool)v_is_ccm[i];
+                row["sizedCc"] = v_sized_cc[i];
+                row["sizedCo"] = v_sized_co[i];
+                row["outputVoltageRipple"] = v_output_voltage_ripple[i];
+                row["inputCurrentRipple"] = v_input_current_ripple[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["zetaDiagnostics"] = diag;
         }
         return result.dump(4);
@@ -10860,11 +12447,31 @@ std::string calculate_src_inputs(std::string srcInputsString) {
         diag["computedResonantInductance"]  = model->get_computed_resonant_inductance();
         diag["computedResonantCapacitance"] = model->get_computed_resonant_capacitance();
         diag["computedResonantFrequency"]   = model->get_computed_resonant_frequency();
-        diag["lastGainM"]                   = model->get_last_gain();
-        diag["lastNormalizedFsw"]           = model->get_last_normalized_fsw();
-        diag["lastIrPeak"]                  = model->get_last_ir_peak();
-        diag["lastVcrPeak"]                 = model->get_last_vcr_peak();
-        diag["lastIsAboveResonance"]        = model->get_last_is_above_resonance();
+        {
+            const auto& names = model->get_per_op_name();
+            const auto& gm    = model->get_per_op_gain_m();
+            const auto& nfsw  = model->get_per_op_normalized_fsw();
+            const auto& ir    = model->get_per_op_ir_peak();
+            const auto& vc    = model->get_per_op_vcr_peak();
+            const auto& abv   = model->get_per_op_is_above_resonance();
+            diag["lastGainM"]                   = gm.empty()   ? model->get_last_gain()                : gm.front();
+            diag["lastNormalizedFsw"]           = nfsw.empty() ? model->get_last_normalized_fsw()      : nfsw.front();
+            diag["lastIrPeak"]                  = ir.empty()   ? model->get_last_ir_peak()             : ir.front();
+            diag["lastVcrPeak"]                 = vc.empty()   ? model->get_last_vcr_peak()            : vc.front();
+            diag["lastIsAboveResonance"]        = abv.empty()  ? model->get_last_is_above_resonance()  : (abv.front() != 0);
+            json perOp = json::array();
+            for (size_t i = 0; i < gm.size(); ++i) {
+                json row;
+                row["operatingPointName"]   = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["gainM"]                = gm[i];
+                row["normalizedFsw"]        = nfsw[i];
+                row["irPeak"]               = ir[i];
+                row["vcrPeak"]              = vc[i];
+                row["isAboveResonance"]     = (abv[i] != 0);
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
+        }
         result["srcDiagnostics"] = diag;
 
         return result.dump(4);
@@ -10952,11 +12559,31 @@ std::string simulate_src_ideal_waveforms(std::string srcInputsString) {
         diag["computedResonantInductance"]  = model->get_computed_resonant_inductance();
         diag["computedResonantCapacitance"] = model->get_computed_resonant_capacitance();
         diag["computedResonantFrequency"]   = model->get_computed_resonant_frequency();
-        diag["lastGainM"]                   = model->get_last_gain();
-        diag["lastNormalizedFsw"]           = model->get_last_normalized_fsw();
-        diag["lastIrPeak"]                  = model->get_last_ir_peak();
-        diag["lastVcrPeak"]                 = model->get_last_vcr_peak();
-        diag["lastIsAboveResonance"]        = model->get_last_is_above_resonance();
+        {
+            const auto& names = model->get_per_op_name();
+            const auto& gm    = model->get_per_op_gain_m();
+            const auto& nfsw  = model->get_per_op_normalized_fsw();
+            const auto& ir    = model->get_per_op_ir_peak();
+            const auto& vc    = model->get_per_op_vcr_peak();
+            const auto& abv   = model->get_per_op_is_above_resonance();
+            diag["lastGainM"]                   = gm.empty()   ? model->get_last_gain()                : gm.front();
+            diag["lastNormalizedFsw"]           = nfsw.empty() ? model->get_last_normalized_fsw()      : nfsw.front();
+            diag["lastIrPeak"]                  = ir.empty()   ? model->get_last_ir_peak()             : ir.front();
+            diag["lastVcrPeak"]                 = vc.empty()   ? model->get_last_vcr_peak()            : vc.front();
+            diag["lastIsAboveResonance"]        = abv.empty()  ? model->get_last_is_above_resonance()  : (abv.front() != 0);
+            json perOp = json::array();
+            for (size_t i = 0; i < gm.size(); ++i) {
+                json row;
+                row["operatingPointName"]   = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["gainM"]                = gm[i];
+                row["normalizedFsw"]        = nfsw[i];
+                row["irPeak"]               = ir[i];
+                row["vcrPeak"]              = vc[i];
+                row["isAboveResonance"]     = (abv[i] != 0);
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
+        }
         result["srcDiagnostics"] = diag;
 
         return result.dump(4);
