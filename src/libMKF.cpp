@@ -8412,10 +8412,21 @@ std::string simulate_psfb_ideal_waveforms(std::string psfbInputsString) {
         psfbInputs.set_num_periods_to_extract(static_cast<int>(numberOfPeriods));
         psfbInputs.set_num_steady_state_periods(static_cast<int>(numberOfSteadyStatePeriods));
 
+        auto tA = std::chrono::steady_clock::now();
         auto topologyWaveforms = psfbInputs.simulate_and_extract_topology_waveforms(
             turnsRatios, magnetizingInductance, numberOfPeriods);
+        auto tB = std::chrono::steady_clock::now();
+        std::cout << "[WASM-TIMING][PSFB] simulate_and_extract_topology_waveforms() took "
+                  << std::chrono::duration_cast<std::chrono::milliseconds>(tB - tA).count()
+                  << " ms" << std::endl;
+
+        auto tC = std::chrono::steady_clock::now();
         auto operatingPoints = psfbInputs.simulate_and_extract_operating_points(
             turnsRatios, magnetizingInductance);
+        auto tD = std::chrono::steady_clock::now();
+        std::cout << "[WASM-TIMING][PSFB] simulate_and_extract_operating_points() took "
+                  << std::chrono::duration_cast<std::chrono::milliseconds>(tD - tC).count()
+                  << " ms" << std::endl;
 
         json result;
         json inputsJson;
@@ -8548,10 +8559,21 @@ std::string simulate_pshb_ideal_waveforms(std::string pshbInputsString) {
         pshbInputs.set_num_periods_to_extract(static_cast<int>(numberOfPeriods));
         pshbInputs.set_num_steady_state_periods(static_cast<int>(numberOfSteadyStatePeriods));
 
+        auto tA = std::chrono::steady_clock::now();
         auto topologyWaveforms = pshbInputs.simulate_and_extract_topology_waveforms(
             turnsRatios, magnetizingInductance, numberOfPeriods);
+        auto tB = std::chrono::steady_clock::now();
+        std::cout << "[WASM-TIMING][PSHB] simulate_and_extract_topology_waveforms() took "
+                  << std::chrono::duration_cast<std::chrono::milliseconds>(tB - tA).count()
+                  << " ms" << std::endl;
+
+        auto tC = std::chrono::steady_clock::now();
         auto operatingPoints = pshbInputs.simulate_and_extract_operating_points(
             turnsRatios, magnetizingInductance);
+        auto tD = std::chrono::steady_clock::now();
+        std::cout << "[WASM-TIMING][PSHB] simulate_and_extract_operating_points() took "
+                  << std::chrono::duration_cast<std::chrono::milliseconds>(tD - tC).count()
+                  << " ms" << std::endl;
 
         json result;
         json inputsJson;
