@@ -3611,6 +3611,18 @@ std::string calculate_flyback_inputs(std::string flybackInputsString){
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
+        {
+            json diag;
+            diag["dutyCycle"]             = flybackInputs.get_last_duty_cycle();
+            diag["switchingFrequency"]    = flybackInputs.get_last_switching_frequency();
+            diag["primaryAverageCurrent"] = flybackInputs.get_last_primary_average_current();
+            diag["primaryPeakToPeak"]     = flybackInputs.get_last_primary_peak_to_peak();
+            diag["primaryPeakCurrent"]    = flybackInputs.get_last_primary_peak_current();
+            diag["secondaryPeakCurrent"]  = flybackInputs.get_last_secondary_peak_current();
+            diag["isCcm"]                 = flybackInputs.get_last_is_ccm();
+            result["flybackDiagnostics"] = diag;
+        }
+
         
         return result.dump(4);
     }
@@ -3641,6 +3653,18 @@ std::string calculate_advanced_flyback_inputs(std::string flybackInputsString){
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
+        {
+            json diag;
+            diag["dutyCycle"]             = flybackInputs.get_last_duty_cycle();
+            diag["switchingFrequency"]    = flybackInputs.get_last_switching_frequency();
+            diag["primaryAverageCurrent"] = flybackInputs.get_last_primary_average_current();
+            diag["primaryPeakToPeak"]     = flybackInputs.get_last_primary_peak_to_peak();
+            diag["primaryPeakCurrent"]    = flybackInputs.get_last_primary_peak_current();
+            diag["secondaryPeakCurrent"]  = flybackInputs.get_last_secondary_peak_current();
+            diag["isCcm"]                 = flybackInputs.get_last_is_ccm();
+            result["flybackDiagnostics"] = diag;
+        }
+
         
         return result.dump(4);
     }
@@ -4173,6 +4197,17 @@ std::string calculate_isolated_buck_inputs(std::string isolatedBuckInputsString)
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
+        {
+            json diag;
+            diag["dutyCycle"]                = isolatedBuckInputs.get_last_duty_cycle();
+            diag["magnetizingCurrentRipple"] = isolatedBuckInputs.get_last_magnetizing_current_ripple();
+            diag["primaryAverageCurrent"]    = isolatedBuckInputs.get_last_primary_average_current();
+            diag["primaryPeakCurrent"]       = isolatedBuckInputs.get_last_primary_peak_current();
+            diag["secondaryPeakCurrent"]     = isolatedBuckInputs.get_last_secondary_peak_current();
+            diag["isCcm"]                    = isolatedBuckInputs.get_last_is_ccm();
+            result["isolatedBuckDiagnostics"] = diag;
+        }
+
         
         return result.dump(4);
     }
@@ -4201,6 +4236,17 @@ std::string calculate_advanced_isolated_buck_inputs(std::string isolatedBuckInpu
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
+        {
+            json diag;
+            diag["dutyCycle"]                = isolatedBuckInputs.get_last_duty_cycle();
+            diag["magnetizingCurrentRipple"] = isolatedBuckInputs.get_last_magnetizing_current_ripple();
+            diag["primaryAverageCurrent"]    = isolatedBuckInputs.get_last_primary_average_current();
+            diag["primaryPeakCurrent"]       = isolatedBuckInputs.get_last_primary_peak_current();
+            diag["secondaryPeakCurrent"]     = isolatedBuckInputs.get_last_secondary_peak_current();
+            diag["isCcm"]                    = isolatedBuckInputs.get_last_is_ccm();
+            result["isolatedBuckDiagnostics"] = diag;
+        }
+
         
         return result.dump(4);
     }
@@ -4331,6 +4377,17 @@ std::string calculate_isolated_buck_boost_inputs(std::string isolatedBuckBoostIn
                 opIdx++;
             }
         }
+        {
+            json diag;
+            diag["dutyCycle"]                = isolatedBuckBoostInputs.get_last_duty_cycle();
+            diag["magnetizingCurrentRipple"] = isolatedBuckBoostInputs.get_last_magnetizing_current_ripple();
+            diag["primaryAverageCurrent"]    = isolatedBuckBoostInputs.get_last_primary_average_current();
+            diag["primaryPeakCurrent"]       = isolatedBuckBoostInputs.get_last_primary_peak_current();
+            diag["secondaryPeakCurrent"]     = isolatedBuckBoostInputs.get_last_secondary_peak_current();
+            diag["isCcm"]                    = isolatedBuckBoostInputs.get_last_is_ccm();
+            result["isolatedBuckBoostDiagnostics"] = diag;
+        }
+
         
         return result.dump(4);
     }
@@ -4431,6 +4488,17 @@ std::string calculate_advanced_isolated_buck_boost_inputs(std::string isolatedBu
                 opIdx++;
             }
         }
+        {
+            json diag;
+            diag["dutyCycle"]                = isolatedBuckBoostInputs.get_last_duty_cycle();
+            diag["magnetizingCurrentRipple"] = isolatedBuckBoostInputs.get_last_magnetizing_current_ripple();
+            diag["primaryAverageCurrent"]    = isolatedBuckBoostInputs.get_last_primary_average_current();
+            diag["primaryPeakCurrent"]       = isolatedBuckBoostInputs.get_last_primary_peak_current();
+            diag["secondaryPeakCurrent"]     = isolatedBuckBoostInputs.get_last_secondary_peak_current();
+            diag["isCcm"]                    = isolatedBuckBoostInputs.get_last_is_ccm();
+            result["isolatedBuckBoostDiagnostics"] = diag;
+        }
+
         
         return result.dump(4);
     }
@@ -4444,24 +4512,33 @@ std::string calculate_buck_inputs(std::string buckInputsString){
         json buckInputsJson = json::parse(buckInputsString);
 
         OpenMagnetics::Buck buckInputs(buckInputsJson);
-        
+
         // Read number of periods from input (default to 1 for analytical)
         size_t numberOfPeriods = 1;
         if (buckInputsJson.contains("numberOfPeriods")) {
             numberOfPeriods = buckInputsJson["numberOfPeriods"].get<size_t>();
         }
         buckInputs.set_num_periods_to_extract(numberOfPeriods);
-        
+
         auto inputs = buckInputs.process();
 
         json result;
         to_json(result, inputs);
-        
+
         // Repeat waveforms for the specified number of periods (analytical generates 1 period)
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
-        
+        {
+            json diag;
+            diag["dutyCycle"]              = buckInputs.get_last_duty_cycle();
+            diag["inductorAverageCurrent"] = buckInputs.get_last_inductor_average_current();
+            diag["inductorPeakToPeak"]     = buckInputs.get_last_inductor_peak_to_peak();
+            diag["peakInductorCurrent"]    = buckInputs.get_last_peak_inductor_current();
+            diag["conductionRatio"]        = buckInputs.get_last_conduction_ratio();
+            result["buckDiagnostics"] = diag;
+        }
+
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -4474,24 +4551,33 @@ std::string calculate_advanced_buck_inputs(std::string buckInputsString){
         json buckInputsJson = json::parse(buckInputsString);
 
         OpenMagnetics::AdvancedBuck buckInputs(buckInputsJson);
-        
+
         // Read number of periods from input (default to 1 for analytical)
         size_t numberOfPeriods = 1;
         if (buckInputsJson.contains("numberOfPeriods")) {
             numberOfPeriods = buckInputsJson["numberOfPeriods"].get<size_t>();
         }
         buckInputs.set_num_periods_to_extract(numberOfPeriods);
-        
+
         auto inputs = buckInputs.process();
 
         json result;
         to_json(result, inputs);
-        
+
         // Repeat waveforms for the specified number of periods (analytical generates 1 period)
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
-        
+        {
+            json diag;
+            diag["dutyCycle"]              = buckInputs.get_last_duty_cycle();
+            diag["inductorAverageCurrent"] = buckInputs.get_last_inductor_average_current();
+            diag["inductorPeakToPeak"]     = buckInputs.get_last_inductor_peak_to_peak();
+            diag["peakInductorCurrent"]    = buckInputs.get_last_peak_inductor_current();
+            diag["conductionRatio"]        = buckInputs.get_last_conduction_ratio();
+            result["buckDiagnostics"] = diag;
+        }
+
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -4521,6 +4607,16 @@ std::string calculate_boost_inputs(std::string boostInputsString){
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
+        {
+            json diag;
+            diag["dutyCycle"]              = boostInputs.get_last_duty_cycle();
+            diag["inductorAverageCurrent"] = boostInputs.get_last_inductor_average_current();
+            diag["inductorPeakToPeak"]     = boostInputs.get_last_inductor_peak_to_peak();
+            diag["peakInductorCurrent"]    = boostInputs.get_last_peak_inductor_current();
+            diag["conductionRatio"]        = boostInputs.get_last_conduction_ratio();
+            result["boostDiagnostics"] = diag;
+        }
+
         
         return result.dump(4);
     }
@@ -4551,6 +4647,16 @@ std::string calculate_advanced_boost_inputs(std::string boostInputsString){
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
+        {
+            json diag;
+            diag["dutyCycle"]              = boostInputs.get_last_duty_cycle();
+            diag["inductorAverageCurrent"] = boostInputs.get_last_inductor_average_current();
+            diag["inductorPeakToPeak"]     = boostInputs.get_last_inductor_peak_to_peak();
+            diag["peakInductorCurrent"]    = boostInputs.get_last_peak_inductor_current();
+            diag["conductionRatio"]        = boostInputs.get_last_conduction_ratio();
+            result["boostDiagnostics"] = diag;
+        }
+
         
         return result.dump(4);
     }
@@ -4581,6 +4687,26 @@ std::string calculate_sepic_inputs(std::string sepicInputsString){
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
+        {
+            json diag;
+            diag["dutyCycle"]               = sepicInputs.get_last_duty_cycle();
+            diag["conversionRatio"]         = sepicInputs.get_last_conversion_ratio();
+            diag["couplingCapVoltage"]      = sepicInputs.get_last_coupling_cap_voltage();
+            diag["inputInductorAverage"]    = sepicInputs.get_last_input_inductor_average();
+            diag["outputInductorAverage"]   = sepicInputs.get_last_output_inductor_average();
+            diag["inputInductorRipple"]     = sepicInputs.get_last_input_inductor_ripple();
+            diag["outputInductorRipple"]    = sepicInputs.get_last_output_inductor_ripple();
+            diag["switchPeakVoltage"]       = sepicInputs.get_last_switch_peak_voltage();
+            diag["switchPeakCurrent"]       = sepicInputs.get_last_switch_peak_current();
+            diag["diodePeakReverseVoltage"] = sepicInputs.get_last_diode_peak_reverse_voltage();
+            diag["diodePeakCurrent"]        = sepicInputs.get_last_diode_peak_current();
+            diag["couplingCapRmsCurrent"]   = sepicInputs.get_last_coupling_cap_rms_current();
+            diag["isCcm"]                   = sepicInputs.get_last_is_ccm();
+            diag["sizedCs"]                 = sepicInputs.get_last_sized_cs();
+            diag["sizedCo"]                 = sepicInputs.get_last_sized_co();
+            result["sepicDiagnostics"] = diag;
+        }
+
 
         return result.dump(4);
     }
@@ -4611,6 +4737,26 @@ std::string calculate_advanced_sepic_inputs(std::string sepicInputsString){
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
+        {
+            json diag;
+            diag["dutyCycle"]               = sepicInputs.get_last_duty_cycle();
+            diag["conversionRatio"]         = sepicInputs.get_last_conversion_ratio();
+            diag["couplingCapVoltage"]      = sepicInputs.get_last_coupling_cap_voltage();
+            diag["inputInductorAverage"]    = sepicInputs.get_last_input_inductor_average();
+            diag["outputInductorAverage"]   = sepicInputs.get_last_output_inductor_average();
+            diag["inputInductorRipple"]     = sepicInputs.get_last_input_inductor_ripple();
+            diag["outputInductorRipple"]    = sepicInputs.get_last_output_inductor_ripple();
+            diag["switchPeakVoltage"]       = sepicInputs.get_last_switch_peak_voltage();
+            diag["switchPeakCurrent"]       = sepicInputs.get_last_switch_peak_current();
+            diag["diodePeakReverseVoltage"] = sepicInputs.get_last_diode_peak_reverse_voltage();
+            diag["diodePeakCurrent"]        = sepicInputs.get_last_diode_peak_current();
+            diag["couplingCapRmsCurrent"]   = sepicInputs.get_last_coupling_cap_rms_current();
+            diag["isCcm"]                   = sepicInputs.get_last_is_ccm();
+            diag["sizedCs"]                 = sepicInputs.get_last_sized_cs();
+            diag["sizedCo"]                 = sepicInputs.get_last_sized_co();
+            result["sepicDiagnostics"] = diag;
+        }
+
 
         return result.dump(4);
     }
@@ -5686,6 +5832,17 @@ std::string calculate_push_pull_inputs(std::string pushPullInputsString){
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
+        {
+            json diag;
+            diag["dutyCycle"]              = pushPullInputs.get_last_duty_cycle();
+            diag["switchingFrequency"]     = pushPullInputs.get_last_switching_frequency();
+            diag["primaryAverageCurrent"]  = pushPullInputs.get_last_primary_average_current();
+            diag["primaryPeakCurrent"]     = pushPullInputs.get_last_primary_peak_current();
+            diag["magnetizingPeakCurrent"] = pushPullInputs.get_last_magnetizing_peak_current();
+            diag["isCcm"]                  = pushPullInputs.get_last_is_ccm();
+            result["pushPullDiagnostics"] = diag;
+        }
+
         
         return result.dump(4);
     }
@@ -5743,6 +5900,17 @@ std::string calculate_advanced_push_pull_inputs(std::string pushPullInputsString
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
+        {
+            json diag;
+            diag["dutyCycle"]              = pushPullInputs.get_last_duty_cycle();
+            diag["switchingFrequency"]     = pushPullInputs.get_last_switching_frequency();
+            diag["primaryAverageCurrent"]  = pushPullInputs.get_last_primary_average_current();
+            diag["primaryPeakCurrent"]     = pushPullInputs.get_last_primary_peak_current();
+            diag["magnetizingPeakCurrent"] = pushPullInputs.get_last_magnetizing_peak_current();
+            diag["isCcm"]                  = pushPullInputs.get_last_is_ccm();
+            result["pushPullDiagnostics"] = diag;
+        }
+
         
         return result.dump(4);
     }
@@ -5841,6 +6009,20 @@ std::string calculate_single_switch_forward_inputs(std::string singleSwitchForwa
         if (result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
+        {
+            json diag;
+            diag["maximumDutyCycle"]       = singleSwitchForwardInputs.get_last_maximum_duty_cycle();
+            diag["magnetizingInductance"]  = singleSwitchForwardInputs.get_last_computed_magnetizing_inductance();
+            diag["secondaryTurnsRatio"]    = singleSwitchForwardInputs.get_last_computed_secondary_turns_ratio();
+            diag["primaryPeakCurrent"]     = singleSwitchForwardInputs.get_last_primary_peak_current();
+            diag["secondaryPeakCurrent"]   = singleSwitchForwardInputs.get_last_secondary_peak_current();
+            diag["magnetizingPeakCurrent"] = singleSwitchForwardInputs.get_last_magnetizing_peak_current();
+            diag["isCcm"]                  = singleSwitchForwardInputs.get_last_is_ccm();
+            diag["primaryTurnsRatio"]      = singleSwitchForwardInputs.get_last_computed_primary_turns_ratio();
+            diag["resetVoltage"]           = singleSwitchForwardInputs.get_last_reset_voltage();
+            result["singleSwitchForwardDiagnostics"] = diag;
+        }
+
 
         return result.dump(4);
     }
@@ -5935,6 +6117,20 @@ std::string calculate_advanced_single_switch_forward_inputs(std::string singleSw
         if (result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
+        {
+            json diag;
+            diag["maximumDutyCycle"]       = singleSwitchForwardInputs.get_last_maximum_duty_cycle();
+            diag["magnetizingInductance"]  = singleSwitchForwardInputs.get_last_computed_magnetizing_inductance();
+            diag["secondaryTurnsRatio"]    = singleSwitchForwardInputs.get_last_computed_secondary_turns_ratio();
+            diag["primaryPeakCurrent"]     = singleSwitchForwardInputs.get_last_primary_peak_current();
+            diag["secondaryPeakCurrent"]   = singleSwitchForwardInputs.get_last_secondary_peak_current();
+            diag["magnetizingPeakCurrent"] = singleSwitchForwardInputs.get_last_magnetizing_peak_current();
+            diag["isCcm"]                  = singleSwitchForwardInputs.get_last_is_ccm();
+            diag["primaryTurnsRatio"]      = singleSwitchForwardInputs.get_last_computed_primary_turns_ratio();
+            diag["resetVoltage"]           = singleSwitchForwardInputs.get_last_reset_voltage();
+            result["singleSwitchForwardDiagnostics"] = diag;
+        }
+
 
         return result.dump(4);
     }
@@ -6033,6 +6229,19 @@ std::string calculate_active_clamp_forward_inputs(std::string activeClampForward
         if (result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
+        {
+            json diag;
+            diag["maximumDutyCycle"]       = activeClampForwardInputs.get_last_maximum_duty_cycle();
+            diag["magnetizingInductance"]  = activeClampForwardInputs.get_last_computed_magnetizing_inductance();
+            diag["secondaryTurnsRatio"]    = activeClampForwardInputs.get_last_computed_secondary_turns_ratio();
+            diag["primaryPeakCurrent"]     = activeClampForwardInputs.get_last_primary_peak_current();
+            diag["secondaryPeakCurrent"]   = activeClampForwardInputs.get_last_secondary_peak_current();
+            diag["magnetizingPeakCurrent"] = activeClampForwardInputs.get_last_magnetizing_peak_current();
+            diag["isCcm"]                  = activeClampForwardInputs.get_last_is_ccm();
+            diag["clampCapVoltage"]        = activeClampForwardInputs.get_last_clamp_cap_voltage();
+            result["activeClampForwardDiagnostics"] = diag;
+        }
+
 
         return result.dump(4);
     }
@@ -6127,6 +6336,19 @@ std::string calculate_advanced_active_clamp_forward_inputs(std::string activeCla
         if (result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
+        {
+            json diag;
+            diag["maximumDutyCycle"]       = activeClampForwardInputs.get_last_maximum_duty_cycle();
+            diag["magnetizingInductance"]  = activeClampForwardInputs.get_last_computed_magnetizing_inductance();
+            diag["secondaryTurnsRatio"]    = activeClampForwardInputs.get_last_computed_secondary_turns_ratio();
+            diag["primaryPeakCurrent"]     = activeClampForwardInputs.get_last_primary_peak_current();
+            diag["secondaryPeakCurrent"]   = activeClampForwardInputs.get_last_secondary_peak_current();
+            diag["magnetizingPeakCurrent"] = activeClampForwardInputs.get_last_magnetizing_peak_current();
+            diag["isCcm"]                  = activeClampForwardInputs.get_last_is_ccm();
+            diag["clampCapVoltage"]        = activeClampForwardInputs.get_last_clamp_cap_voltage();
+            result["activeClampForwardDiagnostics"] = diag;
+        }
+
 
         return result.dump(4);
     }
@@ -6225,6 +6447,18 @@ std::string calculate_two_switch_forward_inputs(std::string twoSwitchForwardInpu
         if (result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
+        {
+            json diag;
+            diag["maximumDutyCycle"]       = twoSwitchForwardInputs.get_last_maximum_duty_cycle();
+            diag["magnetizingInductance"]  = twoSwitchForwardInputs.get_last_computed_magnetizing_inductance();
+            diag["secondaryTurnsRatio"]    = twoSwitchForwardInputs.get_last_computed_secondary_turns_ratio();
+            diag["primaryPeakCurrent"]     = twoSwitchForwardInputs.get_last_primary_peak_current();
+            diag["secondaryPeakCurrent"]   = twoSwitchForwardInputs.get_last_secondary_peak_current();
+            diag["magnetizingPeakCurrent"] = twoSwitchForwardInputs.get_last_magnetizing_peak_current();
+            diag["isCcm"]                  = twoSwitchForwardInputs.get_last_is_ccm();
+            result["twoSwitchForwardDiagnostics"] = diag;
+        }
+
 
         return result.dump(4);
     }
@@ -6319,6 +6553,18 @@ std::string calculate_advanced_two_switch_forward_inputs(std::string twoSwitchFo
         if (result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
+        {
+            json diag;
+            diag["maximumDutyCycle"]       = twoSwitchForwardInputs.get_last_maximum_duty_cycle();
+            diag["magnetizingInductance"]  = twoSwitchForwardInputs.get_last_computed_magnetizing_inductance();
+            diag["secondaryTurnsRatio"]    = twoSwitchForwardInputs.get_last_computed_secondary_turns_ratio();
+            diag["primaryPeakCurrent"]     = twoSwitchForwardInputs.get_last_primary_peak_current();
+            diag["secondaryPeakCurrent"]   = twoSwitchForwardInputs.get_last_secondary_peak_current();
+            diag["magnetizingPeakCurrent"] = twoSwitchForwardInputs.get_last_magnetizing_peak_current();
+            diag["isCcm"]                  = twoSwitchForwardInputs.get_last_is_ccm();
+            result["twoSwitchForwardDiagnostics"] = diag;
+        }
+
 
         return result.dump(4);
     }
@@ -6393,7 +6639,19 @@ EMSCRIPTEN_KEEPALIVE std::string calculate_pfc_inputs(std::string pfcInputsStrin
         } else {
             result["masInputs"]["operatingPoints"] = json::array();
         }
-        
+
+        {
+            json diag;
+            diag["computedInductance"]      = pfcInputs.get_computed_inductance();
+            diag["actualMode"]              = pfcInputs.get_computed_actual_mode();
+            diag["dutyCyclePeak"]           = pfcInputs.get_last_duty_cycle_peak();
+            diag["peakInductorCurrent"]     = pfcInputs.get_last_peak_inductor_current();
+            diag["inductorRipple"]          = pfcInputs.get_last_inductor_ripple();
+            diag["lineRmsCurrent"]          = pfcInputs.get_last_line_rms_current();
+            diag["inputPower"]              = pfcInputs.get_last_input_power();
+            result["pfcDiagnostics"] = diag;
+        }
+
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -6553,6 +6811,12 @@ std::string calculate_cmc_inputs(std::string cmcInputsString){
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
+        {
+            json diag;
+            diag["computedInductance"] = cmcInputs.get_computed_inductance();
+            result["cmcDiagnostics"] = diag;
+        }
+
 
         return result.dump(4);
     }
@@ -6581,6 +6845,12 @@ std::string calculate_advanced_cmc_inputs(std::string cmcInputsString){
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
+        {
+            json diag;
+            diag["computedInductance"] = cmcInputs.get_computed_inductance();
+            result["cmcDiagnostics"] = diag;
+        }
+
 
         return result.dump(4);
     }
@@ -6762,6 +7032,16 @@ std::string calculate_dmc_inputs(std::string dmcInputsString){
         }
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+
+        {
+            json diag;
+            diag["computedInductance"]      = dmcInputs.get_computed_inductance();
+            diag["computedMinFrequency"]    = dmcInputs.get_computed_min_frequency();
+            diag["computedMaxFrequency"]    = dmcInputs.get_computed_max_frequency();
+            diag["impedanceAtMinFrequency"] = dmcInputs.get_computed_impedance_at_min_freq();
+            diag["numberWindings"]          = dmcInputs.get_computed_number_windings();
+            result["dmcDiagnostics"] = diag;
         }
 
         return result.dump(4);
@@ -9426,6 +9706,23 @@ std::string calculate_clllc_inputs(std::string clllcInputsString) {
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
+        {
+            json diag;
+            diag["computedPrimarySeriesInductance"]      = model.get_computed_primary_series_inductance();
+            diag["computedSecondarySeriesInductance"]    = model.get_computed_secondary_series_inductance();
+            diag["computedPrimaryResonantCapacitance"]   = model.get_computed_primary_resonant_capacitance();
+            diag["computedSecondaryResonantCapacitance"] = model.get_computed_secondary_resonant_capacitance();
+            diag["computedMagnetizingInductance"]        = model.get_computed_magnetizing_inductance();
+            diag["computedTurnsRatio"]                   = model.get_computed_turns_ratio();
+            diag["computedDeadTime"]                     = model.get_computed_dead_time();
+            diag["computedInductanceRatioK"]             = model.get_computed_inductance_ratio_k();
+            diag["computedQualityFactor"]                = model.get_computed_quality_factor();
+            diag["computedPrimaryResonantFrequency"]     = model.get_computed_primary_resonant_frequency();
+            diag["lastPrimaryPeakCurrent"]               = model.get_last_primary_peak_current();
+            diag["lastZvsMarginPrimaryLagging"]          = model.get_last_zvs_margin_primary_lagging();
+            result["clllcDiagnostics"] = diag;
+        }
+
         return result.dump(4);
     }
     catch (const std::exception& exc) {
@@ -9449,6 +9746,23 @@ std::string calculate_advanced_clllc_inputs(std::string clllcInputsString) {
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
+        {
+            json diag;
+            diag["computedPrimarySeriesInductance"]      = model.get_computed_primary_series_inductance();
+            diag["computedSecondarySeriesInductance"]    = model.get_computed_secondary_series_inductance();
+            diag["computedPrimaryResonantCapacitance"]   = model.get_computed_primary_resonant_capacitance();
+            diag["computedSecondaryResonantCapacitance"] = model.get_computed_secondary_resonant_capacitance();
+            diag["computedMagnetizingInductance"]        = model.get_computed_magnetizing_inductance();
+            diag["computedTurnsRatio"]                   = model.get_computed_turns_ratio();
+            diag["computedDeadTime"]                     = model.get_computed_dead_time();
+            diag["computedInductanceRatioK"]             = model.get_computed_inductance_ratio_k();
+            diag["computedQualityFactor"]                = model.get_computed_quality_factor();
+            diag["computedPrimaryResonantFrequency"]     = model.get_computed_primary_resonant_frequency();
+            diag["lastPrimaryPeakCurrent"]               = model.get_last_primary_peak_current();
+            diag["lastZvsMarginPrimaryLagging"]          = model.get_last_zvs_margin_primary_lagging();
+            result["clllcDiagnostics"] = diag;
+        }
+
         return result.dump(4);
     }
     catch (const std::exception& exc) {
@@ -9526,6 +9840,28 @@ std::string calculate_cuk_inputs(std::string cukInputsString) {
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
+        {
+            json diag;
+            diag["dutyCycle"]               = model.get_last_duty_cycle();
+            diag["conversionRatio"]         = model.get_last_conversion_ratio();
+            diag["couplingCapVoltage"]      = model.get_last_coupling_cap_voltage();
+            diag["inputInductorAverage"]    = model.get_last_input_inductor_average();
+            diag["outputInductorAverage"]   = model.get_last_output_inductor_average();
+            diag["inputInductorRipple"]     = model.get_last_input_inductor_ripple();
+            diag["outputInductorRipple"]    = model.get_last_output_inductor_ripple();
+            diag["switchPeakVoltage"]       = model.get_last_switch_peak_voltage();
+            diag["switchPeakCurrent"]       = model.get_last_switch_peak_current();
+            diag["diodePeakReverseVoltage"] = model.get_last_diode_peak_reverse_voltage();
+            diag["diodePeakCurrent"]        = model.get_last_diode_peak_current();
+            diag["couplingCapRmsCurrent"]   = model.get_last_coupling_cap_rms_current();
+            diag["isCcm"]                   = model.get_last_is_ccm();
+            diag["sizedCa"]                 = model.get_last_sized_ca();
+            diag["sizedCb"]                 = model.get_last_sized_cb();
+            diag["sizedCo"]                 = model.get_last_sized_co();
+            diag["rhpZeroFrequency"]        = model.get_last_rhp_zero_frequency();
+            result["cukDiagnostics"] = diag;
+        }
+
         return result.dump(4);
     }
     catch (const std::exception& exc) {
@@ -9549,6 +9885,28 @@ std::string calculate_advanced_cuk_inputs(std::string cukInputsString) {
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
+        {
+            json diag;
+            diag["dutyCycle"]               = model.get_last_duty_cycle();
+            diag["conversionRatio"]         = model.get_last_conversion_ratio();
+            diag["couplingCapVoltage"]      = model.get_last_coupling_cap_voltage();
+            diag["inputInductorAverage"]    = model.get_last_input_inductor_average();
+            diag["outputInductorAverage"]   = model.get_last_output_inductor_average();
+            diag["inputInductorRipple"]     = model.get_last_input_inductor_ripple();
+            diag["outputInductorRipple"]    = model.get_last_output_inductor_ripple();
+            diag["switchPeakVoltage"]       = model.get_last_switch_peak_voltage();
+            diag["switchPeakCurrent"]       = model.get_last_switch_peak_current();
+            diag["diodePeakReverseVoltage"] = model.get_last_diode_peak_reverse_voltage();
+            diag["diodePeakCurrent"]        = model.get_last_diode_peak_current();
+            diag["couplingCapRmsCurrent"]   = model.get_last_coupling_cap_rms_current();
+            diag["isCcm"]                   = model.get_last_is_ccm();
+            diag["sizedCa"]                 = model.get_last_sized_ca();
+            diag["sizedCb"]                 = model.get_last_sized_cb();
+            diag["sizedCo"]                 = model.get_last_sized_co();
+            diag["rhpZeroFrequency"]        = model.get_last_rhp_zero_frequency();
+            result["cukDiagnostics"] = diag;
+        }
+
         return result.dump(4);
     }
     catch (const std::exception& exc) {
@@ -9619,6 +9977,13 @@ std::string calculate_four_switch_buck_boost_inputs(std::string fsbbInputsString
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
+        {
+            json diag;
+            diag["inductorAverageCurrent"] = model.get_last_inductor_average_current();
+            diag["sizedOutputCapacitance"] = model.get_last_sized_output_capacitance();
+            result["fsbbDiagnostics"] = diag;
+        }
+
         return result.dump(4);
     }
     catch (const std::exception& exc) {
@@ -9642,6 +10007,13 @@ std::string calculate_advanced_four_switch_buck_boost_inputs(std::string fsbbInp
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
+        {
+            json diag;
+            diag["inductorAverageCurrent"] = model.get_last_inductor_average_current();
+            diag["sizedOutputCapacitance"] = model.get_last_sized_output_capacitance();
+            result["fsbbDiagnostics"] = diag;
+        }
+
         return result.dump(4);
     }
     catch (const std::exception& exc) {
@@ -9712,6 +10084,28 @@ std::string calculate_weinberg_inputs(std::string weinbergInputsString) {
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
+        {
+            json diag;
+            diag["dutyCycle"]                = model.get_last_duty_cycle();
+            diag["conversionRatio"]          = model.get_last_conversion_ratio();
+            diag["operatingRegime"]          = model.get_last_operating_regime();
+            diag["overlapFraction"]          = model.get_last_overlap_fraction();
+            diag["switchPeakVoltage"]        = model.get_last_switch_peak_voltage();
+            diag["switchPeakCurrent"]        = model.get_last_switch_peak_current();
+            diag["diodePeakReverseVoltage"]  = model.get_last_diode_peak_reverse_voltage();
+            diag["diodePeakCurrent"]         = model.get_last_diode_peak_current();
+            diag["energyRecoveryAvgCurrent"] = model.get_last_energy_recovery_avg_current();
+            diag["inputInductorAverage"]     = model.get_last_input_inductor_average();
+            diag["inputInductorRipple"]      = model.get_last_input_inductor_ripple();
+            diag["magnetizingRipple"]        = model.get_last_magnetizing_ripple();
+            diag["fluxImbalanceMargin"]      = model.get_last_flux_imbalance_margin();
+            diag["rhpZeroFrequency"]         = model.get_last_rhp_zero_frequency();
+            diag["isCcm"]                    = model.get_last_is_ccm();
+            diag["sizedCo"]                  = model.get_last_sized_co();
+            diag["outputVoltageRipple"]      = model.get_last_output_voltage_ripple();
+            result["weinbergDiagnostics"] = diag;
+        }
+
         return result.dump(4);
     }
     catch (const std::exception& exc) {
@@ -9735,6 +10129,28 @@ std::string calculate_advanced_weinberg_inputs(std::string weinbergInputsString)
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
+        {
+            json diag;
+            diag["dutyCycle"]                = model.get_last_duty_cycle();
+            diag["conversionRatio"]          = model.get_last_conversion_ratio();
+            diag["operatingRegime"]          = model.get_last_operating_regime();
+            diag["overlapFraction"]          = model.get_last_overlap_fraction();
+            diag["switchPeakVoltage"]        = model.get_last_switch_peak_voltage();
+            diag["switchPeakCurrent"]        = model.get_last_switch_peak_current();
+            diag["diodePeakReverseVoltage"]  = model.get_last_diode_peak_reverse_voltage();
+            diag["diodePeakCurrent"]         = model.get_last_diode_peak_current();
+            diag["energyRecoveryAvgCurrent"] = model.get_last_energy_recovery_avg_current();
+            diag["inputInductorAverage"]     = model.get_last_input_inductor_average();
+            diag["inputInductorRipple"]      = model.get_last_input_inductor_ripple();
+            diag["magnetizingRipple"]        = model.get_last_magnetizing_ripple();
+            diag["fluxImbalanceMargin"]      = model.get_last_flux_imbalance_margin();
+            diag["rhpZeroFrequency"]         = model.get_last_rhp_zero_frequency();
+            diag["isCcm"]                    = model.get_last_is_ccm();
+            diag["sizedCo"]                  = model.get_last_sized_co();
+            diag["outputVoltageRipple"]      = model.get_last_output_voltage_ripple();
+            result["weinbergDiagnostics"] = diag;
+        }
+
         return result.dump(4);
     }
     catch (const std::exception& exc) {
@@ -9812,6 +10228,28 @@ std::string calculate_zeta_inputs(std::string zetaInputsString) {
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
+        {
+            json diag;
+            diag["dutyCycle"]               = model.get_last_duty_cycle();
+            diag["conversionRatio"]         = model.get_last_conversion_ratio();
+            diag["couplingCapVoltage"]      = model.get_last_coupling_cap_voltage();
+            diag["inputInductorAverage"]    = model.get_last_input_inductor_average();
+            diag["outputInductorAverage"]   = model.get_last_output_inductor_average();
+            diag["inputInductorRipple"]     = model.get_last_input_inductor_ripple();
+            diag["outputInductorRipple"]    = model.get_last_output_inductor_ripple();
+            diag["switchPeakVoltage"]       = model.get_last_switch_peak_voltage();
+            diag["switchPeakCurrent"]       = model.get_last_switch_peak_current();
+            diag["diodePeakReverseVoltage"] = model.get_last_diode_peak_reverse_voltage();
+            diag["diodePeakCurrent"]        = model.get_last_diode_peak_current();
+            diag["couplingCapRmsCurrent"]   = model.get_last_coupling_cap_rms_current();
+            diag["isCcm"]                   = model.get_last_is_ccm();
+            diag["sizedCc"]                 = model.get_last_sized_cc();
+            diag["sizedCo"]                 = model.get_last_sized_co();
+            diag["outputVoltageRipple"]     = model.get_last_output_voltage_ripple();
+            diag["inputCurrentRipple"]      = model.get_last_input_current_ripple();
+            result["zetaDiagnostics"] = diag;
+        }
+
         return result.dump(4);
     }
     catch (const std::exception& exc) {
@@ -9835,6 +10273,28 @@ std::string calculate_advanced_zeta_inputs(std::string zetaInputsString) {
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
+        {
+            json diag;
+            diag["dutyCycle"]               = model.get_last_duty_cycle();
+            diag["conversionRatio"]         = model.get_last_conversion_ratio();
+            diag["couplingCapVoltage"]      = model.get_last_coupling_cap_voltage();
+            diag["inputInductorAverage"]    = model.get_last_input_inductor_average();
+            diag["outputInductorAverage"]   = model.get_last_output_inductor_average();
+            diag["inputInductorRipple"]     = model.get_last_input_inductor_ripple();
+            diag["outputInductorRipple"]    = model.get_last_output_inductor_ripple();
+            diag["switchPeakVoltage"]       = model.get_last_switch_peak_voltage();
+            diag["switchPeakCurrent"]       = model.get_last_switch_peak_current();
+            diag["diodePeakReverseVoltage"] = model.get_last_diode_peak_reverse_voltage();
+            diag["diodePeakCurrent"]        = model.get_last_diode_peak_current();
+            diag["couplingCapRmsCurrent"]   = model.get_last_coupling_cap_rms_current();
+            diag["isCcm"]                   = model.get_last_is_ccm();
+            diag["sizedCc"]                 = model.get_last_sized_cc();
+            diag["sizedCo"]                 = model.get_last_sized_co();
+            diag["outputVoltageRipple"]     = model.get_last_output_voltage_ripple();
+            diag["inputCurrentRipple"]      = model.get_last_input_current_ripple();
+            result["zetaDiagnostics"] = diag;
+        }
+
         return result.dump(4);
     }
     catch (const std::exception& exc) {
