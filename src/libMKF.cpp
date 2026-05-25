@@ -21,6 +21,7 @@
 #include "advisers/CoilAdviser.h"
 #include "advisers/CoreAdviser.h"
 #include "advisers/MagneticAdviser.h"
+#include "support/LibraryContext.h"
 #include "processors/Inputs.h"
 #include "constructive_models/Core.h"
 #include "physical_models/ComplexPermeability.h"
@@ -3613,17 +3614,43 @@ std::string calculate_flyback_inputs(std::string flybackInputsString){
         }
         {
             json diag;
-            diag["dutyCycle"]             = flybackInputs.get_last_duty_cycle();
-            diag["switchingFrequency"]    = flybackInputs.get_last_switching_frequency();
-            diag["primaryAverageCurrent"] = flybackInputs.get_last_primary_average_current();
-            diag["primaryPeakToPeak"]     = flybackInputs.get_last_primary_peak_to_peak();
-            diag["primaryPeakCurrent"]    = flybackInputs.get_last_primary_peak_current();
-            diag["secondaryPeakCurrent"]  = flybackInputs.get_last_secondary_peak_current();
-            diag["isCcm"]                 = flybackInputs.get_last_is_ccm();
+            // Flat fields (back-compat): first OP's values. perOp is the
+            // authoritative per-operating-point breakdown — wizard table
+            // reads this.
+            const auto& names = flybackInputs.get_per_op_name();
+            const auto& dC   = flybackInputs.get_per_op_duty_cycle();
+            const auto& fsw  = flybackInputs.get_per_op_switching_frequency();
+            const auto& iAvg = flybackInputs.get_per_op_primary_average_current();
+            const auto& iPP  = flybackInputs.get_per_op_primary_peak_to_peak();
+            const auto& iPk  = flybackInputs.get_per_op_primary_peak_current();
+            const auto& iSec = flybackInputs.get_per_op_secondary_peak_current();
+            const auto& ccm  = flybackInputs.get_per_op_is_ccm();
+            diag["dutyCycle"]             = dC.empty()   ? flybackInputs.get_last_duty_cycle()              : dC.front();
+            diag["switchingFrequency"]    = fsw.empty()  ? flybackInputs.get_last_switching_frequency()     : fsw.front();
+            diag["primaryAverageCurrent"] = iAvg.empty() ? flybackInputs.get_last_primary_average_current() : iAvg.front();
+            diag["primaryPeakToPeak"]     = iPP.empty()  ? flybackInputs.get_last_primary_peak_to_peak()    : iPP.front();
+            diag["primaryPeakCurrent"]    = iPk.empty()  ? flybackInputs.get_last_primary_peak_current()    : iPk.front();
+            diag["secondaryPeakCurrent"]  = iSec.empty() ? flybackInputs.get_last_secondary_peak_current()  : iSec.front();
+            diag["isCcm"]                 = ccm.empty()  ? flybackInputs.get_last_is_ccm()                  : (bool)ccm.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < dC.size(); ++i) {
+                json row;
+                row["operatingPointName"]    = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"]             = dC[i];
+                row["switchingFrequency"]    = fsw[i];
+                row["primaryAverageCurrent"] = iAvg[i];
+                row["primaryPeakToPeak"]     = iPP[i];
+                row["primaryPeakCurrent"]    = iPk[i];
+                row["secondaryPeakCurrent"]  = iSec[i];
+                row["isCcm"]                 = (bool)ccm[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["flybackDiagnostics"] = diag;
         }
 
-        
+
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -3655,17 +3682,40 @@ std::string calculate_advanced_flyback_inputs(std::string flybackInputsString){
         }
         {
             json diag;
-            diag["dutyCycle"]             = flybackInputs.get_last_duty_cycle();
-            diag["switchingFrequency"]    = flybackInputs.get_last_switching_frequency();
-            diag["primaryAverageCurrent"] = flybackInputs.get_last_primary_average_current();
-            diag["primaryPeakToPeak"]     = flybackInputs.get_last_primary_peak_to_peak();
-            diag["primaryPeakCurrent"]    = flybackInputs.get_last_primary_peak_current();
-            diag["secondaryPeakCurrent"]  = flybackInputs.get_last_secondary_peak_current();
-            diag["isCcm"]                 = flybackInputs.get_last_is_ccm();
+            const auto& names = flybackInputs.get_per_op_name();
+            const auto& dC   = flybackInputs.get_per_op_duty_cycle();
+            const auto& fsw  = flybackInputs.get_per_op_switching_frequency();
+            const auto& iAvg = flybackInputs.get_per_op_primary_average_current();
+            const auto& iPP  = flybackInputs.get_per_op_primary_peak_to_peak();
+            const auto& iPk  = flybackInputs.get_per_op_primary_peak_current();
+            const auto& iSec = flybackInputs.get_per_op_secondary_peak_current();
+            const auto& ccm  = flybackInputs.get_per_op_is_ccm();
+            diag["dutyCycle"]             = dC.empty()   ? flybackInputs.get_last_duty_cycle()              : dC.front();
+            diag["switchingFrequency"]    = fsw.empty()  ? flybackInputs.get_last_switching_frequency()     : fsw.front();
+            diag["primaryAverageCurrent"] = iAvg.empty() ? flybackInputs.get_last_primary_average_current() : iAvg.front();
+            diag["primaryPeakToPeak"]     = iPP.empty()  ? flybackInputs.get_last_primary_peak_to_peak()    : iPP.front();
+            diag["primaryPeakCurrent"]    = iPk.empty()  ? flybackInputs.get_last_primary_peak_current()    : iPk.front();
+            diag["secondaryPeakCurrent"]  = iSec.empty() ? flybackInputs.get_last_secondary_peak_current()  : iSec.front();
+            diag["isCcm"]                 = ccm.empty()  ? flybackInputs.get_last_is_ccm()                  : (bool)ccm.front();
+
+            json perOp = json::array();
+            for (size_t i = 0; i < dC.size(); ++i) {
+                json row;
+                row["operatingPointName"]    = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"]             = dC[i];
+                row["switchingFrequency"]    = fsw[i];
+                row["primaryAverageCurrent"] = iAvg[i];
+                row["primaryPeakToPeak"]     = iPP[i];
+                row["primaryPeakCurrent"]    = iPk[i];
+                row["secondaryPeakCurrent"]  = iSec[i];
+                row["isCcm"]                 = (bool)ccm[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
             result["flybackDiagnostics"] = diag;
         }
 
-        
+
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -3727,12 +3777,11 @@ std::string simulate_flyback_ideal_waveforms(std::string flybackInputsString){
                 turnsRatios.push_back(tr.get_nominal().value());
             }
             
-            // Extract magnetizing inductance (use minimum if available, otherwise nominal)
-            if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-                magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
-            } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-                magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
-            } else {
+            // Extract magnetizing inductance using the same helper as
+            // Topology::process() — defaults to NOMINAL, falls back to
+            // (min+max)/2 or whichever bound is available.
+            magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+            if (!(magnetizingInductance > 0)) {
                 throw std::runtime_error("Unable to calculate magnetizing inductance");
             }
         }
@@ -3789,6 +3838,122 @@ std::string simulate_flyback_ideal_waveforms(std::string flybackInputsString){
             result["converterWaveforms"].push_back(cwJson);
         }
 
+        // Flyback diagnostics — measured from the ngspice trace (NOT analytical
+        // predictions). The OperatingPoint returned by simulate_and_extract_*
+        // already carries Processed data computed from the simulation samples
+        // via CircuitSimulationReader::extract_operating_point →
+        // Inputs::calculate_basic_processed_data. We read those processed
+        // fields directly. THROW on any missing required signal — Vienna-style
+        // "no fallbacks, no defaults": if the simulator didn't produce a
+        // primary winding with current+voltage waveforms and processed data,
+        // that's a loud bug, not a number to paper over.
+        if (operatingPoints.empty()) {
+            throw std::runtime_error("Flyback simulation returned no operating points; cannot extract diagnostics");
+        }
+        {
+            // Note: SignalDescriptor::get_waveform/get_processed/get_current/...
+            // all return std::optional<T> BY VALUE in MAS — chaining
+            // `.get_current()->get_waveform()->get_data()` would dangle.
+            // Capture each step in a local to keep the optionals alive.
+            const auto& op = operatingPoints[0];
+            const auto& excitations = op.get_excitations_per_winding();
+            if (excitations.size() < 2) {
+                throw std::runtime_error("Flyback simulation: expected at least primary + 1 secondary winding, got " + std::to_string(excitations.size()));
+            }
+            const auto& primExc = excitations[0];
+            const auto& secExc  = excitations[1];
+
+            auto primCurrentOpt = primExc.get_current();
+            auto primVoltageOpt = primExc.get_voltage();
+            auto secCurrentOpt  = secExc.get_current();
+            if (!primCurrentOpt) throw std::runtime_error("Flyback simulation: primary current SignalDescriptor missing");
+            if (!primVoltageOpt) throw std::runtime_error("Flyback simulation: primary voltage SignalDescriptor missing");
+            if (!secCurrentOpt)  throw std::runtime_error("Flyback simulation: secondary[0] current SignalDescriptor missing");
+
+            auto primCurrentWfOpt = primCurrentOpt->get_waveform();
+            auto primVoltageWfOpt = primVoltageOpt->get_waveform();
+            if (!primCurrentWfOpt) throw std::runtime_error("Flyback simulation: primary current waveform missing");
+            if (!primVoltageWfOpt) throw std::runtime_error("Flyback simulation: primary voltage waveform missing");
+
+            const auto& iPrimData = primCurrentWfOpt->get_data();
+            if (iPrimData.empty()) {
+                throw std::runtime_error("Flyback simulation: primary current waveform data is empty");
+            }
+
+            auto iPrimProcOpt = primCurrentOpt->get_processed();
+            auto vPrimProcOpt = primVoltageOpt->get_processed();
+            auto iSecProcOpt  = secCurrentOpt->get_processed();
+            if (!iPrimProcOpt) throw std::runtime_error("Flyback simulation: processed data missing on primary current");
+            if (!vPrimProcOpt) throw std::runtime_error("Flyback simulation: processed data missing on primary voltage");
+            if (!iSecProcOpt)  throw std::runtime_error("Flyback simulation: processed data missing on secondary current");
+
+            auto require = [](const std::optional<double>& v, const char* field) {
+                if (!v) throw std::runtime_error(std::string("Flyback simulation: missing processed.") + field);
+                return v.value();
+            };
+
+            // CCM ↔ DCM: in CCM the primary current valley is bounded above
+            // zero (DC offset of the ramp); in DCM the current returns to 0
+            // during the OFF interval. 1% threshold is a robust no-fallback
+            // discriminator that doesn't depend on label classification.
+            double iPrimMin = *std::min_element(iPrimData.begin(), iPrimData.end());
+            double iPrimMax = *std::max_element(iPrimData.begin(), iPrimData.end());
+            if (!(iPrimMax > 0.0)) {
+                throw std::runtime_error("Flyback simulation: primary current peak is non-positive (" + std::to_string(iPrimMax) + " A) — cannot derive mode from trace");
+            }
+            bool isCcm = (iPrimMin > 0.01 * iPrimMax);
+
+            // Duty cycle comes from the actual SPICE PULSE-source ON time
+            // (Flyback::generate_ngspice_circuit sets lastDutyCycle from
+            // the same `dutyCycle` it feeds to the `Vpwm ... PULSE(...)`
+            // line). This is the duty the simulator actually ran with —
+            // independent of trace-shape heuristics that misread bipolar
+            // primary voltage waveforms as 50%.
+            double dutyCycleFromSpiceInputs = flybackPtr->get_last_duty_cycle();
+            if (!(dutyCycleFromSpiceInputs > 0.0 && dutyCycleFromSpiceInputs < 1.0)) {
+                throw std::runtime_error("Flyback simulation: SPICE-input dutyCycle out of (0,1): " + std::to_string(dutyCycleFromSpiceInputs));
+            }
+
+            // Flat fields = trace-measured OP 0 (the one shown in the
+            // chart). perOp[] = analytical per-OP table (populated by
+            // process_operating_points below).
+            json diag;
+            diag["dutyCycle"]             = dutyCycleFromSpiceInputs;
+            diag["switchingFrequency"]    = primExc.get_frequency();
+            diag["primaryAverageCurrent"] = require(iPrimProcOpt->get_average(), "average (primary current)");
+            diag["primaryPeakToPeak"]     = require(iPrimProcOpt->get_peak_to_peak(), "peak_to_peak (primary current)");
+            diag["primaryPeakCurrent"]    = require(iPrimProcOpt->get_positive_peak(), "positive_peak (primary current)");
+            diag["secondaryPeakCurrent"]  = require(iSecProcOpt->get_peak(), "peak (secondary current)");
+            diag["isCcm"]                 = isCcm;
+
+            // Populate analytical per-OP vectors. process_operating_points
+            // iterates inputVoltages × OPs and pushes a snapshot per call.
+            flybackPtr->process_operating_points(turnsRatios, magnetizingInductance);
+            const auto& names = flybackPtr->get_per_op_name();
+            const auto& dC   = flybackPtr->get_per_op_duty_cycle();
+            const auto& fsw  = flybackPtr->get_per_op_switching_frequency();
+            const auto& iAvg = flybackPtr->get_per_op_primary_average_current();
+            const auto& iPP  = flybackPtr->get_per_op_primary_peak_to_peak();
+            const auto& iPk  = flybackPtr->get_per_op_primary_peak_current();
+            const auto& iSec = flybackPtr->get_per_op_secondary_peak_current();
+            const auto& ccm  = flybackPtr->get_per_op_is_ccm();
+            json perOp = json::array();
+            for (size_t i = 0; i < dC.size(); ++i) {
+                json row;
+                row["operatingPointName"]    = (i < names.size()) ? names[i] : ("OP " + std::to_string(i));
+                row["dutyCycle"]             = dC[i];
+                row["switchingFrequency"]    = fsw[i];
+                row["primaryAverageCurrent"] = iAvg[i];
+                row["primaryPeakToPeak"]     = iPP[i];
+                row["primaryPeakCurrent"]    = iPk[i];
+                row["secondaryPeakCurrent"]  = iSec[i];
+                row["isCcm"]                 = (bool)ccm[i];
+                perOp.push_back(row);
+            }
+            diag["perOp"] = perOp;
+            result["flybackDiagnostics"] = diag;
+        }
+
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -3831,11 +3996,8 @@ EMSCRIPTEN_KEEPALIVE std::string generate_flyback_ngspice_circuit(std::string fl
                 turnsRatios.push_back(tr.get_nominal().value());
             }
             
-            if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-                magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
-            } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-                magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
-            } else {
+            magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+            if (!(magnetizingInductance > 0)) {
                 throw std::runtime_error("Unable to calculate magnetizing inductance");
             }
         }
@@ -3873,11 +4035,8 @@ std::string generate_converter_ngspice_circuit_helper(std::string inputsString, 
                 turnsRatios.push_back(tr.get_nominal().value());
             }
             
-            if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-                magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
-            } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-                magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
-            } else {
+            magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+            if (!(magnetizingInductance > 0)) {
                 throw std::runtime_error("Unable to calculate magnetizing inductance");
             }
             
@@ -3909,11 +4068,8 @@ EMSCRIPTEN_KEEPALIVE std::string generate_buck_ngspice_circuit(std::string buckI
             OpenMagnetics::Buck buck(buckInputsJson);
             auto designRequirements = buck.process_design_requirements();
             
-            if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-                inductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
-            } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-                inductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
-            } else {
+            inductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+            if (!(inductance > 0)) {
                 throw std::runtime_error("Unable to calculate inductance");
             }
             
@@ -3945,11 +4101,8 @@ EMSCRIPTEN_KEEPALIVE std::string generate_boost_ngspice_circuit(std::string boos
             OpenMagnetics::Boost boost(boostInputsJson);
             auto designRequirements = boost.process_design_requirements();
             
-            if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-                inductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
-            } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-                inductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
-            } else {
+            inductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+            if (!(inductance > 0)) {
                 throw std::runtime_error("Unable to calculate inductance");
             }
             
@@ -3981,11 +4134,8 @@ EMSCRIPTEN_KEEPALIVE std::string generate_sepic_ngspice_circuit(std::string sepi
             OpenMagnetics::Sepic sepic(sepicInputsJson);
             auto designRequirements = sepic.process_design_requirements();
 
-            if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-                inductanceL1 = designRequirements.get_magnetizing_inductance().get_minimum().value();
-            } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-                inductanceL1 = designRequirements.get_magnetizing_inductance().get_nominal().value();
-            } else {
+            inductanceL1 = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+            if (!(inductanceL1 > 0)) {
                 throw std::runtime_error("Unable to calculate inductance");
             }
 
@@ -4043,11 +4193,8 @@ EMSCRIPTEN_KEEPALIVE std::string generate_llc_ngspice_circuit(std::string llcInp
         }
         
         double magnetizingInductance;
-        if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
-        } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
-        } else {
+        magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+        if (!(magnetizingInductance > 0)) {
             throw std::runtime_error("Unable to calculate magnetizing inductance");
         }
         
@@ -4104,11 +4251,8 @@ EMSCRIPTEN_KEEPALIVE std::string generate_src_ngspice_circuit(std::string srcInp
         }
 
         double magnetizingInductance;
-        if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
-        } else if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
-        } else {
+        magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+        if (!(magnetizingInductance > 0)) {
             throw std::runtime_error("SRC: no magnetizing inductance available");
         }
 
@@ -4132,11 +4276,8 @@ EMSCRIPTEN_KEEPALIVE std::string generate_dab_ngspice_circuit(std::string dabInp
         }
         
         double magnetizingInductance;
-        if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
-        } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
-        } else {
+        magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+        if (!(magnetizingInductance > 0)) {
             throw std::runtime_error("Unable to calculate magnetizing inductance");
         }
         
@@ -4161,11 +4302,8 @@ EMSCRIPTEN_KEEPALIVE std::string generate_psfb_ngspice_circuit(std::string psfbI
         }
         
         double magnetizingInductance;
-        if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
-        } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
-        } else {
+        magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+        if (!(magnetizingInductance > 0)) {
             throw std::runtime_error("Unable to calculate magnetizing inductance");
         }
         
@@ -4796,11 +4934,8 @@ std::string simulate_buck_ideal_waveforms(std::string buckInputsString){
             buckPtr = std::make_unique<OpenMagnetics::Buck>(buckInputsJson);
             designRequirements = buckPtr->process_design_requirements();
             
-            if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-                inductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
-            } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-                inductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
-            } else {
+            inductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+            if (!(inductance > 0)) {
                 throw std::runtime_error("Unable to calculate inductance");
             }
         }
@@ -4832,10 +4967,10 @@ std::string simulate_buck_ideal_waveforms(std::string buckInputsString){
         
         auto topologyWaveforms = buckPtr->simulate_and_extract_topology_waveforms(inductance);
         auto operatingPoints = buckPtr->simulate_and_extract_operating_points(inductance);
-        
+
         // Build the result with just two fields: inputs and converterWaveforms
         json result;
-        
+
         // inputs: OpenMagnetics::Inputs containing designRequirements and operatingPoints
         json inputs;
         inputs["designRequirements"] = json();
@@ -4847,13 +4982,29 @@ std::string simulate_buck_ideal_waveforms(std::string buckInputsString){
             inputs["operatingPoints"].push_back(opJson);
         }
         result["inputs"] = inputs;
-        
+
         // converterWaveforms: array of OpenMagnetics::ConverterWaveforms
         result["converterWaveforms"] = json::array();
         for (const auto& tw : topologyWaveforms) {
             json cwJson;
             to_json(cwJson, tw);
             result["converterWaveforms"].push_back(cwJson);
+        }
+
+        // Path B diagnostics: same schema as calculate_buck_inputs. The
+        // simulate_and_extract_* path doesn't go through the analytical
+        // code that sets last_* — populate them explicitly by running the
+        // analytical pipeline once (Topology::process discards the result;
+        // only the side-effect on last_* matters here).
+        buckPtr->process();
+        {
+            json diag;
+            diag["dutyCycle"]              = buckPtr->get_last_duty_cycle();
+            diag["inductorAverageCurrent"] = buckPtr->get_last_inductor_average_current();
+            diag["inductorPeakToPeak"]     = buckPtr->get_last_inductor_peak_to_peak();
+            diag["peakInductorCurrent"]    = buckPtr->get_last_peak_inductor_current();
+            diag["conductionRatio"]        = buckPtr->get_last_conduction_ratio();
+            result["buckDiagnostics"] = diag;
         }
 
         return result.dump(4);
@@ -4894,11 +5045,8 @@ std::string simulate_boost_ideal_waveforms(std::string boostInputsString){
             boostPtr = std::make_unique<OpenMagnetics::Boost>(boostInputsJson);
             designRequirements = boostPtr->process_design_requirements();
             
-            if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-                inductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
-            } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-                inductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
-            } else {
+            inductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+            if (!(inductance > 0)) {
                 throw std::runtime_error("Unable to calculate inductance");
             }
         }
@@ -4988,6 +5136,18 @@ std::string simulate_boost_ideal_waveforms(std::string boostInputsString){
             result["converterWaveforms"].push_back(cwJson);
         }
 
+        // Path B diagnostics: see Buck comment for rationale.
+        boostPtr->process();
+        {
+            json diag;
+            diag["dutyCycle"]              = boostPtr->get_last_duty_cycle();
+            diag["inductorAverageCurrent"] = boostPtr->get_last_inductor_average_current();
+            diag["inductorPeakToPeak"]     = boostPtr->get_last_inductor_peak_to_peak();
+            diag["peakInductorCurrent"]    = boostPtr->get_last_peak_inductor_current();
+            diag["conductionRatio"]        = boostPtr->get_last_conduction_ratio();
+            result["boostDiagnostics"] = diag;
+        }
+
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -5026,11 +5186,8 @@ std::string simulate_sepic_ideal_waveforms(std::string sepicInputsString){
             sepicPtr = std::make_unique<OpenMagnetics::Sepic>(sepicInputsJson);
             designRequirements = sepicPtr->process_design_requirements();
 
-            if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-                inductanceL1 = designRequirements.get_magnetizing_inductance().get_minimum().value();
-            } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-                inductanceL1 = designRequirements.get_magnetizing_inductance().get_nominal().value();
-            } else {
+            inductanceL1 = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+            if (!(inductanceL1 > 0)) {
                 throw std::runtime_error("Unable to calculate inductance");
             }
         }
@@ -5084,6 +5241,28 @@ std::string simulate_sepic_ideal_waveforms(std::string sepicInputsString){
             json cwJson;
             to_json(cwJson, tw);
             result["converterWaveforms"].push_back(cwJson);
+        }
+
+        // Path B diagnostics: see Buck comment for rationale.
+        sepicPtr->process();
+        {
+            json diag;
+            diag["dutyCycle"]               = sepicPtr->get_last_duty_cycle();
+            diag["conversionRatio"]         = sepicPtr->get_last_conversion_ratio();
+            diag["couplingCapVoltage"]      = sepicPtr->get_last_coupling_cap_voltage();
+            diag["inputInductorAverage"]    = sepicPtr->get_last_input_inductor_average();
+            diag["outputInductorAverage"]   = sepicPtr->get_last_output_inductor_average();
+            diag["inputInductorRipple"]     = sepicPtr->get_last_input_inductor_ripple();
+            diag["outputInductorRipple"]    = sepicPtr->get_last_output_inductor_ripple();
+            diag["switchPeakVoltage"]       = sepicPtr->get_last_switch_peak_voltage();
+            diag["switchPeakCurrent"]       = sepicPtr->get_last_switch_peak_current();
+            diag["diodePeakReverseVoltage"] = sepicPtr->get_last_diode_peak_reverse_voltage();
+            diag["diodePeakCurrent"]        = sepicPtr->get_last_diode_peak_current();
+            diag["couplingCapRmsCurrent"]   = sepicPtr->get_last_coupling_cap_rms_current();
+            diag["isCcm"]                   = sepicPtr->get_last_is_ccm();
+            diag["sizedCs"]                 = sepicPtr->get_last_sized_cs();
+            diag["sizedCo"]                 = sepicPtr->get_last_sized_co();
+            result["sepicDiagnostics"] = diag;
         }
 
         return result.dump(4);
@@ -5147,11 +5326,8 @@ std::string simulate_forward_ideal_waveforms(std::string forwardInputsString){
                 }
             }
             
-            if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-                magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
-            } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-                magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
-            } else {
+            magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+            if (!(magnetizingInductance > 0)) {
                 throw std::runtime_error("Unable to calculate inductance");
             }
         }
@@ -5192,6 +5368,22 @@ std::string simulate_forward_ideal_waveforms(std::string forwardInputsString){
             json cwJson;
             to_json(cwJson, tw);
             result["converterWaveforms"].push_back(cwJson);
+        }
+
+        // Path B diagnostics: see Buck comment for rationale.
+        forwardPtr->process();
+        {
+            json diag;
+            diag["maximumDutyCycle"]       = forwardPtr->get_last_maximum_duty_cycle();
+            diag["magnetizingInductance"]  = forwardPtr->get_last_computed_magnetizing_inductance();
+            diag["secondaryTurnsRatio"]    = forwardPtr->get_last_computed_secondary_turns_ratio();
+            diag["primaryPeakCurrent"]     = forwardPtr->get_last_primary_peak_current();
+            diag["secondaryPeakCurrent"]   = forwardPtr->get_last_secondary_peak_current();
+            diag["magnetizingPeakCurrent"] = forwardPtr->get_last_magnetizing_peak_current();
+            diag["isCcm"]                  = forwardPtr->get_last_is_ccm();
+            diag["primaryTurnsRatio"]      = forwardPtr->get_last_computed_primary_turns_ratio();
+            diag["resetVoltage"]           = forwardPtr->get_last_reset_voltage();
+            result["singleSwitchForwardDiagnostics"] = diag;
         }
 
         return result.dump(4);
@@ -5297,6 +5489,20 @@ std::string simulate_two_switch_forward_ideal_waveforms(std::string forwardInput
             result["converterWaveforms"].push_back(cwJson);
         }
 
+        // Path B diagnostics: see Buck comment for rationale.
+        forwardPtr->process();
+        {
+            json diag;
+            diag["maximumDutyCycle"]       = forwardPtr->get_last_maximum_duty_cycle();
+            diag["magnetizingInductance"]  = forwardPtr->get_last_computed_magnetizing_inductance();
+            diag["secondaryTurnsRatio"]    = forwardPtr->get_last_computed_secondary_turns_ratio();
+            diag["primaryPeakCurrent"]     = forwardPtr->get_last_primary_peak_current();
+            diag["secondaryPeakCurrent"]   = forwardPtr->get_last_secondary_peak_current();
+            diag["magnetizingPeakCurrent"] = forwardPtr->get_last_magnetizing_peak_current();
+            diag["isCcm"]                  = forwardPtr->get_last_is_ccm();
+            result["twoSwitchForwardDiagnostics"] = diag;
+        }
+
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -5399,6 +5605,21 @@ std::string simulate_active_clamp_forward_ideal_waveforms(std::string forwardInp
             result["converterWaveforms"].push_back(cwJson);
         }
 
+        // Path B diagnostics: see Buck comment for rationale.
+        forwardPtr->process();
+        {
+            json diag;
+            diag["maximumDutyCycle"]       = forwardPtr->get_last_maximum_duty_cycle();
+            diag["magnetizingInductance"]  = forwardPtr->get_last_computed_magnetizing_inductance();
+            diag["secondaryTurnsRatio"]    = forwardPtr->get_last_computed_secondary_turns_ratio();
+            diag["primaryPeakCurrent"]     = forwardPtr->get_last_primary_peak_current();
+            diag["secondaryPeakCurrent"]   = forwardPtr->get_last_secondary_peak_current();
+            diag["magnetizingPeakCurrent"] = forwardPtr->get_last_magnetizing_peak_current();
+            diag["isCcm"]                  = forwardPtr->get_last_is_ccm();
+            diag["clampCapVoltage"]        = forwardPtr->get_last_clamp_cap_voltage();
+            result["activeClampForwardDiagnostics"] = diag;
+        }
+
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -5473,11 +5694,8 @@ std::string simulate_push_pull_ideal_waveforms(std::string pushPullInputsString)
                 }
             }
             
-            if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-                magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
-            } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-                magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
-            } else {
+            magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+            if (!(magnetizingInductance > 0)) {
                 throw std::runtime_error("Unable to calculate inductance");
             }
         }
@@ -5537,6 +5755,19 @@ std::string simulate_push_pull_ideal_waveforms(std::string pushPullInputsString)
             json cwJson;
             to_json(cwJson, tw);
             result["converterWaveforms"].push_back(cwJson);
+        }
+
+        // Path B diagnostics: see Buck comment for rationale.
+        pushPullPtr->process();
+        {
+            json diag;
+            diag["dutyCycle"]              = pushPullPtr->get_last_duty_cycle();
+            diag["switchingFrequency"]     = pushPullPtr->get_last_switching_frequency();
+            diag["primaryAverageCurrent"]  = pushPullPtr->get_last_primary_average_current();
+            diag["primaryPeakCurrent"]     = pushPullPtr->get_last_primary_peak_current();
+            diag["magnetizingPeakCurrent"] = pushPullPtr->get_last_magnetizing_peak_current();
+            diag["isCcm"]                  = pushPullPtr->get_last_is_ccm();
+            result["pushPullDiagnostics"] = diag;
         }
 
         return result.dump(4);
@@ -5600,11 +5831,8 @@ std::string simulate_isolated_buck_boost_ideal_waveforms(std::string ibbInputsSt
                 }
             }
             
-            if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-                magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
-            } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-                magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
-            } else {
+            magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+            if (!(magnetizingInductance > 0)) {
                 throw std::runtime_error("Unable to calculate inductance");
             }
         }
@@ -5646,6 +5874,19 @@ std::string simulate_isolated_buck_boost_ideal_waveforms(std::string ibbInputsSt
             json cwJson;
             to_json(cwJson, tw);
             result["converterWaveforms"].push_back(cwJson);
+        }
+
+        // Path B diagnostics: see Buck comment for rationale.
+        ibbPtr->process();
+        {
+            json diag;
+            diag["dutyCycle"]                = ibbPtr->get_last_duty_cycle();
+            diag["magnetizingCurrentRipple"] = ibbPtr->get_last_magnetizing_current_ripple();
+            diag["primaryAverageCurrent"]    = ibbPtr->get_last_primary_average_current();
+            diag["primaryPeakCurrent"]       = ibbPtr->get_last_primary_peak_current();
+            diag["secondaryPeakCurrent"]     = ibbPtr->get_last_secondary_peak_current();
+            diag["isCcm"]                    = ibbPtr->get_last_is_ccm();
+            result["isolatedBuckBoostDiagnostics"] = diag;
         }
 
         return result.dump(4);
@@ -5709,11 +5950,8 @@ std::string simulate_isolated_buck_ideal_waveforms(std::string ibInputsString){
                 }
             }
             
-            if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-                magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
-            } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-                magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
-            } else {
+            magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+            if (!(magnetizingInductance > 0)) {
                 throw std::runtime_error("Unable to calculate inductance");
             }
         }
@@ -5794,6 +6032,19 @@ std::string simulate_isolated_buck_ideal_waveforms(std::string ibInputsString){
             json cwJson;
             to_json(cwJson, tw);
             result["converterWaveforms"].push_back(cwJson);
+        }
+
+        // Path B diagnostics: see Buck comment for rationale.
+        ibPtr->process();
+        {
+            json diag;
+            diag["dutyCycle"]                = ibPtr->get_last_duty_cycle();
+            diag["magnetizingCurrentRipple"] = ibPtr->get_last_magnetizing_current_ripple();
+            diag["primaryAverageCurrent"]    = ibPtr->get_last_primary_average_current();
+            diag["primaryPeakCurrent"]       = ibPtr->get_last_primary_peak_current();
+            diag["secondaryPeakCurrent"]     = ibPtr->get_last_secondary_peak_current();
+            diag["isCcm"]                    = ibPtr->get_last_is_ccm();
+            result["isolatedBuckDiagnostics"] = diag;
         }
 
         return result.dump(4);
@@ -6755,7 +7006,21 @@ EMSCRIPTEN_KEEPALIVE std::string simulate_pfc_waveforms(std::string pfcInputsStr
         result["powerFactor"] = simWaveforms.powerFactor;
         result["efficiency"] = simWaveforms.efficiency;
         result["currentThd"] = simWaveforms.currentThd;
-        
+
+        // Path B diagnostics: see Buck comment for rationale.
+        pfcInputs.process();
+        {
+            json diag;
+            diag["computedInductance"]      = pfcInputs.get_computed_inductance();
+            diag["actualMode"]              = pfcInputs.get_computed_actual_mode();
+            diag["dutyCyclePeak"]           = pfcInputs.get_last_duty_cycle_peak();
+            diag["peakInductorCurrent"]     = pfcInputs.get_last_peak_inductor_current();
+            diag["inductorRipple"]          = pfcInputs.get_last_inductor_ripple();
+            diag["lineRmsCurrent"]          = pfcInputs.get_last_line_rms_current();
+            diag["inputPower"]              = pfcInputs.get_last_input_power();
+            result["pfcDiagnostics"] = diag;
+        }
+
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -6878,11 +7143,8 @@ EMSCRIPTEN_KEEPALIVE std::string generate_cmc_ngspice_circuit(std::string cmcInp
             cmcPtr = std::make_unique<OpenMagnetics::CommonModeChoke>(cmcInputsJson);
             auto designRequirements = cmcPtr->process_design_requirements();
             
-            if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-                inductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
-            } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-                inductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
-            } else {
+            inductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+            if (!(inductance > 0)) {
                 throw std::runtime_error("Unable to calculate CMC inductance");
             }
         }
@@ -7000,7 +7262,15 @@ EMSCRIPTEN_KEEPALIVE std::string simulate_cmc_ideal_waveforms(std::string cmcInp
         
         // converterWaveforms: empty array for CMC (realistic simulation doesn't generate converter-style waveforms)
         result["converterWaveforms"] = json::array();
-        
+
+        // Path B diagnostics: see Buck comment for rationale.
+        cmc.process();
+        {
+            json diag;
+            diag["computedInductance"] = cmc.get_computed_inductance();
+            result["cmcDiagnostics"] = diag;
+        }
+
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -8035,6 +8305,106 @@ EMSCRIPTEN_KEEPALIVE std::string simulate_cmc_lisn_waveforms(std::string cmcInpu
 EMSCRIPTEN_KEEPALIVE std::string simulate_cmc_ideal_waveforms(std::string cmcInputsString, double inductance, double parasiticCap_pF, double dvdt_V_ns);
 EMSCRIPTEN_KEEPALIVE std::string generate_dmc_ngspice_circuit(std::string dmcInputsString, size_t inputVoltageIndex, size_t operatingPointIndex);
 
+// ---- LibraryContext + AdviserConstraints wrappers ------------------------
+// JS-friendly wrappers: JS passes JSON strings, we parse into structs and
+// run the existing advisers with the per-call context.
+
+static OpenMagnetics::AdviserConstraints parse_constraints_json(const std::string& s) {
+    OpenMagnetics::AdviserConstraints c;
+    if (s.empty()) return c;
+    json j = json::parse(s);
+    auto fill = [](OpenMagnetics::TypeFilterSet& f, const json& node) {
+        if (node.contains("allowed")) for (auto& v : node["allowed"]) f.allowed.insert(v.get<std::string>());
+        if (node.contains("blocked")) for (auto& v : node["blocked"]) f.blocked.insert(v.get<std::string>());
+    };
+    if (j.contains("shapeFamily"))       fill(c.shapeFamily,        j["shapeFamily"]);
+    if (j.contains("coreMaterialType"))  fill(c.coreMaterialType,   j["coreMaterialType"]);
+    if (j.contains("wireType"))          fill(c.wireType,           j["wireType"]);
+    return c;
+}
+
+// Persistent LibraryContext owned by the WASM module. JS calls
+// library_context_load(jsonString, "merge"|"replace") to populate it, then
+// any advised_* function with `useContext=true` will use it.
+static OpenMagnetics::LibraryContext g_libraryContext;
+
+void library_context_load(std::string jsonText, std::string modeString) {
+    auto mode = (modeString == "replace")
+        ? OpenMagnetics::LibraryContext::LoadMode::Replace
+        : OpenMagnetics::LibraryContext::LoadMode::Merge;
+    g_libraryContext.loadFromString(jsonText, mode);
+}
+
+void library_context_clear() {
+    g_libraryContext.clear();
+}
+
+bool library_context_empty() {
+    return g_libraryContext.empty();
+}
+
+std::string calculate_advised_cores_with_context(std::string inputsString,
+                                                  std::string weightsString,
+                                                  int maximumNumberResults,
+                                                  std::string constraintsString,
+                                                  bool useContext) {
+    try {
+        OpenMagnetics::Inputs inputs(json::parse(inputsString));
+        std::map<std::string, double> weightsKeysString = json::parse(weightsString);
+        std::map<OpenMagnetics::CoreAdviser::CoreAdviserFilters, double> weights;
+        double externalSum = 0;
+        for (auto const& pair : weightsKeysString) externalSum += pair.second;
+        for (auto const& [name, weight] : weightsKeysString) {
+            OpenMagnetics::CoreAdviser::CoreAdviserFilters filter;
+            OpenMagnetics::from_json(name, filter);
+            weights[filter] = externalSum > 0 ? weight / externalSum : weight;
+        }
+        auto constraints = parse_constraints_json(constraintsString);
+        OpenMagnetics::CoreAdviser adviser;
+        const OpenMagnetics::LibraryContext* ctx = useContext ? &g_libraryContext : nullptr;
+        auto results = adviser.get_advised_core(inputs, weights,
+                                                 (size_t)maximumNumberResults,
+                                                 ctx, constraints);
+        json out = json::array();
+        for (auto& [mas, score] : results) {
+            json entry;
+            to_json(entry["mas"], mas);
+            entry["score"] = score;
+            out.push_back(std::move(entry));
+        }
+        return out.dump();
+    } catch (const std::exception& e) {
+        json err; err["error"] = e.what();
+        return err.dump();
+    }
+}
+
+std::string calculate_advised_magnetics_with_context(std::string inputsString,
+                                                      int maximumNumberResults,
+                                                      std::string constraintsString,
+                                                      bool useContext) {
+    try {
+        OpenMagnetics::Inputs inputs(json::parse(inputsString));
+        auto constraints = parse_constraints_json(constraintsString);
+        OpenMagnetics::MagneticAdviser adviser;
+        const OpenMagnetics::LibraryContext* ctx = useContext ? &g_libraryContext : nullptr;
+        auto results = adviser.get_advised_magnetic(inputs,
+                                                     (size_t)maximumNumberResults,
+                                                     ctx, constraints);
+        json out = json::array();
+        for (auto& [mas, score] : results) {
+            json entry;
+            to_json(entry["mas"], mas);
+            entry["score"] = score;
+            out.push_back(std::move(entry));
+        }
+        return out.dump();
+    } catch (const std::exception& e) {
+        json err; err["error"] = e.what();
+        return err.dump();
+    }
+}
+
 EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_constants", &get_constants);
     function("get_defaults", &get_defaults);
@@ -8146,6 +8516,11 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("load_core_shapes", &load_core_shapes);
     function("load_wires", &load_wires);
     function("clear_databases", &clear_databases);
+    function("library_context_load", &library_context_load);
+    function("library_context_clear", &library_context_clear);
+    function("library_context_empty", &library_context_empty);
+    function("calculate_advised_cores_with_context", &calculate_advised_cores_with_context);
+    function("calculate_advised_magnetics_with_context", &calculate_advised_magnetics_with_context);
     function("is_core_material_database_empty", &is_core_material_database_empty);
     function("is_core_shape_database_empty", &is_core_shape_database_empty);
     function("is_wire_database_empty", &is_wire_database_empty);
@@ -8552,11 +8927,8 @@ std::string simulate_dab_ideal_waveforms(std::string dabInputsString) {
         }
 
         double magnetizingInductance = 0;
-        if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
-        } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
-        } else {
+        magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+        if (!(magnetizingInductance > 0)) {
             throw std::runtime_error("Unable to calculate magnetizing inductance for DAB simulation");
         }
 
@@ -8665,11 +9037,8 @@ std::string simulate_psfb_ideal_waveforms(std::string psfbInputsString) {
         }
 
         double magnetizingInductance = 0;
-        if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
-        } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
-        } else {
+        magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+        if (!(magnetizingInductance > 0)) {
             throw std::runtime_error("Unable to determine magnetizing inductance for PSFB simulation");
         }
 
@@ -8812,11 +9181,8 @@ std::string simulate_pshb_ideal_waveforms(std::string pshbInputsString) {
         }
 
         double magnetizingInductance = 0;
-        if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
-        } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
-        } else {
+        magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+        if (!(magnetizingInductance > 0)) {
             throw std::runtime_error("Unable to determine magnetizing inductance for PSHB simulation");
         }
 
@@ -8966,11 +9332,8 @@ std::string simulate_ahb_ideal_waveforms(std::string ahbInputsString) {
         }
 
         double magnetizingInductance = 0;
-        if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
-        } else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
-        } else {
+        magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+        if (!(magnetizingInductance > 0)) {
             throw std::runtime_error("Unable to determine magnetizing inductance for AHB simulation");
         }
 
@@ -9099,11 +9462,11 @@ std::string calculate_cllc_inputs(std::string cllcInputsString) {
             cllcInputsJson["magnetizingInductance"].is_number()) {
             magnetizingInductance = cllcInputsJson["magnetizingInductance"].get<double>();
         }
-        else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
-        }
         else {
-            throw std::runtime_error("CLLC: no magnetizing inductance available (neither user input nor computed)");
+            magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+            if (!(magnetizingInductance > 0)) {
+                throw std::runtime_error("CLLC: no magnetizing inductance available (neither user input nor computed)");
+            }
         }
 
         auto operatingPoints = cllcInputs.process_operating_points(turnsRatios, magnetizingInductance);
@@ -9205,11 +9568,11 @@ std::string simulate_cllc_ideal_waveforms(std::string cllcInputsString) {
             cllcInputsJson["magnetizingInductance"].is_number()) {
             magnetizingInductance = cllcInputsJson["magnetizingInductance"].get<double>();
         }
-        else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
-        }
         else {
-            throw std::runtime_error("CLLC: no magnetizing inductance available (neither user input nor computed)");
+            magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+            if (!(magnetizingInductance > 0)) {
+                throw std::runtime_error("CLLC: no magnetizing inductance available (neither user input nor computed)");
+            }
         }
 
 #ifndef ENABLE_NGSPICE
@@ -9336,11 +9699,11 @@ std::string calculate_psfb_inputs(std::string psfbInputsString) {
             psfbInputsJson["magnetizingInductance"].is_number()) {
             magnetizingInductance = psfbInputsJson["magnetizingInductance"].get<double>();
         }
-        else if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
-        }
         else {
-            throw std::runtime_error("PSFB: no magnetizing inductance available (neither user input nor computed)");
+            magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+            if (!(magnetizingInductance > 0)) {
+                throw std::runtime_error("PSFB: no magnetizing inductance available (neither user input nor computed)");
+            }
         }
 
         auto operatingPoints = psfbInputs.process_operating_points(turnsRatios, magnetizingInductance);
@@ -9796,11 +10159,8 @@ std::string simulate_clllc_ideal_waveforms(std::string clllcInputsString) {
             throw std::runtime_error("Clllc: process_design_requirements produced no turns ratios");
         }
         double magnetizingInductance;
-        if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
-        } else if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
-        } else {
+        magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+        if (!(magnetizingInductance > 0)) {
             throw std::runtime_error("Clllc: no magnetizing inductance available");
         }
         model.set_num_periods_to_extract(static_cast<int>(numberOfPeriods));
@@ -9816,6 +10176,25 @@ std::string simulate_clllc_ideal_waveforms(std::string clllcInputsString) {
         result["inputs"] = inputs;
         result["converterWaveforms"] = json::array();
         for (const auto& tw : topologyWaveforms) { json j; to_json(j, tw); result["converterWaveforms"].push_back(j); }
+        // Path B diagnostics: see Buck comment for rationale.
+        model.process();
+        // Path B field schema:
+        {
+            json diag;
+            diag["computedPrimarySeriesInductance"]      = model.get_computed_primary_series_inductance();
+            diag["computedSecondarySeriesInductance"]    = model.get_computed_secondary_series_inductance();
+            diag["computedPrimaryResonantCapacitance"]   = model.get_computed_primary_resonant_capacitance();
+            diag["computedSecondaryResonantCapacitance"] = model.get_computed_secondary_resonant_capacitance();
+            diag["computedMagnetizingInductance"]        = model.get_computed_magnetizing_inductance();
+            diag["computedTurnsRatio"]                   = model.get_computed_turns_ratio();
+            diag["computedDeadTime"]                     = model.get_computed_dead_time();
+            diag["computedInductanceRatioK"]             = model.get_computed_inductance_ratio_k();
+            diag["computedQualityFactor"]                = model.get_computed_quality_factor();
+            diag["computedPrimaryResonantFrequency"]     = model.get_computed_primary_resonant_frequency();
+            diag["lastPrimaryPeakCurrent"]               = model.get_last_primary_peak_current();
+            diag["lastZvsMarginPrimaryLagging"]          = model.get_last_zvs_margin_primary_lagging();
+            result["clllcDiagnostics"] = diag;
+        }
         return result.dump(4);
     }
     catch (const std::exception& exc) {
@@ -9933,11 +10312,8 @@ std::string simulate_cuk_ideal_waveforms(std::string cukInputsString) {
         OpenMagnetics::Cuk model(inputsJson);
         auto designRequirements = model.process_design_requirements();
         double inductanceL1;
-        if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-            inductanceL1 = designRequirements.get_magnetizing_inductance().get_nominal().value();
-        } else if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-            inductanceL1 = designRequirements.get_magnetizing_inductance().get_minimum().value();
-        } else {
+        inductanceL1 = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+        if (!(inductanceL1 > 0)) {
             throw std::runtime_error("Cuk: no inductance L1 available");
         }
         model.set_num_periods_to_extract(static_cast<int>(numberOfPeriods));
@@ -9953,6 +10329,30 @@ std::string simulate_cuk_ideal_waveforms(std::string cukInputsString) {
         result["inputs"] = inputs;
         result["converterWaveforms"] = json::array();
         for (const auto& tw : topologyWaveforms) { json j; to_json(j, tw); result["converterWaveforms"].push_back(j); }
+        // Path B diagnostics: see Buck comment for rationale.
+        model.process();
+        // Path B field schema:
+        {
+            json diag;
+            diag["dutyCycle"]               = model.get_last_duty_cycle();
+            diag["conversionRatio"]         = model.get_last_conversion_ratio();
+            diag["couplingCapVoltage"]      = model.get_last_coupling_cap_voltage();
+            diag["inputInductorAverage"]    = model.get_last_input_inductor_average();
+            diag["outputInductorAverage"]   = model.get_last_output_inductor_average();
+            diag["inputInductorRipple"]     = model.get_last_input_inductor_ripple();
+            diag["outputInductorRipple"]    = model.get_last_output_inductor_ripple();
+            diag["switchPeakVoltage"]       = model.get_last_switch_peak_voltage();
+            diag["switchPeakCurrent"]       = model.get_last_switch_peak_current();
+            diag["diodePeakReverseVoltage"] = model.get_last_diode_peak_reverse_voltage();
+            diag["diodePeakCurrent"]        = model.get_last_diode_peak_current();
+            diag["couplingCapRmsCurrent"]   = model.get_last_coupling_cap_rms_current();
+            diag["isCcm"]                   = model.get_last_is_ccm();
+            diag["sizedCa"]                 = model.get_last_sized_ca();
+            diag["sizedCb"]                 = model.get_last_sized_cb();
+            diag["sizedCo"]                 = model.get_last_sized_co();
+            diag["rhpZeroFrequency"]        = model.get_last_rhp_zero_frequency();
+            result["cukDiagnostics"] = diag;
+        }
         return result.dump(4);
     }
     catch (const std::exception& exc) {
@@ -10040,11 +10440,8 @@ std::string simulate_four_switch_buck_boost_ideal_waveforms(std::string fsbbInpu
         OpenMagnetics::FourSwitchBuckBoost model(inputsJson);
         auto designRequirements = model.process_design_requirements();
         double inductance;
-        if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-            inductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
-        } else if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-            inductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
-        } else {
+        inductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+        if (!(inductance > 0)) {
             throw std::runtime_error("FourSwitchBuckBoost: no inductance available");
         }
         model.set_num_periods_to_extract(static_cast<int>(numberOfPeriods));
@@ -10060,6 +10457,15 @@ std::string simulate_four_switch_buck_boost_ideal_waveforms(std::string fsbbInpu
         result["inputs"] = inputs;
         result["converterWaveforms"] = json::array();
         for (const auto& tw : topologyWaveforms) { json j; to_json(j, tw); result["converterWaveforms"].push_back(j); }
+        // Path B diagnostics: see Buck comment for rationale.
+        model.process();
+        // Path B field schema:
+        {
+            json diag;
+            diag["inductorAverageCurrent"] = model.get_last_inductor_average_current();
+            diag["sizedOutputCapacitance"] = model.get_last_sized_output_capacitance();
+            result["fsbbDiagnostics"] = diag;
+        }
         return result.dump(4);
     }
     catch (const std::exception& exc) {
@@ -10184,11 +10590,8 @@ std::string simulate_weinberg_ideal_waveforms(std::string weinbergInputsString) 
             throw std::runtime_error("Weinberg: process_design_requirements produced no turns ratio");
         }
         double magnetizingInductance;
-        if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
-        } else if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
-        } else {
+        magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+        if (!(magnetizingInductance > 0)) {
             throw std::runtime_error("Weinberg: no magnetizing inductance available");
         }
         model.set_num_periods_to_extract(static_cast<int>(numberOfPeriods));
@@ -10204,6 +10607,30 @@ std::string simulate_weinberg_ideal_waveforms(std::string weinbergInputsString) 
         result["inputs"] = inputs;
         result["converterWaveforms"] = json::array();
         for (const auto& tw : topologyWaveforms) { json j; to_json(j, tw); result["converterWaveforms"].push_back(j); }
+        // Path B diagnostics: see Buck comment for rationale.
+        model.process();
+        // Path B field schema:
+        {
+            json diag;
+            diag["dutyCycle"]                = model.get_last_duty_cycle();
+            diag["conversionRatio"]          = model.get_last_conversion_ratio();
+            diag["operatingRegime"]          = model.get_last_operating_regime();
+            diag["overlapFraction"]          = model.get_last_overlap_fraction();
+            diag["switchPeakVoltage"]        = model.get_last_switch_peak_voltage();
+            diag["switchPeakCurrent"]        = model.get_last_switch_peak_current();
+            diag["diodePeakReverseVoltage"]  = model.get_last_diode_peak_reverse_voltage();
+            diag["diodePeakCurrent"]         = model.get_last_diode_peak_current();
+            diag["energyRecoveryAvgCurrent"] = model.get_last_energy_recovery_avg_current();
+            diag["inputInductorAverage"]     = model.get_last_input_inductor_average();
+            diag["inputInductorRipple"]      = model.get_last_input_inductor_ripple();
+            diag["magnetizingRipple"]        = model.get_last_magnetizing_ripple();
+            diag["fluxImbalanceMargin"]      = model.get_last_flux_imbalance_margin();
+            diag["rhpZeroFrequency"]         = model.get_last_rhp_zero_frequency();
+            diag["isCcm"]                    = model.get_last_is_ccm();
+            diag["sizedCo"]                  = model.get_last_sized_co();
+            diag["outputVoltageRipple"]      = model.get_last_output_voltage_ripple();
+            result["weinbergDiagnostics"] = diag;
+        }
         return result.dump(4);
     }
     catch (const std::exception& exc) {
@@ -10321,11 +10748,8 @@ std::string simulate_zeta_ideal_waveforms(std::string zetaInputsString) {
         OpenMagnetics::Zeta model(inputsJson);
         auto designRequirements = model.process_design_requirements();
         double inductanceL1;
-        if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-            inductanceL1 = designRequirements.get_magnetizing_inductance().get_nominal().value();
-        } else if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-            inductanceL1 = designRequirements.get_magnetizing_inductance().get_minimum().value();
-        } else {
+        inductanceL1 = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+        if (!(inductanceL1 > 0)) {
             throw std::runtime_error("Zeta: no inductance L1 available");
         }
         model.set_num_periods_to_extract(static_cast<int>(numberOfPeriods));
@@ -10341,6 +10765,30 @@ std::string simulate_zeta_ideal_waveforms(std::string zetaInputsString) {
         result["inputs"] = inputs;
         result["converterWaveforms"] = json::array();
         for (const auto& tw : topologyWaveforms) { json j; to_json(j, tw); result["converterWaveforms"].push_back(j); }
+        // Path B diagnostics: see Buck comment for rationale.
+        model.process();
+        // Path B field schema:
+        {
+            json diag;
+            diag["dutyCycle"]               = model.get_last_duty_cycle();
+            diag["conversionRatio"]         = model.get_last_conversion_ratio();
+            diag["couplingCapVoltage"]      = model.get_last_coupling_cap_voltage();
+            diag["inputInductorAverage"]    = model.get_last_input_inductor_average();
+            diag["outputInductorAverage"]   = model.get_last_output_inductor_average();
+            diag["inputInductorRipple"]     = model.get_last_input_inductor_ripple();
+            diag["outputInductorRipple"]    = model.get_last_output_inductor_ripple();
+            diag["switchPeakVoltage"]       = model.get_last_switch_peak_voltage();
+            diag["switchPeakCurrent"]       = model.get_last_switch_peak_current();
+            diag["diodePeakReverseVoltage"] = model.get_last_diode_peak_reverse_voltage();
+            diag["diodePeakCurrent"]        = model.get_last_diode_peak_current();
+            diag["couplingCapRmsCurrent"]   = model.get_last_coupling_cap_rms_current();
+            diag["isCcm"]                   = model.get_last_is_ccm();
+            diag["sizedCc"]                 = model.get_last_sized_cc();
+            diag["sizedCo"]                 = model.get_last_sized_co();
+            diag["outputVoltageRipple"]     = model.get_last_output_voltage_ripple();
+            diag["inputCurrentRipple"]      = model.get_last_input_current_ripple();
+            result["zetaDiagnostics"] = diag;
+        }
         return result.dump(4);
     }
     catch (const std::exception& exc) {
@@ -10386,11 +10834,8 @@ std::string calculate_src_inputs(std::string srcInputsString) {
         }
 
         double magnetizingInductance;
-        if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
-        } else if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
-        } else {
+        magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+        if (!(magnetizingInductance > 0)) {
             throw std::runtime_error("SRC: no magnetizing inductance available");
         }
 
@@ -10474,11 +10919,8 @@ std::string simulate_src_ideal_waveforms(std::string srcInputsString) {
         }
 
         double magnetizingInductance;
-        if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
-        } else if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-            magnetizingInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
-        } else {
+        magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+        if (!(magnetizingInductance > 0)) {
             throw std::runtime_error("SRC: no magnetizing inductance available");
         }
 
@@ -10557,11 +10999,8 @@ std::string calculate_vienna_inputs(std::string viennaInputsString) {
         }
 
         double boostInductance;
-        if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-            boostInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
-        } else if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-            boostInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
-        } else {
+        boostInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+        if (!(boostInductance > 0)) {
             throw std::runtime_error("Vienna: no boost inductance available");
         }
 
@@ -10645,11 +11084,8 @@ std::string simulate_vienna_ideal_waveforms(std::string viennaInputsString) {
         }
 
         double boostInductance;
-        if (designRequirements.get_magnetizing_inductance().get_nominal()) {
-            boostInductance = designRequirements.get_magnetizing_inductance().get_nominal().value();
-        } else if (designRequirements.get_magnetizing_inductance().get_minimum()) {
-            boostInductance = designRequirements.get_magnetizing_inductance().get_minimum().value();
-        } else {
+        boostInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+        if (!(boostInductance > 0)) {
             throw std::runtime_error("Vienna: no boost inductance available");
         }
 
