@@ -2377,6 +2377,8 @@ std::string export_magnetic_as_subcircuit(std::string magneticString, double tem
                 break;
             case OpenMagnetics::CircuitSimulatorExporterModels::NL5:
                 return OpenMagnetics::CircuitSimulatorExporterNl5Model().export_magnetic_as_subcircuit(magnetic, OpenMagnetics::Defaults().measurementFrequency, temperature);
+            case OpenMagnetics::CircuitSimulatorExporterModels::PLECS:
+                return OpenMagnetics::CircuitSimulatorExporter(simulator).export_magnetic_as_subcircuit(magnetic, OpenMagnetics::Defaults().measurementFrequency, temperature);
         }
 
 
@@ -2401,6 +2403,11 @@ std::string export_magnetic_as_symbol(std::string magneticString, std::string si
                 return OpenMagnetics::CircuitSimulatorExporter(simulator).export_magnetic_as_symbol(magnetic);
                 break;
             case OpenMagnetics::CircuitSimulatorExporterModels::NGSPICE:
+                break;
+            case OpenMagnetics::CircuitSimulatorExporterModels::NL5:
+                break;
+            case OpenMagnetics::CircuitSimulatorExporterModels::PLECS:
+                return OpenMagnetics::CircuitSimulatorExporter(simulator).export_magnetic_as_symbol(magnetic);
                 break;
         }
 
