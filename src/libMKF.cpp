@@ -1631,9 +1631,15 @@ std::string calculate_insulation(std::string inputsString){
         return result.dump(4);
 }
 
+// All three CSV-import bindings return their result as a JSON string on
+// success, or a string beginning with "ERROR:" on failure. The frontend
+// proxy checks the prefix before JSON.parse and surfaces the real reason
+// (file:line:column, missing time column, etc.) to the user instead of
+// the previous catch-all "please check column names and frequency".
 std::string extract_operating_point(std::string fileString, size_t numberWindings, double frequency, double desiredMagnetizingInductance, std::string mapColumnNamesString){
     try {
-        std::vector<std::map<std::string, std::string>> mapColumnNames = json::parse(mapColumnNamesString).get<std::vector<std::map<std::string, std::string>>>();
+        std::vector<std::map<std::string, std::string>> mapColumnNames =
+            json::parse(mapColumnNamesString).get<std::vector<std::map<std::string, std::string>>>();
         auto reader = OpenMagnetics::CircuitSimulationReader(fileString, true);
         auto operatingPoint = reader.extract_operating_point(numberWindings, frequency, mapColumnNames);
         operatingPoint = OpenMagnetics::Inputs::process_operating_point(operatingPoint, desiredMagnetizingInductance);
@@ -1641,9 +1647,11 @@ std::string extract_operating_point(std::string fileString, size_t numberWinding
         to_json(result, operatingPoint);
         return result.dump(4);
     }
-    catch(...)
-    {
-        return "Error processing waveforms, please check column names and frequency";
+    catch (const std::exception& e) {
+        return std::string("ERROR:") + e.what();
+    }
+    catch (...) {
+        return std::string("ERROR:unknown failure while extracting operating point from circuit simulation");
     }
 }
 
@@ -1660,11 +1668,14 @@ std::string extract_map_column_names(std::string fileString, size_t numberWindin
             }
             result.push_back(aux);
         }
-        
+
         return result.dump(4);
     }
-    catch (const std::exception &exc) {
-        return "Exception: " + std::string{exc.what()};
+    catch (const std::exception& e) {
+        return std::string("ERROR:") + e.what();
+    }
+    catch (...) {
+        return std::string("ERROR:unknown failure while extracting column-name mapping");
     }
 }
 
@@ -1677,11 +1688,14 @@ std::string extract_column_names(std::string fileString){
         for (auto& columnName : columnNames) {
             result.push_back(columnName);
         }
-        
+
         return result.dump(4);
     }
-    catch (const std::exception &exc) {
-        return "Exception: " + std::string{exc.what()};
+    catch (const std::exception& e) {
+        return std::string("ERROR:") + e.what();
+    }
+    catch (...) {
+        return std::string("ERROR:unknown failure while extracting column names");
     }
 }
 
@@ -8415,6 +8429,22 @@ std::string simulate_psfb_ideal_waveforms(std::string psfbInputsString) {
             result["converterWaveforms"].push_back(cwJson);
         }
 
+        // PSFB diagnostics — process() was called above so members are already set.
+        {
+            json diag;
+            diag["effectiveDutyCycle"]            = psfbInputs.get_last_effective_duty_cycle();
+            diag["dutyCycleLoss"]                 = psfbInputs.get_last_duty_cycle_loss();
+            diag["zvsMarginLagging"]              = psfbInputs.get_last_zvs_margin_lagging();
+            diag["zvsLoadThreshold"]              = psfbInputs.get_last_zvs_load_threshold();
+            diag["resonantTransitionTime"]        = psfbInputs.get_last_resonant_transition_time();
+            diag["primaryPeakCurrent"]            = psfbInputs.get_last_primary_peak_current();
+            diag["computedSeriesInductance"]      = psfbInputs.get_computed_series_inductance();
+            diag["computedOutputInductance"]      = psfbInputs.get_computed_output_inductance();
+            diag["computedMagnetizingInductance"] = psfbInputs.get_computed_magnetizing_inductance();
+            diag["computedDeadTime"]              = psfbInputs.get_computed_dead_time();
+            result["psfbDiagnostics"] = diag;
+        }
+
         return result.dump(4);
     }
     catch (const std::exception& exc) {
@@ -8443,6 +8473,22 @@ std::string calculate_pshb_inputs(std::string pshbInputsString) {
 
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+
+        // PSHB diagnostics — populated by process() above.
+        {
+            json diag;
+            diag["effectiveDutyCycle"]            = pshbInputs.get_last_effective_duty_cycle();
+            diag["dutyCycleLoss"]                 = pshbInputs.get_last_duty_cycle_loss();
+            diag["zvsMarginLagging"]              = pshbInputs.get_last_zvs_margin_lagging();
+            diag["zvsLoadThreshold"]              = pshbInputs.get_last_zvs_load_threshold();
+            diag["resonantTransitionTime"]        = pshbInputs.get_last_resonant_transition_time();
+            diag["primaryPeakCurrent"]            = pshbInputs.get_last_primary_peak_current();
+            diag["computedSeriesInductance"]      = pshbInputs.get_computed_series_inductance();
+            diag["computedOutputInductance"]      = pshbInputs.get_computed_output_inductance();
+            diag["computedMagnetizingInductance"] = pshbInputs.get_computed_magnetizing_inductance();
+            diag["computedDeadTime"]              = pshbInputs.get_computed_dead_time();
+            result["pshbDiagnostics"] = diag;
         }
 
         return result.dump(4);
@@ -8519,6 +8565,22 @@ std::string simulate_pshb_ideal_waveforms(std::string pshbInputsString) {
             result["converterWaveforms"].push_back(cwJson);
         }
 
+        // PSHB diagnostics — process() was called above so members are already set.
+        {
+            json diag;
+            diag["effectiveDutyCycle"]            = pshbInputs.get_last_effective_duty_cycle();
+            diag["dutyCycleLoss"]                 = pshbInputs.get_last_duty_cycle_loss();
+            diag["zvsMarginLagging"]              = pshbInputs.get_last_zvs_margin_lagging();
+            diag["zvsLoadThreshold"]              = pshbInputs.get_last_zvs_load_threshold();
+            diag["resonantTransitionTime"]        = pshbInputs.get_last_resonant_transition_time();
+            diag["primaryPeakCurrent"]            = pshbInputs.get_last_primary_peak_current();
+            diag["computedSeriesInductance"]      = pshbInputs.get_computed_series_inductance();
+            diag["computedOutputInductance"]      = pshbInputs.get_computed_output_inductance();
+            diag["computedMagnetizingInductance"] = pshbInputs.get_computed_magnetizing_inductance();
+            diag["computedDeadTime"]              = pshbInputs.get_computed_dead_time();
+            result["pshbDiagnostics"] = diag;
+        }
+
         return result.dump(4);
     }
     catch (const std::exception& exc) {
@@ -8547,6 +8609,29 @@ std::string calculate_ahb_inputs(std::string ahbInputsString) {
 
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
+        }
+
+        // AHB diagnostics — populated by process() above.
+        {
+            json diag;
+            diag["operatingMode"]                = ahbInputs.get_last_operating_mode();
+            diag["rectifierType"]                = ahbInputs.get_last_rectifier_type();
+            diag["dutyCycle"]                    = ahbInputs.get_last_duty_cycle();
+            diag["conversionRatio"]              = ahbInputs.get_last_conversion_ratio();
+            diag["dcBlockingCapVoltage"]         = ahbInputs.get_last_dc_blocking_cap_voltage();
+            diag["dcBlockingCapRipple"]          = ahbInputs.get_last_dc_blocking_cap_ripple();
+            diag["primaryPeakVoltagePositive"]   = ahbInputs.get_last_primary_peak_voltage_positive();
+            diag["primaryPeakVoltageNegative"]   = ahbInputs.get_last_primary_peak_voltage_negative();
+            diag["switchPeakVoltageQ1"]          = ahbInputs.get_last_switch_peak_voltage_q1();
+            diag["switchPeakVoltageQ2"]          = ahbInputs.get_last_switch_peak_voltage_q2();
+            diag["switchRmsCurrentQ1"]           = ahbInputs.get_last_switch_rms_current_q1();
+            diag["switchRmsCurrentQ2"]           = ahbInputs.get_last_switch_rms_current_q2();
+            diag["zvsMargin"]                    = ahbInputs.get_last_zvs_margin();
+            diag["resonantTransitionTime"]       = ahbInputs.get_last_resonant_transition_time();
+            diag["steadyStateFluxExcursion"]     = ahbInputs.get_last_steady_state_flux_excursion();
+            diag["transientFluxExcursionEstimate"] = ahbInputs.get_last_transient_flux_excursion_estimate();
+            diag["magnetizingCurrentRipple"]     = ahbInputs.get_last_magnetizing_current_ripple();
+            result["ahbDiagnostics"] = diag;
         }
 
         return result.dump(4);
@@ -8621,6 +8706,29 @@ std::string simulate_ahb_ideal_waveforms(std::string ahbInputsString) {
             json cwJson;
             to_json(cwJson, tw);
             result["converterWaveforms"].push_back(cwJson);
+        }
+
+        // AHB diagnostics — process() was called above so members are already set.
+        {
+            json diag;
+            diag["operatingMode"]                = ahbInputs.get_last_operating_mode();
+            diag["rectifierType"]                = ahbInputs.get_last_rectifier_type();
+            diag["dutyCycle"]                    = ahbInputs.get_last_duty_cycle();
+            diag["conversionRatio"]              = ahbInputs.get_last_conversion_ratio();
+            diag["dcBlockingCapVoltage"]         = ahbInputs.get_last_dc_blocking_cap_voltage();
+            diag["dcBlockingCapRipple"]          = ahbInputs.get_last_dc_blocking_cap_ripple();
+            diag["primaryPeakVoltagePositive"]   = ahbInputs.get_last_primary_peak_voltage_positive();
+            diag["primaryPeakVoltageNegative"]   = ahbInputs.get_last_primary_peak_voltage_negative();
+            diag["switchPeakVoltageQ1"]          = ahbInputs.get_last_switch_peak_voltage_q1();
+            diag["switchPeakVoltageQ2"]          = ahbInputs.get_last_switch_peak_voltage_q2();
+            diag["switchRmsCurrentQ1"]           = ahbInputs.get_last_switch_rms_current_q1();
+            diag["switchRmsCurrentQ2"]           = ahbInputs.get_last_switch_rms_current_q2();
+            diag["zvsMargin"]                    = ahbInputs.get_last_zvs_margin();
+            diag["resonantTransitionTime"]       = ahbInputs.get_last_resonant_transition_time();
+            diag["steadyStateFluxExcursion"]     = ahbInputs.get_last_steady_state_flux_excursion();
+            diag["transientFluxExcursionEstimate"] = ahbInputs.get_last_transient_flux_excursion_estimate();
+            diag["magnetizingCurrentRipple"]     = ahbInputs.get_last_magnetizing_current_ripple();
+            result["ahbDiagnostics"] = diag;
         }
 
         return result.dump(4);
@@ -8720,6 +8828,21 @@ std::string calculate_cllc_inputs(std::string cllcInputsString) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
 
+        // CLLC diagnostics — populated by process_operating_point_for_input_voltage
+        // (called inside process_operating_points above). Mirrors simulate_cllc_ideal_waveforms.
+        json diag;
+        diag["lastMode"]                   = cllcInputs.get_last_mode();
+        diag["lipFrequency"]               = cllcInputs.get_lip_frequency();
+        diag["lastSteadyStateResidual"]    = cllcInputs.get_last_steady_state_residual();
+        diag["lastZvsMarginPrimary"]       = cllcInputs.get_last_zvs_margin_primary();
+        diag["lastZvsMarginSecondary"]     = cllcInputs.get_last_zvs_margin_secondary();
+        diag["lastResonantTransitionTime"] = cllcInputs.get_last_resonant_transition_time();
+        diag["lastPrimaryPeakCurrent"]     = cllcInputs.get_last_primary_peak_current();
+        diag["lastResonantCapPeakVoltage"] = cllcInputs.get_last_resonant_cap_peak_voltage();
+        diag["lastSubStateSequence"]       = cllcInputs.get_last_sub_state_sequence();
+        diag["bridgeVoltageFactor"]        = cllcInputs.get_bridge_voltage_factor();
+        result["cllcDiagnostics"] = diag;
+
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -8808,6 +8931,12 @@ std::string simulate_cllc_ideal_waveforms(std::string cllcInputsString) {
         // which we just set above).
         auto operatingPoints = cllc.simulate_and_extract_operating_points(
             turnsRatios, magnetizingInductance);
+
+        // The SPICE path never calls process_operating_point_for_input_voltage,
+        // so diagnostic members (LIP freq, ZVS margins, peak currents, etc.) stay
+        // at their default 0. Run the analytical solver now to populate them —
+        // we discard its operating-point return value and keep the SPICE waveforms.
+        cllc.process_operating_points(turnsRatios, magnetizingInductance);
 
         json result;
 
@@ -8927,7 +9056,23 @@ std::string calculate_psfb_inputs(std::string psfbInputsString) {
         if (numberOfPeriods > 1 && result.contains("operatingPoints")) {
             repeat_operating_points_waveforms(result["operatingPoints"], numberOfPeriods);
         }
-        
+
+        // PSFB diagnostics — populated by process_operating_points above.
+        {
+            json diag;
+            diag["effectiveDutyCycle"]          = psfbInputs.get_last_effective_duty_cycle();
+            diag["dutyCycleLoss"]               = psfbInputs.get_last_duty_cycle_loss();
+            diag["zvsMarginLagging"]            = psfbInputs.get_last_zvs_margin_lagging();
+            diag["zvsLoadThreshold"]            = psfbInputs.get_last_zvs_load_threshold();
+            diag["resonantTransitionTime"]      = psfbInputs.get_last_resonant_transition_time();
+            diag["primaryPeakCurrent"]          = psfbInputs.get_last_primary_peak_current();
+            diag["computedSeriesInductance"]    = psfbInputs.get_computed_series_inductance();
+            diag["computedOutputInductance"]    = psfbInputs.get_computed_output_inductance();
+            diag["computedMagnetizingInductance"] = psfbInputs.get_computed_magnetizing_inductance();
+            diag["computedDeadTime"]            = psfbInputs.get_computed_dead_time();
+            result["psfbDiagnostics"] = diag;
+        }
+
         result["masInputs"] = json::object();
         to_json(result["masInputs"], designRequirements);
         if (!result["operatingPoints"].empty()) {
