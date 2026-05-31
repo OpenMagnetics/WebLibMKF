@@ -7529,9 +7529,13 @@ EMSCRIPTEN_KEEPALIVE std::string calculate_pfc_inputs(std::string pfcInputsStrin
         // Note: simulate_and_extract_waveforms already generates the requested number of periods
         auto displayWaveforms = pfcInputs.simulate_and_extract_waveforms(inductance, 0.1, numberOfPeriods);
         
-        // Build result with inputs and waveforms
+        // Build result with inputs and waveforms.
+        // Emit designRequirements as a NESTED object (matching calculate_sepic_inputs
+        // and every other converter entry) so ConverterWizardBase captures the full
+        // MAS DesignRequirements. Spreading the fields at top level left
+        // result.designRequirements undefined, forcing the wizard onto a skeleton DR.
         json result;
-        to_json(result, designRequirements);
+        to_json(result["designRequirements"], designRequirements);
         result["inductance"] = inductance;
         result["operatingPoints"] = json::array();
         
@@ -7544,9 +7548,11 @@ EMSCRIPTEN_KEEPALIVE std::string calculate_pfc_inputs(std::string pfcInputsStrin
         // Note: No need to call repeat_operating_points_waveforms here because
         // simulate_and_extract_waveforms already generated the correct number of periods
         
-        // Build MAS inputs - only include first operating point for magnetic design
+        // Build MAS inputs - only include first operating point for magnetic design.
+        // designRequirements is nested under its own key so masInputs is a valid
+        // MAS Inputs object (designRequirements + operatingPoints).
         result["masInputs"] = json::object();
-        to_json(result["masInputs"], designRequirements);
+        to_json(result["masInputs"]["designRequirements"], designRequirements);
         // Only export first operating point to magnetic tool to avoid redundant calculations
         if (!result["operatingPoints"].empty()) {
             result["masInputs"]["operatingPoints"] = json::array({result["operatingPoints"][0]});
