@@ -1605,31 +1605,45 @@ std::string scale_excitation_time_to_frequency(std::string excitationString, dou
 }
 
 std::string calculate_insulation(std::string inputsString){
-    auto standard = OpenMagnetics::InsulationCoordinator();
-    OpenMagnetics::Inputs inputs(json::parse(inputsString), false);
-
     json result;
+    result["creepageDistance"] = 0.0;
+    result["clearance"] = 0.0;
+    result["withstandVoltage"] = 0.0;
+    result["distanceThroughInsulation"] = 0.0;
+    result["errorMessage"] = "";
     try {
+        // Build Inputs by hand instead of via OpenMagnetics::Inputs(json,
+        // false) — that constructor calls check_integrity(), which tries
+        // to synthesise a magnetizing current from the voltage waveform
+        // and throws when prerequisites it doesn't actually need for the
+        // insulation calc (waveform, magnetizing inductance, etc.) are
+        // missing. The four insulation calculators only read the voltage
+        // *processed* peak/rms, the altitude, and the insulation
+        // requirements — none of which require a magnetizing-current pass.
+        auto j = json::parse(inputsString);
+        OpenMagnetics::compat::migrate_pre_1_0(j);
+        OpenMagnetics::Inputs inputs;
+        from_json(j, inputs);
+
+        auto standard = OpenMagnetics::InsulationCoordinator();
         result["creepageDistance"] = standard.calculate_creepage_distance(inputs);
         result["clearance"] = standard.calculate_clearance(inputs);
         result["withstandVoltage"] = standard.calculate_withstand_voltage(inputs);
         result["distanceThroughInsulation"] = standard.calculate_distance_through_insulation(inputs);
-        result["errorMessage"] = "";
     }
     catch(const std::runtime_error& re)
     {
-        result["errorMessage"] = "Exception: " + std::string{re.what()};
+        result["errorMessage"] = std::string{re.what()};
     }
     catch(const std::exception& ex)
     {
-        result["errorMessage"] = "Exception: " + std::string{ex.what()};
+        result["errorMessage"] = std::string{ex.what()};
     }
     catch(...)
     {
         result["errorMessage"] = "Unknown failure occurred. Possible memory corruption";
     }
-        
-        return result.dump(4);
+    return result.dump(4);
 }
 
 // All three CSV-import bindings return their result as a JSON string on
@@ -3404,7 +3418,11 @@ std::string get_available_core_losses_methods(std::string magneticString){
         resultJson["methods"] = json::array();
         resultJson["hasMaterial"] = true;
         
-        // Map CoreLossesModels to display names in preference order
+        // Map CoreLossesModels to display names in preference order.
+        // Keys must match the strings emitted by Definitions.h to_json for
+        // CoreLossesModels (NOT the C++ enum-value names) — comparing against
+        // "PROPRIETARY"/"LOSS_FACTOR" never matched, so "Loss Factor" rendered
+        // as "LossFactor" via the methodKey fallback.
         std::map<std::string, int> methodPriority = {
             {"IGSE", 0},
             {"Steinmetz", 1},
@@ -3413,8 +3431,8 @@ std::string get_available_core_losses_methods(std::string magneticString){
             {"Roshen", 4},
             {"Barg", 5},
             {"Albach", 6},
-            {"PROPRIETARY", 7},
-            {"LOSS_FACTOR", 8}
+            {"Proprietary", 7},
+            {"LossFactor", 8}
         };
         
         struct MethodInfo {
@@ -3438,8 +3456,8 @@ std::string get_available_core_losses_methods(std::string magneticString){
             else if (methodKey == "Roshen") displayName = "Roshen";
             else if (methodKey == "Barg") displayName = "Barg";
             else if (methodKey == "Albach") displayName = "Albach";
-            else if (methodKey == "PROPRIETARY") displayName = "Proprietary";
-            else if (methodKey == "LOSS_FACTOR") displayName = "Loss Factor";
+            else if (methodKey == "Proprietary") displayName = "Proprietary";
+            else if (methodKey == "LossFactor") displayName = "Loss Factor";
             else displayName = methodKey;
             
             int priority = methodPriority.count(methodKey) ? methodPriority[methodKey] : 999;
@@ -7512,13 +7530,16 @@ EMSCRIPTEN_KEEPALIVE std::string calculate_pfc_inputs(std::string pfcInputsStrin
         if (pfcInputsJson.contains("inductance")) {
             inductance = pfcInputsJson["inductance"];
         } else {
-            std::string mode = pfcInputsJson.value("mode", "Continuous Conduction Mode");
-            if (mode == "Continuous Conduction Mode") {
-                inductance = pfcInputs.calculate_inductance_ccm();
-            } else if (mode == "Critical Conduction Mode") {
-                inductance = pfcInputs.calculate_inductance_crcm();
-            } else {
-                inductance = pfcInputs.calculate_inductance_dcm();
+            auto mode = pfcInputs.get_mode().value_or(PfcModes::CONTINUOUS_CONDUCTION_MODE);
+            switch (mode) {
+                case PfcModes::CONTINUOUS_CONDUCTION_MODE:
+                    inductance = pfcInputs.calculate_inductance_ccm(); break;
+                case PfcModes::CRITICAL_CONDUCTION_MODE:
+                    inductance = pfcInputs.calculate_inductance_crcm(); break;
+                case PfcModes::DISCONTINUOUS_CONDUCTION_MODE:
+                    inductance = pfcInputs.calculate_inductance_dcm(); break;
+                default:
+                    throw std::runtime_error("Unsupported PFC mode for calculate_pfc_inputs");
             }
         }
         
@@ -7610,19 +7631,22 @@ EMSCRIPTEN_KEEPALIVE std::string simulate_pfc_waveforms(std::string pfcInputsStr
         if (pfcInputsJson.contains("inductance")) {
             inductance = pfcInputsJson["inductance"];
         } else {
-            std::string mode = pfcInputsJson.value("mode", "Continuous Conduction Mode");
-            if (mode == "Continuous Conduction Mode") {
-                inductance = pfcInputs.calculate_inductance_ccm();
-            } else if (mode == "Critical Conduction Mode") {
-                inductance = pfcInputs.calculate_inductance_crcm();
-            } else {
-                inductance = pfcInputs.calculate_inductance_dcm();
+            auto mode = pfcInputs.get_mode().value_or(PfcModes::CONTINUOUS_CONDUCTION_MODE);
+            switch (mode) {
+                case PfcModes::CONTINUOUS_CONDUCTION_MODE:
+                    inductance = pfcInputs.calculate_inductance_ccm(); break;
+                case PfcModes::CRITICAL_CONDUCTION_MODE:
+                    inductance = pfcInputs.calculate_inductance_crcm(); break;
+                case PfcModes::DISCONTINUOUS_CONDUCTION_MODE:
+                    inductance = pfcInputs.calculate_inductance_dcm(); break;
+                default:
+                    throw std::runtime_error("Unsupported PFC mode for simulate_pfc_waveforms");
             }
         }
-        
+
         // Get design requirements
         auto designRequirements = pfcInputs.process_design_requirements();
-        
+
         // Get simulation parameters
         double dcResistance = pfcInputsJson.value("dcResistance", 0.1);
         int numberOfCycles = pfcInputsJson.value("numberOfPeriods", 2);
