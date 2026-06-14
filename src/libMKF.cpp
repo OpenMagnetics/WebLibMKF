@@ -1199,15 +1199,46 @@ double calculate_inductance_from_number_turns_and_gapping(std::string coreData,
 }
 
 
+// Canonical coil-aware form (preferred): turns are sized against the actual
+// winding via MKF's coil-taking overload.
 double calculate_number_turns_from_gapping_and_inductance(std::string coreData,
-                                                          std::string inputsData,    
+                                                          std::string coilData,
+                                                          std::string inputsData,
                                                           std::string modelsData){
+    try {
+        OpenMagnetics::Core core(json::parse(coreData));
+        OpenMagnetics::Coil coil(json::parse(coilData), false);
+        OpenMagnetics::Inputs inputs(json::parse(inputsData));
+
+        std::map<std::string, std::string> models = json::parse(modelsData).get<std::map<std::string, std::string>>();
+
+        auto reluctanceModelName = OpenMagnetics::Defaults().reluctanceModelDefault;
+        if (models.find("reluctance") != models.end()) {
+            OpenMagnetics::from_json(models["reluctance"], reluctanceModelName);
+        }
+
+        OpenMagnetics::MagnetizingInductance magnetizingInductanceObj(reluctanceModelName);
+        double numberTurns = magnetizingInductanceObj.calculate_number_turns_from_gapping_and_inductance(core, coil, &inputs);
+
+        return numberTurns;
+    }
+    catch (const std::exception &exc) {
+        std::cerr << "Exception: " + std::string{exc.what()} << std::endl;
+        return -1;
+    }
+}
+
+// Legacy 3-argument form (no coilData) — backward-compat backup. Forwards to
+// MKF's 3-argument overload, which synthesizes a single-primary-winding coil.
+double calculate_number_turns_from_gapping_and_inductance_legacy(std::string coreData,
+                                                                 std::string inputsData,
+                                                                 std::string modelsData){
     try {
         OpenMagnetics::Core core(json::parse(coreData));
         OpenMagnetics::Inputs inputs(json::parse(inputsData));
 
         std::map<std::string, std::string> models = json::parse(modelsData).get<std::map<std::string, std::string>>();
-        
+
         auto reluctanceModelName = OpenMagnetics::Defaults().reluctanceModelDefault;
         if (models.find("reluctance") != models.end()) {
             OpenMagnetics::from_json(models["reluctance"], reluctanceModelName);
@@ -2703,6 +2734,9 @@ std::vector<double> get_maximum_dimensions(std::string magneticString){
 
 std::string calculate_advised_cores(std::string inputsString, std::string weightsString, int maximumNumberResults, std::string coreModeString){
     try {
+        // Drain stale entries (and enable log capture on first use) so the
+        // log returned with this run's results covers exactly this run.
+        OpenMagnetics::read_log();
         OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(true);
 
         OpenMagnetics::Inputs inputs(json::parse(inputsString));
@@ -4234,6 +4268,200 @@ EMSCRIPTEN_KEEPALIVE std::string generate_cllc_ngspice_circuit(std::string cllcI
         double turnsRatio = params.turnsRatio;
         std::string netlist = cllc.generate_ngspice_circuit(turnsRatio, params, inputVoltageIndex, operatingPointIndex);
         return netlist;
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+// Cuk SPICE generation (inductance-shaped, mirrors generate_sepic_ngspice_circuit)
+EMSCRIPTEN_KEEPALIVE std::string generate_cuk_ngspice_circuit(std::string cukInputsString, size_t inputVoltageIndex, size_t operatingPointIndex){
+    try {
+        json cukInputsJson = json::parse(cukInputsString);
+
+        if (cukInputsJson.contains("desiredInductance")) {
+            OpenMagnetics::AdvancedCuk cuk(cukInputsJson);
+            return cuk.generate_ngspice_circuit(cuk.get_desired_inductance(), inputVoltageIndex, operatingPointIndex);
+        }
+        OpenMagnetics::Cuk cuk(cukInputsJson);
+        auto designRequirements = cuk.process_design_requirements();
+        double inductanceL1 = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+        if (!(inductanceL1 > 0)) {
+            throw std::runtime_error("Cuk: unable to calculate inductance");
+        }
+        return cuk.generate_ngspice_circuit(inductanceL1, inputVoltageIndex, operatingPointIndex);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+// Zeta SPICE generation (inductance-shaped)
+EMSCRIPTEN_KEEPALIVE std::string generate_zeta_ngspice_circuit(std::string zetaInputsString, size_t inputVoltageIndex, size_t operatingPointIndex){
+    try {
+        json zetaInputsJson = json::parse(zetaInputsString);
+
+        if (zetaInputsJson.contains("desiredInductance")) {
+            OpenMagnetics::AdvancedZeta zeta(zetaInputsJson);
+            return zeta.generate_ngspice_circuit(zeta.get_desired_inductance(), inputVoltageIndex, operatingPointIndex);
+        }
+        OpenMagnetics::Zeta zeta(zetaInputsJson);
+        auto designRequirements = zeta.process_design_requirements();
+        double inductanceL1 = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+        if (!(inductanceL1 > 0)) {
+            throw std::runtime_error("Zeta: unable to calculate inductance");
+        }
+        return zeta.generate_ngspice_circuit(inductanceL1, inputVoltageIndex, operatingPointIndex);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+// Four-Switch Buck-Boost SPICE generation (inductance-shaped)
+EMSCRIPTEN_KEEPALIVE std::string generate_four_switch_buck_boost_ngspice_circuit(std::string fsbbInputsString, size_t inputVoltageIndex, size_t operatingPointIndex){
+    try {
+        json fsbbInputsJson = json::parse(fsbbInputsString);
+
+        if (fsbbInputsJson.contains("desiredInductance")) {
+            OpenMagnetics::AdvancedFourSwitchBuckBoost fsbb(fsbbInputsJson);
+            return fsbb.generate_ngspice_circuit(fsbb.get_desired_inductance(), inputVoltageIndex, operatingPointIndex);
+        }
+        OpenMagnetics::FourSwitchBuckBoost fsbb(fsbbInputsJson);
+        auto designRequirements = fsbb.process_design_requirements();
+        double inductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+        if (!(inductance > 0)) {
+            throw std::runtime_error("FourSwitchBuckBoost: unable to calculate inductance");
+        }
+        return fsbb.generate_ngspice_circuit(inductance, inputVoltageIndex, operatingPointIndex);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+// Weinberg SPICE generation (scalar turnsRatio + magnetizing inductance)
+EMSCRIPTEN_KEEPALIVE std::string generate_weinberg_ngspice_circuit(std::string weinbergInputsString, size_t inputVoltageIndex, size_t operatingPointIndex){
+    try {
+        json weinbergInputsJson = json::parse(weinbergInputsString);
+
+        if (weinbergInputsJson.contains("desiredInductance") && weinbergInputsJson.contains("desiredTurnsRatio")) {
+            OpenMagnetics::AdvancedWeinberg weinberg(weinbergInputsJson);
+            return weinberg.generate_ngspice_circuit(weinberg.get_desired_turns_ratio(), weinberg.get_desired_inductance(), inputVoltageIndex, operatingPointIndex);
+        }
+        OpenMagnetics::Weinberg weinberg(weinbergInputsJson);
+        auto designRequirements = weinberg.process_design_requirements();
+        if (designRequirements.get_turns_ratios().empty() || !designRequirements.get_turns_ratios()[0].get_nominal()) {
+            throw std::runtime_error("Weinberg: process_design_requirements produced no turns ratio");
+        }
+        double turnsRatio = designRequirements.get_turns_ratios()[0].get_nominal().value();
+        double magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+        if (!(magnetizingInductance > 0)) {
+            throw std::runtime_error("Weinberg: no magnetizing inductance available");
+        }
+        return weinberg.generate_ngspice_circuit(turnsRatio, magnetizingInductance, inputVoltageIndex, operatingPointIndex);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+// CLLLC SPICE generation (turnsRatios vector + magnetizing inductance, mirrors SRC)
+EMSCRIPTEN_KEEPALIVE std::string generate_clllc_ngspice_circuit(std::string clllcInputsString, size_t inputVoltageIndex, size_t operatingPointIndex){
+    try {
+        json clllcInputsJson = json::parse(clllcInputsString);
+
+        bool isAdvanced = clllcInputsJson.contains("desiredMagnetizingInductance");
+        std::unique_ptr<OpenMagnetics::Clllc> model;
+        if (isAdvanced) {
+            model = std::make_unique<OpenMagnetics::AdvancedClllc>(clllcInputsJson);
+        } else {
+            model = std::make_unique<OpenMagnetics::Clllc>(clllcInputsJson);
+        }
+
+        auto designRequirements = model->process_design_requirements();
+        std::vector<double> turnsRatios;
+        for (const auto& tr : designRequirements.get_turns_ratios()) {
+            if (tr.get_nominal()) {
+                turnsRatios.push_back(tr.get_nominal().value());
+            }
+        }
+        if (turnsRatios.empty()) {
+            throw std::runtime_error("CLLLC: process_design_requirements produced no turns ratios");
+        }
+        double magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+        if (!(magnetizingInductance > 0)) {
+            throw std::runtime_error("CLLLC: no magnetizing inductance available");
+        }
+        return model->generate_ngspice_circuit(turnsRatios, magnetizingInductance, inputVoltageIndex, operatingPointIndex);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+// PSHB SPICE generation (turnsRatios vector + magnetizing inductance, mirrors SRC)
+EMSCRIPTEN_KEEPALIVE std::string generate_pshb_ngspice_circuit(std::string pshbInputsString, size_t inputVoltageIndex, size_t operatingPointIndex){
+    try {
+        json pshbInputsJson = json::parse(pshbInputsString);
+
+        bool isAdvanced = pshbInputsJson.contains("desiredMagnetizingInductance");
+        std::unique_ptr<OpenMagnetics::Pshb> model;
+        if (isAdvanced) {
+            model = std::make_unique<OpenMagnetics::AdvancedPshb>(pshbInputsJson);
+        } else {
+            model = std::make_unique<OpenMagnetics::Pshb>(pshbInputsJson);
+        }
+
+        auto designRequirements = model->process_design_requirements();
+        std::vector<double> turnsRatios;
+        for (const auto& tr : designRequirements.get_turns_ratios()) {
+            if (tr.get_nominal()) {
+                turnsRatios.push_back(tr.get_nominal().value());
+            }
+        }
+        if (turnsRatios.empty()) {
+            throw std::runtime_error("PSHB: process_design_requirements produced no turns ratios");
+        }
+        double magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+        if (!(magnetizingInductance > 0)) {
+            throw std::runtime_error("PSHB: no magnetizing inductance available");
+        }
+        return model->generate_ngspice_circuit(turnsRatios, magnetizingInductance, inputVoltageIndex, operatingPointIndex);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+// AHB SPICE generation (turnsRatios vector + magnetizing inductance, mirrors SRC)
+EMSCRIPTEN_KEEPALIVE std::string generate_ahb_ngspice_circuit(std::string ahbInputsString, size_t inputVoltageIndex, size_t operatingPointIndex){
+    try {
+        json ahbInputsJson = json::parse(ahbInputsString);
+
+        bool isAdvanced = ahbInputsJson.contains("desiredMagnetizingInductance");
+        std::unique_ptr<OpenMagnetics::AsymmetricHalfBridge> model;
+        if (isAdvanced) {
+            model = std::make_unique<OpenMagnetics::AdvancedAsymmetricHalfBridge>(ahbInputsJson);
+        } else {
+            model = std::make_unique<OpenMagnetics::AsymmetricHalfBridge>(ahbInputsJson);
+        }
+
+        auto designRequirements = model->process_design_requirements();
+        std::vector<double> turnsRatios;
+        for (const auto& tr : designRequirements.get_turns_ratios()) {
+            if (tr.get_nominal()) {
+                turnsRatios.push_back(tr.get_nominal().value());
+            }
+        }
+        if (turnsRatios.empty()) {
+            throw std::runtime_error("AHB: process_design_requirements produced no turns ratios");
+        }
+        double magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
+        if (!(magnetizingInductance > 0)) {
+            throw std::runtime_error("AHB: no magnetizing inductance available");
+        }
+        return model->generate_ngspice_circuit(turnsRatios, magnetizingInductance, inputVoltageIndex, operatingPointIndex);
     }
     catch (const std::exception &exc) {
         return "Exception: " + std::string{exc.what()};
@@ -9185,6 +9413,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_gap_reluctance_model_information", &get_gap_reluctance_model_information);
     function("calculate_inductance_from_number_turns_and_gapping", &calculate_inductance_from_number_turns_and_gapping);
     function("calculate_number_turns_from_gapping_and_inductance", &calculate_number_turns_from_gapping_and_inductance);
+    function("calculate_number_turns_from_gapping_and_inductance_legacy", &calculate_number_turns_from_gapping_and_inductance_legacy);
     function("calculate_gapping_from_number_turns_and_inductance", &calculate_gapping_from_number_turns_and_inductance);
     function("calculate_core_losses", &calculate_core_losses);
     function("get_core_losses_model_information", &get_core_losses_model_information);
@@ -9352,6 +9581,13 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("generate_psfb_ngspice_circuit", &generate_psfb_ngspice_circuit);
     function("generate_cmc_ngspice_circuit", &generate_cmc_ngspice_circuit);
     function("generate_dmc_ngspice_circuit", &generate_dmc_ngspice_circuit);
+    function("generate_cuk_ngspice_circuit", &generate_cuk_ngspice_circuit);
+    function("generate_zeta_ngspice_circuit", &generate_zeta_ngspice_circuit);
+    function("generate_four_switch_buck_boost_ngspice_circuit", &generate_four_switch_buck_boost_ngspice_circuit);
+    function("generate_weinberg_ngspice_circuit", &generate_weinberg_ngspice_circuit);
+    function("generate_clllc_ngspice_circuit", &generate_clllc_ngspice_circuit);
+    function("generate_pshb_ngspice_circuit", &generate_pshb_ngspice_circuit);
+    function("generate_ahb_ngspice_circuit", &generate_ahb_ngspice_circuit);
 
     function("calculate_pfc_inputs", &calculate_pfc_inputs);
     function("simulate_pfc_waveforms", &simulate_pfc_waveforms);
