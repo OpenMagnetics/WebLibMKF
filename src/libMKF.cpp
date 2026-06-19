@@ -2763,7 +2763,7 @@ std::string calculate_advised_cores(std::string inputsString, std::string weight
         const bool isSuppression =
             inputs.get_design_requirements().get_application().has_value()
             && inputs.get_design_requirements().get_application().value()
-               == OpenMagnetics::Application::INTERFERENCE_SUPPRESSION;
+               == "interferenceSuppression";
 
         if (filterMode || isSuppression) {
             OpenMagnetics::Settings::GetInstance().set_use_toroidal_cores(true);
@@ -3041,7 +3041,7 @@ std::string calculate_advised_magnetics(std::string inputsString, std::string we
         bool hasApp = inputs.get_design_requirements().get_application().has_value();
         const bool isSuppressionFlow = hasApp
             && inputs.get_design_requirements().get_application().value()
-               == OpenMagnetics::Application::INTERFERENCE_SUPPRESSION;
+               == "interferenceSuppression";
         std::vector<std::pair<OpenMagnetics::Mas, double>> masMagnetics;
         if (isSuppressionFlow) {
             double wCost = weights.count(OpenMagnetics::MagneticFilters::COST)
