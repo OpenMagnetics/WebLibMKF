@@ -1356,7 +1356,10 @@ std::string calculate_core_losses(std::string coreData,
 
         OpenMagnetics::MagneticSimulator magneticSimulator;
         magneticSimulator.set_core_losses_model_name(coreLossesModelName);
-        magneticSimulator.set_core_temperature_model_name(coreTemperatureModelName);
+        // The core-temperature-model knob moved from MagneticSimulator to Settings
+        // (MKF commit 10aa82c: simulator now derives core-loss temperature via the
+        // thermal-network model). Set it on Settings to honor the request payload.
+        OpenMagnetics::Settings::GetInstance().set_core_temperature_model(coreTemperatureModelName);
         magneticSimulator.set_reluctance_model_name(reluctanceModelName);
         auto coreLossesOutput = magneticSimulator.calculate_core_losses(operatingPoint, magnetic);
         json result;
@@ -2366,7 +2369,10 @@ std::string simulate(std::string inputsString,
         OpenMagnetics::MagneticSimulator magneticSimulator;
 
         magneticSimulator.set_core_losses_model_name(coreLossesModelName);
-        magneticSimulator.set_core_temperature_model_name(coreTemperatureModelName);
+        // The core-temperature-model knob moved from MagneticSimulator to Settings
+        // (MKF commit 10aa82c: simulator now derives core-loss temperature via the
+        // thermal-network model). Set it on Settings to honor the request payload.
+        OpenMagnetics::Settings::GetInstance().set_core_temperature_model(coreTemperatureModelName);
         magneticSimulator.set_reluctance_model_name(reluctanceModelName);
         auto mas = magneticSimulator.simulate(inputs, magnetic);
 
