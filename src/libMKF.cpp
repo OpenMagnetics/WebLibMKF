@@ -1601,7 +1601,7 @@ std::string calculate_basic_processed_data(std::string waveformString) {
 
 std::string create_waveform(std::string processedString, double frequency) {
     try {
-        Processed processed(json::parse(processedString));
+        ProcessedWaveform processed(json::parse(processedString));
         auto waveform = OpenMagnetics::Inputs::create_waveform(processed, frequency);
         json result;
         to_json(result, waveform);
@@ -2793,7 +2793,7 @@ std::string calculate_advised_cores(std::string inputsString, std::string weight
         // picks the wrong filter-flow branch for CMC/DMC (no impedance
         // filter, no interference-suppression material pruning).
         if (isSuppression) {
-            coreAdviser.set_application(OpenMagnetics::Application::INTERFERENCE_SUPPRESSION);
+            coreAdviser.set_application(MAS::MagneticApplication::INTERFERENCE_SUPPRESSION);
         }
         std::cout << "[DEBUG] CoreAdviser mode set to: " << (int)coreMode << " (0=AVAILABLE, 1=STANDARD, 2=CUSTOM)" << std::endl;
         std::cout << "[DEBUG] Requesting " << maximumNumberResults << " results" << std::endl;
@@ -3821,7 +3821,7 @@ std::string simulate_flyback_ideal_waveforms(std::string flybackInputsString){
                 isolationSides.push_back(OpenMagnetics::get_isolation_side_from_index(windingIndex));
             }
             designRequirements.set_isolation_sides(isolationSides);
-            designRequirements.set_topology(Topologies::FLYBACK_CONVERTER);
+            designRequirements.set_topology(MAS::Topology::FLYBACK_CONVERTER);
             
             // Move the AdvancedFlyback into the base pointer (polymorphism)
             flybackPtr = std::move(advancedFlybackPtr);
@@ -3898,7 +3898,7 @@ std::string simulate_flyback_ideal_waveforms(std::string flybackInputsString){
 
         // Flyback diagnostics — measured from the ngspice trace (NOT analytical
         // predictions). The OperatingPoint returned by simulate_and_extract_*
-        // already carries Processed data computed from the simulation samples
+        // already carries ProcessedWaveform data computed from the simulation samples
         // via CircuitSimulationReader::extract_operating_point →
         // Inputs::calculate_basic_processed_data. We read those processed
         // fields directly. THROW on any missing required signal — Vienna-style
@@ -5429,7 +5429,7 @@ std::string simulate_buck_ideal_waveforms(std::string buckInputsString){
             std::vector<IsolationSide> isolationSides;
             isolationSides.push_back(OpenMagnetics::get_isolation_side_from_index(0));
             designRequirements.set_isolation_sides(isolationSides);
-            designRequirements.set_topology(Topologies::BUCK_CONVERTER);
+            designRequirements.set_topology(MAS::Topology::BUCK_CONVERTER);
             
             buckPtr = std::move(advancedBuckPtr);
         } else {
@@ -5562,7 +5562,7 @@ std::string simulate_boost_ideal_waveforms(std::string boostInputsString){
             std::vector<IsolationSide> isolationSides;
             isolationSides.push_back(OpenMagnetics::get_isolation_side_from_index(0));
             designRequirements.set_isolation_sides(isolationSides);
-            designRequirements.set_topology(Topologies::BOOST_CONVERTER);
+            designRequirements.set_topology(MAS::Topology::BOOST_CONVERTER);
             
             boostPtr = std::move(advancedBoostPtr);
         } else {
@@ -5725,7 +5725,7 @@ std::string simulate_sepic_ideal_waveforms(std::string sepicInputsString){
             std::vector<IsolationSide> isolationSides;
             isolationSides.push_back(OpenMagnetics::get_isolation_side_from_index(0));
             designRequirements.set_isolation_sides(isolationSides);
-            designRequirements.set_topology(Topologies::SEPIC_CONVERTER);
+            designRequirements.set_topology(MAS::Topology::SEPIC_CONVERTER);
 
             sepicPtr = std::move(advancedSepicPtr);
         } else {
@@ -5897,7 +5897,7 @@ std::string simulate_forward_ideal_waveforms(std::string forwardInputsString){
             DimensionWithTolerance inductanceWithTolerance;
             inductanceWithTolerance.set_nominal(magnetizingInductance);
             designRequirements.set_magnetizing_inductance(inductanceWithTolerance);
-            designRequirements.set_topology(Topologies::SINGLE_SWITCH_FORWARD_CONVERTER);
+            designRequirements.set_topology(MAS::Topology::SINGLE_SWITCH_FORWARD_CONVERTER);
             
             forwardPtr = std::move(advancedPtr);
         } else {
@@ -6046,7 +6046,7 @@ std::string simulate_two_switch_forward_ideal_waveforms(std::string forwardInput
             DimensionWithTolerance inductanceWithTolerance;
             inductanceWithTolerance.set_nominal(magnetizingInductance);
             designRequirements.set_magnetizing_inductance(inductanceWithTolerance);
-            designRequirements.set_topology(Topologies::TWO_SWITCH_FORWARD_CONVERTER);
+            designRequirements.set_topology(MAS::Topology::TWO_SWITCH_FORWARD_CONVERTER);
             
             forwardPtr = std::move(advancedPtr);
         } else {
@@ -6185,7 +6185,7 @@ std::string simulate_active_clamp_forward_ideal_waveforms(std::string forwardInp
             DimensionWithTolerance inductanceWithTolerance;
             inductanceWithTolerance.set_nominal(magnetizingInductance);
             designRequirements.set_magnetizing_inductance(inductanceWithTolerance);
-            designRequirements.set_topology(Topologies::ACTIVE_CLAMP_FORWARD_CONVERTER);
+            designRequirements.set_topology(MAS::Topology::ACTIVE_CLAMP_FORWARD_CONVERTER);
             
             forwardPtr = std::move(advancedPtr);
         } else {
@@ -6340,7 +6340,7 @@ std::string simulate_push_pull_ideal_waveforms(std::string pushPullInputsString)
             DimensionWithTolerance inductanceWithTolerance;
             inductanceWithTolerance.set_nominal(magnetizingInductance);
             designRequirements.set_magnetizing_inductance(inductanceWithTolerance);
-            designRequirements.set_topology(Topologies::PUSH_PULL_CONVERTER);
+            designRequirements.set_topology(MAS::Topology::PUSH_PULL_CONVERTER);
             
             pushPullPtr = std::move(advancedPtr);
         } else {
@@ -6498,7 +6498,7 @@ std::string simulate_isolated_buck_boost_ideal_waveforms(std::string ibbInputsSt
             DimensionWithTolerance inductanceWithTolerance;
             inductanceWithTolerance.set_nominal(magnetizingInductance);
             designRequirements.set_magnetizing_inductance(inductanceWithTolerance);
-            designRequirements.set_topology(Topologies::ISOLATED_BUCK_BOOST_CONVERTER);
+            designRequirements.set_topology(MAS::Topology::ISOLATED_BUCK_BOOST_CONVERTER);
             
             ibbPtr = std::move(advancedPtr);
         } else {
@@ -6638,7 +6638,7 @@ std::string simulate_isolated_buck_ideal_waveforms(std::string ibInputsString){
             DimensionWithTolerance inductanceWithTolerance;
             inductanceWithTolerance.set_nominal(magnetizingInductance);
             designRequirements.set_magnetizing_inductance(inductanceWithTolerance);
-            designRequirements.set_topology(Topologies::ISOLATED_BUCK_CONVERTER);
+            designRequirements.set_topology(MAS::Topology::ISOLATED_BUCK_CONVERTER);
             
             ibPtr = std::move(advancedPtr);
         } else {
