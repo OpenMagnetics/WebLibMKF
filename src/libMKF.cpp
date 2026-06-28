@@ -3832,7 +3832,7 @@ std::string simulate_flyback_ideal_waveforms(std::string flybackInputsString){
             
             // Extract turns ratios from design requirements
             for (const auto& tr : designRequirements.get_turns_ratios()) {
-                turnsRatios.push_back(tr.get_nominal().value());
+                turnsRatios.push_back(OpenMagnetics::resolve_dimensional_values(tr));
             }
             
             // Extract magnetizing inductance using the same helper as
@@ -4051,7 +4051,7 @@ EMSCRIPTEN_KEEPALIVE std::string generate_flyback_ngspice_circuit(std::string fl
             auto designRequirements = flybackPtr->process_design_requirements();
             
             for (const auto& tr : designRequirements.get_turns_ratios()) {
-                turnsRatios.push_back(tr.get_nominal().value());
+                turnsRatios.push_back(OpenMagnetics::resolve_dimensional_values(tr));
             }
             
             magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
@@ -4090,7 +4090,7 @@ std::string generate_converter_ngspice_circuit_helper(std::string inputsString, 
             auto designRequirements = converter.process_design_requirements();
             
             for (const auto& tr : designRequirements.get_turns_ratios()) {
-                turnsRatios.push_back(tr.get_nominal().value());
+                turnsRatios.push_back(OpenMagnetics::resolve_dimensional_values(tr));
             }
             
             magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
@@ -4247,7 +4247,7 @@ EMSCRIPTEN_KEEPALIVE std::string generate_llc_ngspice_circuit(std::string llcInp
         auto designRequirements = llc.process_design_requirements();
         std::vector<double> turnsRatios;
         for (const auto& tr : designRequirements.get_turns_ratios()) {
-            turnsRatios.push_back(tr.get_nominal().value());
+            turnsRatios.push_back(OpenMagnetics::resolve_dimensional_values(tr));
         }
         
         double magnetizingInductance;
@@ -4360,7 +4360,7 @@ EMSCRIPTEN_KEEPALIVE std::string generate_weinberg_ngspice_circuit(std::string w
         if (designRequirements.get_turns_ratios().empty() || !designRequirements.get_turns_ratios()[0].get_nominal()) {
             throw std::runtime_error("Weinberg: process_design_requirements produced no turns ratio");
         }
-        double turnsRatio = designRequirements.get_turns_ratios()[0].get_nominal().value();
+        double turnsRatio = OpenMagnetics::resolve_dimensional_values(designRequirements.get_turns_ratios()[0]);
         double magnetizingInductance = OpenMagnetics::resolve_dimensional_values(designRequirements.get_magnetizing_inductance());
         if (!(magnetizingInductance > 0)) {
             throw std::runtime_error("Weinberg: no magnetizing inductance available");
@@ -4389,7 +4389,7 @@ EMSCRIPTEN_KEEPALIVE std::string generate_clllc_ngspice_circuit(std::string clll
         std::vector<double> turnsRatios;
         for (const auto& tr : designRequirements.get_turns_ratios()) {
             if (tr.get_nominal()) {
-                turnsRatios.push_back(tr.get_nominal().value());
+                turnsRatios.push_back(OpenMagnetics::resolve_dimensional_values(tr));
             }
         }
         if (turnsRatios.empty()) {
@@ -4423,7 +4423,7 @@ EMSCRIPTEN_KEEPALIVE std::string generate_pshb_ngspice_circuit(std::string pshbI
         std::vector<double> turnsRatios;
         for (const auto& tr : designRequirements.get_turns_ratios()) {
             if (tr.get_nominal()) {
-                turnsRatios.push_back(tr.get_nominal().value());
+                turnsRatios.push_back(OpenMagnetics::resolve_dimensional_values(tr));
             }
         }
         if (turnsRatios.empty()) {
@@ -4457,7 +4457,7 @@ EMSCRIPTEN_KEEPALIVE std::string generate_ahb_ngspice_circuit(std::string ahbInp
         std::vector<double> turnsRatios;
         for (const auto& tr : designRequirements.get_turns_ratios()) {
             if (tr.get_nominal()) {
-                turnsRatios.push_back(tr.get_nominal().value());
+                turnsRatios.push_back(OpenMagnetics::resolve_dimensional_values(tr));
             }
         }
         if (turnsRatios.empty()) {
@@ -4495,7 +4495,7 @@ EMSCRIPTEN_KEEPALIVE std::string generate_src_ngspice_circuit(std::string srcInp
         std::vector<double> turnsRatios;
         for (const auto& tr : designRequirements.get_turns_ratios()) {
             if (tr.get_nominal()) {
-                turnsRatios.push_back(tr.get_nominal().value());
+                turnsRatios.push_back(OpenMagnetics::resolve_dimensional_values(tr));
             }
         }
         if (turnsRatios.empty()) {
@@ -4524,7 +4524,7 @@ EMSCRIPTEN_KEEPALIVE std::string generate_dab_ngspice_circuit(std::string dabInp
         auto designRequirements = dab.process_design_requirements();
         std::vector<double> turnsRatios;
         for (const auto& tr : designRequirements.get_turns_ratios()) {
-            turnsRatios.push_back(tr.get_nominal().value());
+            turnsRatios.push_back(OpenMagnetics::resolve_dimensional_values(tr));
         }
         
         double magnetizingInductance;
@@ -4550,7 +4550,7 @@ EMSCRIPTEN_KEEPALIVE std::string generate_psfb_ngspice_circuit(std::string psfbI
         auto designRequirements = psfb.process_design_requirements();
         std::vector<double> turnsRatios;
         for (const auto& tr : designRequirements.get_turns_ratios()) {
-            turnsRatios.push_back(tr.get_nominal().value());
+            turnsRatios.push_back(OpenMagnetics::resolve_dimensional_values(tr));
         }
         
         double magnetizingInductance;
@@ -5907,7 +5907,7 @@ std::string simulate_forward_ideal_waveforms(std::string forwardInputsString){
             // Extract turns ratios from design requirements
             for (const auto& tr : designRequirements.get_turns_ratios()) {
                 if (tr.get_nominal()) {
-                    turnsRatios.push_back(tr.get_nominal().value());
+                    turnsRatios.push_back(OpenMagnetics::resolve_dimensional_values(tr));
                 }
             }
             
@@ -6056,7 +6056,7 @@ std::string simulate_two_switch_forward_ideal_waveforms(std::string forwardInput
             // Extract turns ratios from design requirements
             for (const auto& tr : designRequirements.get_turns_ratios()) {
                 if (tr.get_nominal()) {
-                    turnsRatios.push_back(tr.get_nominal().value());
+                    turnsRatios.push_back(OpenMagnetics::resolve_dimensional_values(tr));
                 }
             }
             
@@ -6195,7 +6195,7 @@ std::string simulate_active_clamp_forward_ideal_waveforms(std::string forwardInp
             // Extract turns ratios from design requirements
             for (const auto& tr : designRequirements.get_turns_ratios()) {
                 if (tr.get_nominal()) {
-                    turnsRatios.push_back(tr.get_nominal().value());
+                    turnsRatios.push_back(OpenMagnetics::resolve_dimensional_values(tr));
                 }
             }
             
@@ -6350,7 +6350,7 @@ std::string simulate_push_pull_ideal_waveforms(std::string pushPullInputsString)
             // Extract turns ratios from design requirements
             for (const auto& tr : designRequirements.get_turns_ratios()) {
                 if (tr.get_nominal()) {
-                    turnsRatios.push_back(tr.get_nominal().value());
+                    turnsRatios.push_back(OpenMagnetics::resolve_dimensional_values(tr));
                 }
             }
             
@@ -6508,7 +6508,7 @@ std::string simulate_isolated_buck_boost_ideal_waveforms(std::string ibbInputsSt
             // Extract turns ratios from design requirements
             for (const auto& tr : designRequirements.get_turns_ratios()) {
                 if (tr.get_nominal()) {
-                    turnsRatios.push_back(tr.get_nominal().value());
+                    turnsRatios.push_back(OpenMagnetics::resolve_dimensional_values(tr));
                 }
             }
             
@@ -6648,7 +6648,7 @@ std::string simulate_isolated_buck_ideal_waveforms(std::string ibInputsString){
             // Extract turns ratios from design requirements
             for (const auto& tr : designRequirements.get_turns_ratios()) {
                 if (tr.get_nominal()) {
-                    turnsRatios.push_back(tr.get_nominal().value());
+                    turnsRatios.push_back(OpenMagnetics::resolve_dimensional_values(tr));
                 }
             }
             
@@ -9830,7 +9830,7 @@ std::string simulate_llc_ideal_waveforms(std::string llcInputsString) {
         std::vector<double> turnsRatios;
         for (const auto& tr : designRequirements.get_turns_ratios()) {
             if (tr.get_nominal()) {
-                turnsRatios.push_back(tr.get_nominal().value());
+                turnsRatios.push_back(OpenMagnetics::resolve_dimensional_values(tr));
             }
         }
 
@@ -9951,7 +9951,7 @@ std::string simulate_dab_ideal_waveforms(std::string dabInputsString) {
         std::vector<double> turnsRatios;
         for (const auto& tr : designRequirements.get_turns_ratios()) {
             if (tr.get_nominal()) {
-                turnsRatios.push_back(tr.get_nominal().value());
+                turnsRatios.push_back(OpenMagnetics::resolve_dimensional_values(tr));
             }
         }
 
@@ -10079,7 +10079,7 @@ std::string simulate_psfb_ideal_waveforms(std::string psfbInputsString) {
         std::vector<double> turnsRatios;
         for (const auto& tr : designRequirements.get_turns_ratios()) {
             if (tr.get_nominal()) {
-                turnsRatios.push_back(tr.get_nominal().value());
+                turnsRatios.push_back(OpenMagnetics::resolve_dimensional_values(tr));
             }
         }
 
@@ -10263,7 +10263,7 @@ std::string simulate_pshb_ideal_waveforms(std::string pshbInputsString) {
         std::vector<double> turnsRatios;
         for (const auto& tr : designRequirements.get_turns_ratios()) {
             if (tr.get_nominal()) {
-                turnsRatios.push_back(tr.get_nominal().value());
+                turnsRatios.push_back(OpenMagnetics::resolve_dimensional_values(tr));
             }
         }
 
@@ -10479,7 +10479,7 @@ std::string simulate_ahb_ideal_waveforms(std::string ahbInputsString) {
         std::vector<double> turnsRatios;
         for (const auto& tr : designRequirements.get_turns_ratios()) {
             if (tr.get_nominal()) {
-                turnsRatios.push_back(tr.get_nominal().value());
+                turnsRatios.push_back(OpenMagnetics::resolve_dimensional_values(tr));
             }
         }
 
@@ -10644,7 +10644,7 @@ std::string calculate_cllc_inputs(std::string cllcInputsString) {
         std::vector<double> turnsRatios;
         for (const auto& tr : designRequirements.get_turns_ratios()) {
             if (tr.get_nominal()) {
-                turnsRatios.push_back(tr.get_nominal().value());
+                turnsRatios.push_back(OpenMagnetics::resolve_dimensional_values(tr));
             }
         }
         if (turnsRatios.empty()) {
@@ -10775,7 +10775,7 @@ std::string simulate_cllc_ideal_waveforms(std::string cllcInputsString) {
         std::vector<double> turnsRatios;
         for (const auto& tr : designRequirements.get_turns_ratios()) {
             if (tr.get_nominal()) {
-                turnsRatios.push_back(tr.get_nominal().value());
+                turnsRatios.push_back(OpenMagnetics::resolve_dimensional_values(tr));
             }
         }
         if (turnsRatios.empty()) {
@@ -10931,7 +10931,7 @@ std::string calculate_psfb_inputs(std::string psfbInputsString) {
         std::vector<double> turnsRatios;
         for (const auto& tr : designRequirements.get_turns_ratios()) {
             if (tr.get_nominal()) {
-                turnsRatios.push_back(tr.get_nominal().value());
+                turnsRatios.push_back(OpenMagnetics::resolve_dimensional_values(tr));
             }
         }
         if (turnsRatios.empty()) {
@@ -11530,7 +11530,7 @@ std::string simulate_clllc_ideal_waveforms(std::string clllcInputsString) {
         auto designRequirements = model.process_design_requirements();
         std::vector<double> turnsRatios;
         for (const auto& tr : designRequirements.get_turns_ratios()) {
-            if (tr.get_nominal()) turnsRatios.push_back(tr.get_nominal().value());
+            if (tr.get_nominal()) turnsRatios.push_back(OpenMagnetics::resolve_dimensional_values(tr));
         }
         if (turnsRatios.empty()) {
             throw std::runtime_error("Clllc: process_design_requirements produced no turns ratios");
@@ -12272,7 +12272,7 @@ std::string simulate_weinberg_ideal_waveforms(std::string weinbergInputsString) 
         // Weinberg simulate takes a scalar turnsRatio (single secondary)
         double turnsRatio = 0.0;
         if (!designRequirements.get_turns_ratios().empty() && designRequirements.get_turns_ratios()[0].get_nominal()) {
-            turnsRatio = designRequirements.get_turns_ratios()[0].get_nominal().value();
+            turnsRatio = OpenMagnetics::resolve_dimensional_values(designRequirements.get_turns_ratios()[0]);
         } else {
             throw std::runtime_error("Weinberg: process_design_requirements produced no turns ratio");
         }
@@ -12685,7 +12685,7 @@ std::string calculate_src_inputs(std::string srcInputsString) {
         std::vector<double> turnsRatios;
         for (const auto& tr : designRequirements.get_turns_ratios()) {
             if (tr.get_nominal()) {
-                turnsRatios.push_back(tr.get_nominal().value());
+                turnsRatios.push_back(OpenMagnetics::resolve_dimensional_values(tr));
             }
         }
         if (turnsRatios.empty()) {
@@ -12790,7 +12790,7 @@ std::string simulate_src_ideal_waveforms(std::string srcInputsString) {
         std::vector<double> turnsRatios;
         for (const auto& tr : designRequirements.get_turns_ratios()) {
             if (tr.get_nominal()) {
-                turnsRatios.push_back(tr.get_nominal().value());
+                turnsRatios.push_back(OpenMagnetics::resolve_dimensional_values(tr));
             }
         }
         if (turnsRatios.empty()) {
@@ -12893,7 +12893,7 @@ std::string calculate_vienna_inputs(std::string viennaInputsString) {
         std::vector<double> turnsRatios;
         for (const auto& tr : designRequirements.get_turns_ratios()) {
             if (tr.get_nominal()) {
-                turnsRatios.push_back(tr.get_nominal().value());
+                turnsRatios.push_back(OpenMagnetics::resolve_dimensional_values(tr));
             }
         }
 
@@ -12978,7 +12978,7 @@ std::string simulate_vienna_ideal_waveforms(std::string viennaInputsString) {
         std::vector<double> turnsRatios;
         for (const auto& tr : designRequirements.get_turns_ratios()) {
             if (tr.get_nominal()) {
-                turnsRatios.push_back(tr.get_nominal().value());
+                turnsRatios.push_back(OpenMagnetics::resolve_dimensional_values(tr));
             }
         }
 
