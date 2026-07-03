@@ -3387,31 +3387,11 @@ std::string calculate_maxwell_capacitance_matrix(std::string coilString, std::st
     }
 }
 
-std::string calculate_capacitance_models_between_windings(double energy, double voltageDrop, double relativeTurnsRatio){
-    try {
-        auto result = OpenMagnetics::StrayCapacitance::calculate_capacitance_models_between_windings(energy, voltageDrop, relativeTurnsRatio);
-        
-        json resultJson;
-        
-        // Serialize SixCapacitorNetworkPerWinding
-        resultJson["sixCapacitorNetwork"]["c1"] = result.first.get_c1();
-        resultJson["sixCapacitorNetwork"]["c2"] = result.first.get_c2();
-        resultJson["sixCapacitorNetwork"]["c3"] = result.first.get_c3();
-        resultJson["sixCapacitorNetwork"]["c4"] = result.first.get_c4();
-        resultJson["sixCapacitorNetwork"]["c5"] = result.first.get_c5();
-        resultJson["sixCapacitorNetwork"]["c6"] = result.first.get_c6();
-        
-        // Serialize TripoleCapacitancePerWinding
-        resultJson["tripoleCapacitance"]["c1"] = result.second.get_c1();
-        resultJson["tripoleCapacitance"]["c2"] = result.second.get_c2();
-        resultJson["tripoleCapacitance"]["c3"] = result.second.get_c3();
-        
-        return resultJson.dump(4);
-    }
-    catch (const std::exception &exc) {
-        return "Exception: " + std::string{exc.what()};
-    }
-}
+// NOTE: the former free-function binding calculate_capacitance_models_between_windings
+// (energy, voltageDrop, relativeTurnsRatio) was removed. The tripole (positive 3C pi-model)
+// and the canonical Biela/Kolar 6C network are now computed per winding pair inside
+// StrayCapacitance::calculate_capacitance and are already serialized by
+// calculate_stray_capacitance under tripoleCapacitancePerWinding / sixCapacitorNetworkPerWinding.
 
 std::string get_available_core_losses_methods(std::string magneticString){
     try {
@@ -4775,7 +4755,6 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("calculate_stray_capacitance", &calculate_stray_capacitance);
     function("calculate_capacitance_matrix", &calculate_capacitance_matrix);
     function("calculate_maxwell_capacitance_matrix", &calculate_maxwell_capacitance_matrix);
-    function("calculate_capacitance_models_between_windings", &calculate_capacitance_models_between_windings);
     function("get_available_core_losses_methods", &get_available_core_losses_methods);
     function("get_all_magnetic_field_strength_models", &get_all_magnetic_field_strength_models);
     function("get_all_fringing_effect_models", &get_all_fringing_effect_models);
