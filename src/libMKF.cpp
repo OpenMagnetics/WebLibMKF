@@ -21,6 +21,7 @@
 #include "advisers/CoilAdviser.h"
 #include "advisers/CoreAdviser.h"
 #include "advisers/MagneticAdviser.h"
+#include "advisers/MagneticCombinator.h"  // virtual magnetics: re-wire a real transformer's windings
 #include "support/LibraryContext.h"
 #include "processors/Inputs.h"
 #include "constructive_models/Core.h"
@@ -4615,8 +4616,82 @@ std::string calculate_advised_magnetics_with_context(std::string inputsString,
     }
 }
 
+// WindingCombination JSON (de)serialization — kept HERE (the consumer), not in MKF's header, which stays
+// json-free. Placed in namespace OpenMagnetics so ADL resolves it for the recursive windingCombinations
+// vector and for the explicit calls below.
+namespace OpenMagnetics {
+inline void from_json(const json& j, MagneticCombinator::WindingCombination& x) {
+    x.set_connections(j.at("connections").get<std::vector<MAS::ConnectionElement>>());
+    x.set_number_turns(j.at("numberTurns").get<size_t>());
+    x.set_number_parallels(j.at("numberParallels").get<size_t>());
+    x.set_winding_indexes(j.at("windingIndexes").get<std::vector<size_t>>());
+    x.set_is_parallel(j.at("isParallel").get<bool>());
+    x.set_isolation_side(j.at("isolationSide").get<MAS::IsolationSide>());
+    x.set_winding_combinations(j.at("windingCombinations").get<std::vector<MagneticCombinator::WindingCombination>>());
+}
+inline void to_json(json& j, const MagneticCombinator::WindingCombination& x) {
+    j = json::object();
+    j["connections"] = x.get_connections();
+    j["numberTurns"] = x.get_number_turns();
+    j["numberParallels"] = x.get_number_parallels();
+    j["windingIndexes"] = x.get_winding_indexes();
+    j["isParallel"] = x.get_is_parallel();
+    j["isolationSide"] = x.get_isolation_side();
+    j["windingCombinations"] = x.get_winding_combinations();
+}
+}  // namespace OpenMagnetics
+
+// ── Virtual magnetics ────────────────────────────────────────────────────────────────────────────
+// Enumerate winding series/parallel recombinations of a real multi-winding magnetic to synthesize
+// "virtual" magnetics whose turns ratios + magnetizing inductance match the design Inputs. Returns
+// {usedCombinations: {name -> WindingCombination}, virtualMagnetics: [Magnetic]}. Feed a chosen virtual
+// magnetic (+ its usedCombinations) back to devirtualize_mas to recover the real part + pin connections.
+std::string calculate_virtual_magnetics(std::string magneticString, std::string inputsString) {
+    try {
+        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
+        OpenMagnetics::Inputs inputs(json::parse(inputsString));
+        OpenMagnetics::MagneticCombinator combinator;
+        auto [usedCombinations, virtualMagnetics] = combinator.calculate_virtual_magnetics(magnetic, inputs);
+        json result;
+        result["usedCombinations"] = json::object();
+        result["virtualMagnetics"] = json::array();
+        for (auto& [name, combination] : usedCombinations) {
+            json aux; OpenMagnetics::to_json(aux, combination); result["usedCombinations"][name] = aux;
+        }
+        for (auto& virtualMagnetic : virtualMagnetics) {
+            json aux; to_json(aux, virtualMagnetic); result["virtualMagnetics"].push_back(aux);
+        }
+        return result.dump();
+    } catch (const std::exception& e) {
+        return std::string("Exception: ") + e.what();
+    }
+}
+
+// Map a chosen virtual magnetic back to the ORIGINAL real part + the concrete winding connections.
+// devirtualizationData is the `usedCombinations` object returned by calculate_virtual_magnetics.
+std::string devirtualize_mas(std::string originalMagneticString, std::string virtualMasString,
+                             std::string devirtualizationDataString) {
+    try {
+        OpenMagnetics::Magnetic originalMagnetic(json::parse(originalMagneticString));
+        OpenMagnetics::Mas virtualMas(json::parse(virtualMasString));
+        std::map<std::string, OpenMagnetics::MagneticCombinator::WindingCombination> devirtualizationData;
+        for (auto& [name, val] : json::parse(devirtualizationDataString).items()) {
+            OpenMagnetics::MagneticCombinator::WindingCombination wc;
+            OpenMagnetics::from_json(val, wc);
+            devirtualizationData[name] = wc;
+        }
+        auto mas = OpenMagnetics::MagneticCombinator::devirtualize_mas(originalMagnetic, virtualMas, devirtualizationData);
+        json result; to_json(result, mas);
+        return result.dump();
+    } catch (const std::exception& e) {
+        return std::string("Exception: ") + e.what();
+    }
+}
+
 EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_constants", &get_constants);
+    function("calculate_virtual_magnetics", &calculate_virtual_magnetics);
+    function("devirtualize_mas", &devirtualize_mas);
     function("get_defaults", &get_defaults);
     function("standardize_signal_descriptor", &standardize_signal_descriptor);
     function("calculate_harmonics", &calculate_harmonics);
