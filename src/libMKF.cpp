@@ -33,7 +33,6 @@
 #include "physical_models/Inductance.h"
 #include "physical_models/StrayCapacitance.h"
 #include "physical_models/Reluctance.h"
-#include "processors/NgspiceRunner.h"
 #include "support/Painter.h"
 #include "support/Utils.h"
 #include "processors/Sweeper.h"
