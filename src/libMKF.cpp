@@ -2608,6 +2608,63 @@ std::string sweep_winding_losses_over_frequency(std::string magneticString, std:
     }
 }
 
+// ABT #166: material-level volumetric-loss sampler. Lets the frontend plot
+// Pv(f) for ANY loss model (Steinmetz, iGSE, Roshen, loss maps, proprietary)
+// from engine numbers, without re-implementing magnetics math in JS.
+// materialString: material name in the DB or a full CoreMaterial JSON.
+// methodString: one of the CoreLossesModels json names ("Steinmetz", "IGSE",
+// "Roshen", "Proprietary", ...) or "" to use the material's best-ranked method.
+std::string sweep_volumetric_losses_over_frequency(std::string materialString, double temperature, double magneticFluxDensityPeak, double start, double stop, size_t numberElements, std::string methodString) {
+    try {
+        CoreMaterial material = materialString.size() > 0 && materialString.front() == '{'
+            ? CoreMaterial(json::parse(materialString))
+            : OpenMagnetics::find_core_material_by_name(materialString);
+
+        std::shared_ptr<OpenMagnetics::CoreLossesModel> model;
+        if (methodString == "") {
+            auto methods = OpenMagnetics::CoreLossesModel::get_methods(material);
+            if (methods.size() == 0) {
+                throw std::runtime_error("No core losses method available for material " + material.get_name());
+            }
+            model = OpenMagnetics::CoreLossesModel::factory(methods[0]);
+        }
+        else {
+            OpenMagnetics::CoreLossesModels method;
+            OpenMagnetics::from_json(json(methodString), method);
+            model = OpenMagnetics::CoreLossesModel::factory(method);
+        }
+
+        json points = json::array();
+        for (size_t index = 0; index < numberElements; ++index) {
+            double frequency = numberElements > 1
+                ? start * pow(stop / start, static_cast<double>(index) / (numberElements - 1))
+                : start;
+            auto waveform = OpenMagnetics::Inputs::create_waveform(WaveformLabel::SINUSOIDAL, 2 * magneticFluxDensityPeak, frequency);
+            SignalDescriptor magneticFluxDensity;
+            magneticFluxDensity.set_waveform(waveform);
+            magneticFluxDensity.set_processed(OpenMagnetics::Inputs::calculate_processed_data(waveform, frequency));
+            OperatingPointExcitation excitation;
+            excitation.set_frequency(frequency);
+            excitation.set_magnetic_flux_density(magneticFluxDensity);
+
+            json point;
+            point["frequency"] = frequency;
+            point["value"] = model->get_core_volumetric_losses(material, excitation, temperature);
+            points.push_back(point);
+        }
+
+        json result;
+        result["methodUsed"] = model->get_model_name();
+        result["temperature"] = temperature;
+        result["magneticFluxDensityPeak"] = magneticFluxDensityPeak;
+        result["points"] = points;
+        return result.dump();
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
 size_t load_core_materials(std::string fileToLoad){
     try {
         if (fileToLoad != "") {
@@ -3780,8 +3837,13 @@ std::string calculate_steinmetz_coefficients(std::string dataString, std::string
 
         auto [coefficientsPerRange, errorPerRange] = OpenMagnetics::CoreLossesSteinmetzModel::calculate_steinmetz_coefficients(data, ranges);
 
+        // ABT #168: expose the fit error so callers can judge fit quality
+        // instead of blindly trusting the coefficients.
+        json coefficientsJson;
+        to_json(coefficientsJson, coefficientsPerRange);
         json result;
-        to_json(result, coefficientsPerRange);
+        result["coefficientsPerRange"] = coefficientsJson;
+        result["errorPerRange"] = errorPerRange;
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -4849,6 +4911,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("create_simple_bobbin_from_core_with_custom_thicknesses", &create_simple_bobbin_from_core_with_custom_thicknesses);
     function("mas_autocomplete", &mas_autocomplete);
     function("calculate_steinmetz_coefficients", &calculate_steinmetz_coefficients);
+    function("sweep_volumetric_losses_over_frequency", &sweep_volumetric_losses_over_frequency);
     function("get_initial_permeability_equations", &get_initial_permeability_equations);
     function("get_core_volumetric_losses_equations", &get_core_volumetric_losses_equations);
     function("calculate_complex_permeability", &calculate_complex_permeability);
