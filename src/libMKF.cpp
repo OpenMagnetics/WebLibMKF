@@ -2763,7 +2763,11 @@ std::vector<double> get_maximum_dimensions(std::string magneticString){
     }
 }
 
-std::string calculate_advised_cores(std::string inputsString, std::string weightsString, int maximumNumberResults, std::string coreModeString){
+// Shared implementation behind calculate_advised_cores and its _with_context
+// twin: identical parsing, suppression handling, scoring and output shape;
+// ctx=nullptr means "public catalogs" (the classic behavior).
+std::string calculate_advised_cores_impl(std::string inputsString, std::string weightsString, int maximumNumberResults, std::string coreModeString,
+                                         const OpenMagnetics::LibraryContext* ctx, const OpenMagnetics::AdviserConstraints& adviserConstraints){
     try {
         // Drain stale entries (and enable log capture on first use) so the
         // log returned with this run's results covers exactly this run.
@@ -2826,7 +2830,16 @@ std::string calculate_advised_cores(std::string inputsString, std::string weight
         std::cout << "[DEBUG] coreMaterialDatabase.size() = " << OpenMagnetics::coreMaterialDatabase.size() << std::endl;
         std::cout << "[DEBUG] useToroidalCores = " << OpenMagnetics::Settings::GetInstance().get_use_toroidal_cores() << std::endl;
         std::cout << "[DEBUG] useConcentricCores = " << OpenMagnetics::Settings::GetInstance().get_use_concentric_cores() << std::endl;
-        auto masMagnetics = coreAdviser.get_advised_core(inputs, weights, maximumNumberResults);
+        // ctx==nullptr takes the ORIGINAL base-overload path: the ctx overload
+        // is documented as equivalent for nullptr+empty constraints but is not
+        // (returns zero results) — MKF bug, ABT-tracked. Never route existing
+        // users through it.
+        std::vector<std::pair<OpenMagnetics::Mas, double>> masMagnetics;
+        if (ctx == nullptr) {
+            masMagnetics = coreAdviser.get_advised_core(inputs, weights, maximumNumberResults);
+        } else {
+            masMagnetics = coreAdviser.get_advised_core(inputs, weights, maximumNumberResults, ctx, adviserConstraints);
+        }
         auto log = OpenMagnetics::read_log();
         std::cout << "[DEBUG] MKF Log:\n" << log << std::endl;
         std::cout << "[DEBUG] Results count: " << masMagnetics.size() << std::endl;
@@ -2885,6 +2898,11 @@ std::string calculate_advised_cores(std::string inputsString, std::string weight
         std::cerr << maximumNumberResults << std::endl;
         return "Exception: " + std::string{exc.what()};
     }
+}
+
+std::string calculate_advised_cores(std::string inputsString, std::string weightsString, int maximumNumberResults, std::string coreModeString){
+    return calculate_advised_cores_impl(inputsString, weightsString, maximumNumberResults, coreModeString,
+                                        nullptr, OpenMagnetics::AdviserConstraints{});
 }
 
 std::string calculate_advised_sections(std::string masString, std::string patternString, int repetitions){
@@ -3032,7 +3050,11 @@ std::string get_solid_insulation_requirements_for_wires(std::string inputsString
     }
 }
 
-std::string calculate_advised_magnetics(std::string inputsString, std::string weightsString, int maximumNumberResults, std::string coreModeString){
+// Shared implementation behind calculate_advised_magnetics and its
+// _with_context twin (same parsing/suppression flow/output shape; ctx=nullptr
+// = public catalogs).
+std::string calculate_advised_magnetics_impl(std::string inputsString, std::string weightsString, int maximumNumberResults, std::string coreModeString,
+                                             const OpenMagnetics::LibraryContext* ctx, const OpenMagnetics::AdviserConstraints& adviserConstraints){
     try {
         OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(true);
         OpenMagnetics::Inputs inputs(json::parse(inputsString));
@@ -3093,10 +3115,18 @@ std::string calculate_advised_magnetics(std::string inputsString, std::string we
                 // magnitude to overcome the cost/size advantage powder cores often have.
                 OpenMagnetics::MagneticFilterOperation(OpenMagnetics::MagneticFilters::TURN_COUNT, true, false, std::max(wLosses, wDims)),
             };
-            masMagnetics = magneticAdviser.get_advised_magnetic(inputs, cmcFilterFlow, maximumNumberResults);
+            if (ctx == nullptr) {
+                masMagnetics = magneticAdviser.get_advised_magnetic(inputs, cmcFilterFlow, maximumNumberResults);
+            } else {
+                masMagnetics = magneticAdviser.get_advised_magnetic(inputs, cmcFilterFlow, maximumNumberResults, ctx, adviserConstraints);
+            }
         }
         else {
-            masMagnetics = magneticAdviser.get_advised_magnetic(inputs, weights, maximumNumberResults);
+            if (ctx == nullptr) {
+                masMagnetics = magneticAdviser.get_advised_magnetic(inputs, weights, maximumNumberResults);
+            } else {
+                masMagnetics = magneticAdviser.get_advised_magnetic(inputs, weights, maximumNumberResults, ctx, adviserConstraints);
+            }
         }
         // auto log = magneticAdviser.read_log();
         auto scorings = magneticAdviser.get_scorings();
@@ -3144,6 +3174,11 @@ std::string calculate_advised_magnetics(std::string inputsString, std::string we
     catch (const std::exception &exc) {
         return "Exception: " + std::string{exc.what()};
     }
+}
+
+std::string calculate_advised_magnetics(std::string inputsString, std::string weightsString, int maximumNumberResults, std::string coreModeString){
+    return calculate_advised_magnetics_impl(inputsString, weightsString, maximumNumberResults, coreModeString,
+                                            nullptr, OpenMagnetics::AdviserConstraints{});
 }
 
 std::string calculate_advised_magnetics_from_catalog(std::string inputsString, std::string catalogString, int maximumNumberResults){
@@ -4619,62 +4654,67 @@ bool library_context_empty() {
 std::string calculate_advised_cores_with_context(std::string inputsString,
                                                   std::string weightsString,
                                                   int maximumNumberResults,
+                                                  std::string coreModeString,
                                                   std::string constraintsString,
                                                   bool useContext) {
-    try {
-        OpenMagnetics::Inputs inputs(json::parse(inputsString));
-        std::map<std::string, double> weightsKeysString = json::parse(weightsString);
-        std::map<OpenMagnetics::CoreAdviser::CoreAdviserFilters, double> weights;
-        double externalSum = 0;
-        for (auto const& pair : weightsKeysString) externalSum += pair.second;
-        for (auto const& [name, weight] : weightsKeysString) {
-            OpenMagnetics::CoreAdviser::CoreAdviserFilters filter;
-            OpenMagnetics::from_json(name, filter);
-            weights[filter] = externalSum > 0 ? weight / externalSum : weight;
-        }
-        auto constraints = parse_constraints_json(constraintsString);
-        OpenMagnetics::CoreAdviser adviser;
-        const OpenMagnetics::LibraryContext* ctx = useContext ? &g_libraryContext : nullptr;
-        auto results = adviser.get_advised_core(inputs, weights,
-                                                 (size_t)maximumNumberResults,
-                                                 ctx, constraints);
-        json out = json::array();
-        for (auto& [mas, score] : results) {
-            json entry;
-            to_json(entry["mas"], mas);
-            entry["score"] = score;
-            out.push_back(std::move(entry));
-        }
-        return out.dump();
-    } catch (const std::exception& e) {
-        json err; err["error"] = e.what();
-        return err.dump();
-    }
+    auto constraints = parse_constraints_json(constraintsString);
+    const OpenMagnetics::LibraryContext* ctx = useContext ? &g_libraryContext : nullptr;
+    return calculate_advised_cores_impl(inputsString, weightsString, maximumNumberResults, coreModeString,
+                                        ctx, constraints);
 }
 
 std::string calculate_advised_magnetics_with_context(std::string inputsString,
+                                                      std::string weightsString,
                                                       int maximumNumberResults,
+                                                      std::string coreModeString,
                                                       std::string constraintsString,
                                                       bool useContext) {
+    auto constraints = parse_constraints_json(constraintsString);
+    const OpenMagnetics::LibraryContext* ctx = useContext ? &g_libraryContext : nullptr;
+    return calculate_advised_magnetics_impl(inputsString, weightsString, maximumNumberResults, coreModeString,
+                                            ctx, constraints);
+}
+
+std::string calculate_advised_wires_with_context(std::string windingString,
+                                                 std::string sectionString,
+                                                 std::string currentString,
+                                                 std::string solidInsulationRequirementsString,
+                                                 double temperature,
+                                                 uint8_t numberSections,
+                                                 size_t maximumNumberResults,
+                                                 std::string constraintsString,
+                                                 bool useContext) {
     try {
-        OpenMagnetics::Inputs inputs(json::parse(inputsString));
+        OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(true);
+        OpenMagnetics::Winding winding(json::parse(windingString));
+        OpenMagnetics::WireSolidInsulationRequirements wireSolidInsulationRequirements(json::parse(solidInsulationRequirementsString));
+        Section section(json::parse(sectionString));
+        SignalDescriptor current(json::parse(currentString));
+
+        OpenMagnetics::WireAdviser wireAdviser;
+        wireAdviser.set_wire_solid_insulation_requirements(wireSolidInsulationRequirements);
+
         auto constraints = parse_constraints_json(constraintsString);
-        OpenMagnetics::MagneticAdviser adviser;
         const OpenMagnetics::LibraryContext* ctx = useContext ? &g_libraryContext : nullptr;
-        auto results = adviser.get_advised_magnetic(inputs,
-                                                     (size_t)maximumNumberResults,
-                                                     ctx, constraints);
-        json out = json::array();
-        for (auto& [mas, score] : results) {
-            json entry;
-            to_json(entry["mas"], mas);
-            entry["score"] = score;
-            out.push_back(std::move(entry));
+        auto windingsWithScoring = wireAdviser.get_advised_wire(winding, section, current, temperature,
+                                                                numberSections, maximumNumberResults,
+                                                                ctx, constraints);
+
+        json results = json();
+        results["data"] = json::array();
+        for (auto& [advisedWinding, scoring] : windingsWithScoring) {
+            json result;
+            json windingJson;
+            to_json(windingJson, advisedWinding);
+            result["winding"] = windingJson;
+            result["scoring"] = scoring;
+            results["data"].push_back(result);
         }
-        return out.dump();
-    } catch (const std::exception& e) {
-        json err; err["error"] = e.what();
-        return err.dump();
+
+        return results.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
     }
 }
 
@@ -4869,6 +4909,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("library_context_empty", &library_context_empty);
     function("calculate_advised_cores_with_context", &calculate_advised_cores_with_context);
     function("calculate_advised_magnetics_with_context", &calculate_advised_magnetics_with_context);
+    function("calculate_advised_wires_with_context", &calculate_advised_wires_with_context);
     function("is_core_material_database_empty", &is_core_material_database_empty);
     function("is_core_shape_database_empty", &is_core_shape_database_empty);
     function("is_wire_database_empty", &is_wire_database_empty);
