@@ -1990,15 +1990,15 @@ void process_coil_configuration(OpenMagnetics::Coil& coil, json configuration, s
 
 }
 
-std::string wind(std::string coilString, size_t repetitions, std::string proportionPerWindingString, std::string patternString, std::string marginPairsString) {
+static std::string wind_impl(const std::string& coilString, const std::string& coreColumnsString, size_t repetitions, const std::string& proportionPerWindingString, const std::string& patternString, const std::string& marginPairsString) {
     try {
         auto coilJson = json::parse(coilString);
         auto marginPairs = std::vector<std::vector<double>>(json::parse(marginPairsString));
-        
+
         OpenMagnetics::Settings::GetInstance().set_coil_wind_even_if_not_fit(true);
         OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(true);
         OpenMagnetics::Settings::GetInstance().set_coil_include_additional_coordinates(true);
-        
+
         std::vector<double> proportionPerWinding = json::parse(proportionPerWindingString);
         std::vector<size_t> pattern = json::parse(patternString);
         auto winding = std::vector<OpenMagnetics::Winding>(coilJson["functionalDescription"]);
@@ -2006,6 +2006,13 @@ std::string wind(std::string coilString, size_t repetitions, std::string proport
         coil.set_bobbin(coilJson["bobbin"]);
         coil.set_functional_description(winding);
         coil.preload_margins(marginPairs);
+        if (!coreColumnsString.empty()) {
+            // Multi-column placement: windings/sections placed in non-main winding
+            // windows need the core columns to build their lateral wound-column
+            // frames (Coil throws a specific error without them).
+            std::vector<ColumnElement> coreColumns = json::parse(coreColumnsString);
+            coil.set_core_columns(coreColumns);
+        }
 
         process_coil_configuration(coil, coilJson, repetitions, proportionPerWinding, pattern);
 
@@ -2061,6 +2068,17 @@ std::string wind(std::string coilString, size_t repetitions, std::string proport
         std::cerr << marginPairsString << std::endl;
         return "Exception: " + std::string{exc.what()};
     }
+}
+
+std::string wind(std::string coilString, size_t repetitions, std::string proportionPerWindingString, std::string patternString, std::string marginPairsString) {
+    return wind_impl(coilString, "", repetitions, proportionPerWindingString, patternString, marginPairsString);
+}
+
+// Multi-column variant of wind(): identical, plus the core columns JSON
+// (core.processedDescription.columns) so placements into non-main winding
+// windows (windingWindow on winding/group/section) can be wound.
+std::string wind_with_columns(std::string coilString, std::string coreColumnsString, size_t repetitions, std::string proportionPerWindingString, std::string patternString, std::string marginPairsString) {
+    return wind_impl(coilString, coreColumnsString, repetitions, proportionPerWindingString, patternString, marginPairsString);
 }
 
 std::string wind_planar(std::string coilString, std::string stackUpString, double borderToWireDistance, std::string wireToWireDistanceString, std::string insulationThicknessString, double coreToLayerDistance) {
@@ -2190,7 +2208,7 @@ std::string wind_by_turns(std::string coilString) {
     }
 }
 
-std::string delimit_and_compact(std::string coilString) {
+static std::string delimit_and_compact_impl(const std::string& coilString, const std::string& coreColumnsString) {
     try {
         auto coilJson = json::parse(coilString);
 
@@ -2207,16 +2225,22 @@ std::string delimit_and_compact(std::string coilString) {
         coil.set_sections_description(coilSectionsDescription);
         coil.set_layers_description(coilLayersDescription);
         coil.set_turns_description(coilTurnsDescription);
-        
+        if (!coreColumnsString.empty()) {
+            // Multi-column placement: sections in non-main winding windows need the
+            // core columns to rebuild their lateral wound-column frames.
+            std::vector<ColumnElement> coreColumns = json::parse(coreColumnsString);
+            coil.set_core_columns(coreColumns);
+        }
+
         // Preserve groupsDescription if it exists
         if (coilJson.contains("groupsDescription") && !coilJson["groupsDescription"].is_null()) {
             auto groupsDescription = std::vector<Group>(coilJson["groupsDescription"]);
             coil.set_groups_description(groupsDescription);
         }
-        
+
         OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(true);
         OpenMagnetics::Settings::GetInstance().set_coil_include_additional_coordinates(true);
-        
+
         coil.delimit_and_compact();
 
         json result;
@@ -2226,6 +2250,16 @@ std::string delimit_and_compact(std::string coilString) {
     catch (const std::exception &exc) {
         return "Exception: " + std::string{exc.what()};
     }
+}
+
+std::string delimit_and_compact(std::string coilString) {
+    return delimit_and_compact_impl(coilString, "");
+}
+
+// Multi-column variant of delimit_and_compact(): identical, plus the core
+// columns JSON (core.processedDescription.columns).
+std::string delimit_and_compact_with_columns(std::string coilString, std::string coreColumnsString) {
+    return delimit_and_compact_impl(coilString, coreColumnsString);
 }
 
 std::string get_layers_by_winding_index(std::string coilString, int windingIndex){
@@ -4394,6 +4428,10 @@ std::string get_settings() {
         settingsJson["useToroidalCores"] = OpenMagnetics::Settings::GetInstance().get_use_toroidal_cores();
         settingsJson["useConcentricCores"] = OpenMagnetics::Settings::GetInstance().get_use_concentric_cores();
 
+        // Multi-column winding placement (winding studio)
+        settingsJson["corePerColumnWindingWindows"] = OpenMagnetics::Settings::GetInstance().get_core_per_column_winding_windows();
+        settingsJson["coilAdviserAllowLateralPlacement"] = OpenMagnetics::Settings::GetInstance().get_coil_adviser_allow_lateral_placement();
+
         // Temperature-filter settings were removed from Settings upstream;
         // emit defaults so the frontend schema isn't broken.
         settingsJson["coreAdviserEnableTemperatureFilter"] = false;
@@ -4504,6 +4542,14 @@ void set_settings(std::string settingsString) {
         OpenMagnetics::Settings::GetInstance().set_coil_enable_user_winding_losses_models(value);
     }
 
+    // Multi-column winding placement (winding studio). Guarded: older persisted
+    // settings objects predate these keys.
+    if (settingsJson.contains("corePerColumnWindingWindows")) {
+        OpenMagnetics::Settings::GetInstance().set_core_per_column_winding_windows(settingsJson["corePerColumnWindingWindows"].get<bool>());
+    }
+    if (settingsJson.contains("coilAdviserAllowLateralPlacement")) {
+        OpenMagnetics::Settings::GetInstance().set_coil_adviser_allow_lateral_placement(settingsJson["coilAdviserAllowLateralPlacement"].get<bool>());
+    }
 }
 void reset_settings(std::string settingsString) {
     OpenMagnetics::Settings::GetInstance().reset();
@@ -4894,11 +4940,13 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_available_coil_alignments", &get_available_coil_alignments);
     function("check_requirement", &check_requirement);
     function("wind", &wind);
+    function("wind_with_columns", &wind_with_columns);
     function("wind_planar", &wind_planar);
     function("wind_by_sections", &wind_by_sections);
     function("wind_by_layers", &wind_by_layers);
     function("wind_by_turns", &wind_by_turns);
     function("delimit_and_compact", &delimit_and_compact);
+    function("delimit_and_compact_with_columns", &delimit_and_compact_with_columns);
     function("get_layers_by_winding_index", &get_layers_by_winding_index);
     function("get_layers_by_section", &get_layers_by_section);
     function("get_sections_description_conduction", &get_sections_description_conduction);
