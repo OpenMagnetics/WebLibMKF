@@ -4718,6 +4718,24 @@ std::string calculate_advised_wires_with_context(std::string windingString,
     }
 }
 
+// _with_context twin of calculate_advised_coil (the MagneticBuilder wire
+// 'Advise' buttons): useContext=true RAII-swaps the shared catalogs to the
+// loaded LibraryContext for the duration of the call, so the CoilAdviser's
+// wire pool comes from the inventory instead of the public catalog.
+// useContext=false is byte-identical to the classic entry point.
+std::string calculate_advised_coil_with_context(std::string masString, bool useContext) {
+    try {
+        if (!useContext) {
+            return calculate_advised_coil(masString);
+        }
+        auto scope = g_libraryContext.applyScoped();
+        return calculate_advised_coil(masString);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
 // WindingCombination JSON (de)serialization — kept HERE (the consumer), not in MKF's header, which stays
 // json-free. Placed in namespace OpenMagnetics so ADL resolves it for the recursive windingCombinations
 // vector and for the explicit calls below.
@@ -4910,6 +4928,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("calculate_advised_cores_with_context", &calculate_advised_cores_with_context);
     function("calculate_advised_magnetics_with_context", &calculate_advised_magnetics_with_context);
     function("calculate_advised_wires_with_context", &calculate_advised_wires_with_context);
+    function("calculate_advised_coil_with_context", &calculate_advised_coil_with_context);
     function("is_core_material_database_empty", &is_core_material_database_empty);
     function("is_core_shape_database_empty", &is_core_shape_database_empty);
     function("is_wire_database_empty", &is_wire_database_empty);
