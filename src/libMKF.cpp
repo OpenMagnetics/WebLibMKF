@@ -1990,13 +1990,13 @@ void process_coil_configuration(OpenMagnetics::Coil& coil, json configuration, s
 
 }
 
-static std::string wind_impl(const std::string& coilString, const std::string& coreColumnsString, size_t repetitions, const std::string& proportionPerWindingString, const std::string& patternString, const std::string& marginPairsString) {
+static std::string wind_impl(const std::string& coilString, const std::string& coreColumnsString, size_t repetitions, const std::string& proportionPerWindingString, const std::string& patternString, const std::string& marginPairsString, const std::string& customSectionRectsString = "", bool delimitAndCompact = true) {
     try {
         auto coilJson = json::parse(coilString);
         auto marginPairs = std::vector<std::vector<double>>(json::parse(marginPairsString));
 
         OpenMagnetics::Settings::GetInstance().set_coil_wind_even_if_not_fit(true);
-        OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(true);
+        OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(delimitAndCompact);
         OpenMagnetics::Settings::GetInstance().set_coil_include_additional_coordinates(true);
 
         std::vector<double> proportionPerWinding = json::parse(proportionPerWindingString);
@@ -2012,6 +2012,18 @@ static std::string wind_impl(const std::string& coilString, const std::string& c
             // frames (Coil throws a specific error without them).
             std::vector<ColumnElement> coreColumns = json::parse(coreColumnsString);
             coil.set_core_columns(coreColumns);
+        }
+        if (!customSectionRectsString.empty()) {
+            // Hand-drawn section rectangles (winding studio): re-imposed at the
+            // end of the wind, after compaction — a drawn section never moves.
+            json rectsJson = json::parse(customSectionRectsString);
+            std::map<std::string, std::pair<std::vector<double>, std::vector<double>>> customSectionRects;
+            for (auto& [sectionName, rect] : rectsJson.items()) {
+                customSectionRects[sectionName] = {
+                    rect.at("coordinates").get<std::vector<double>>(),
+                    rect.at("dimensions").get<std::vector<double>>()};
+            }
+            coil.preload_custom_section_rects(customSectionRects);
         }
 
         process_coil_configuration(coil, coilJson, repetitions, proportionPerWinding, pattern);
@@ -2043,12 +2055,17 @@ static std::string wind_impl(const std::string& coilString, const std::string& c
             throw std::runtime_error("Turns not created");
         }
 
-        // Explicitly call delimit_and_compact to ensure toroidal additional turns are compacted
-        coil.delimit_and_compact();
+        if (delimitAndCompact) {
+            // Explicitly call delimit_and_compact to ensure toroidal additional turns are compacted
+            coil.delimit_and_compact();
+            // ...and re-impose the drawn rectangles it may have moved (no-op
+            // when none were preloaded).
+            coil.apply_custom_section_rects();
+        }
 
         json result;
         to_json(result, coil);
-        
+
         // Debug: Check if additional_coordinates are in the output
         size_t turnsWithAdditionalCoords = 0;
         if (result.contains("turnsDescription") && result["turnsDescription"].is_array()) {
@@ -2076,9 +2093,12 @@ std::string wind(std::string coilString, size_t repetitions, std::string proport
 
 // Multi-column variant of wind(): identical, plus the core columns JSON
 // (core.processedDescription.columns) so placements into non-main winding
-// windows (windingWindow on winding/group/section) can be wound.
-std::string wind_with_columns(std::string coilString, std::string coreColumnsString, size_t repetitions, std::string proportionPerWindingString, std::string patternString, std::string marginPairsString) {
-    return wind_impl(coilString, coreColumnsString, repetitions, proportionPerWindingString, patternString, marginPairsString);
+// windows (windingWindow on winding/group/section) can be wound, an optional
+// map of hand-drawn section rectangles ({name: {coordinates, dimensions}},
+// "" for none) re-imposed after compaction, and an explicit delimit/compact
+// switch.
+std::string wind_with_columns(std::string coilString, std::string coreColumnsString, size_t repetitions, std::string proportionPerWindingString, std::string patternString, std::string marginPairsString, std::string customSectionRectsString, bool delimitAndCompact) {
+    return wind_impl(coilString, coreColumnsString, repetitions, proportionPerWindingString, patternString, marginPairsString, customSectionRectsString, delimitAndCompact);
 }
 
 std::string wind_planar(std::string coilString, std::string stackUpString, double borderToWireDistance, std::string wireToWireDistanceString, std::string insulationThicknessString, double coreToLayerDistance) {
