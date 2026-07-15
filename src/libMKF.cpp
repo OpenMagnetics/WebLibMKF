@@ -2225,6 +2225,10 @@ static std::string delimit_and_compact_impl(const std::string& coilString, const
         coil.set_sections_description(coilSectionsDescription);
         coil.set_layers_description(coilLayersDescription);
         coil.set_turns_description(coilTurnsDescription);
+        // The serialized descriptions are at their FINAL multi-window positions;
+        // without this, delimit_and_compact re-compacts mirrored-window sections
+        // as if they were still in the +x winding frame.
+        coil.set_group_window_sides_applied(true);
         if (!coreColumnsString.empty()) {
             // Multi-column placement: sections in non-main winding windows need the
             // core columns to rebuild their lateral wound-column frames.
