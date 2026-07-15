@@ -2256,6 +2256,48 @@ static std::string delimit_and_compact_impl(const std::string& coilString, const
     }
 }
 
+// Custom-rectangle re-flow (winding studio): re-run layers+turns INSIDE the
+// caller-provided section rectangles — sections are NOT recomputed and the
+// compaction pass that would undo the custom placement is NOT run.
+std::string wind_layers_and_turns_with_columns(std::string coilString, std::string coreColumnsString) {
+    try {
+        auto coilJson = json::parse(coilString);
+
+        OpenMagnetics::Settings::GetInstance().set_coil_wind_even_if_not_fit(true);
+        OpenMagnetics::Settings::GetInstance().set_coil_include_additional_coordinates(true);
+
+        auto winding = std::vector<OpenMagnetics::Winding>(coilJson["functionalDescription"]);
+        auto coilSectionsDescription = std::vector<Section>(coilJson["sectionsDescription"]);
+        OpenMagnetics::Coil coil;
+
+        process_coil_configuration(coil, coilString);
+
+        coil.set_bobbin(coilJson["bobbin"]);
+        coil.set_functional_description(winding);
+        coil.set_sections_description(coilSectionsDescription);
+        if (coilJson.contains("groupsDescription") && !coilJson["groupsDescription"].is_null()) {
+            coil.set_groups_description(std::vector<Group>(coilJson["groupsDescription"]));
+        }
+        // The provided rectangles are at their FINAL multi-window positions.
+        coil.set_group_window_sides_applied(true);
+        if (!coreColumnsString.empty()) {
+            std::vector<ColumnElement> coreColumns = json::parse(coreColumnsString);
+            coil.set_core_columns(coreColumns);
+        }
+
+        if (!coil.rewind_layers_and_turns()) {
+            throw std::runtime_error("Turns not created");
+        }
+
+        json result;
+        to_json(result, coil);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
 std::string delimit_and_compact(std::string coilString) {
     return delimit_and_compact_impl(coilString, "");
 }
@@ -4951,6 +4993,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("wind_by_turns", &wind_by_turns);
     function("delimit_and_compact", &delimit_and_compact);
     function("delimit_and_compact_with_columns", &delimit_and_compact_with_columns);
+    function("wind_layers_and_turns_with_columns", &wind_layers_and_turns_with_columns);
     function("get_layers_by_winding_index", &get_layers_by_winding_index);
     function("get_layers_by_section", &get_layers_by_section);
     function("get_sections_description_conduction", &get_sections_description_conduction);
