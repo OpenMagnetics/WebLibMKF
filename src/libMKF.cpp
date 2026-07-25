@@ -2003,7 +2003,7 @@ static std::string wind_impl(const std::string& coilString, const std::string& c
         std::vector<size_t> pattern = json::parse(patternString);
         auto winding = std::vector<OpenMagnetics::Winding>(coilJson["functionalDescription"]);
         OpenMagnetics::Coil coil;
-        coil.set_bobbin(coilJson["bobbin"]);
+        coil.set_bobbin_from_json(coilJson["bobbin"]);
         coil.set_functional_description(winding);
         coil.preload_margins(marginPairs);
         if (!coreColumnsString.empty()) {
@@ -2144,7 +2144,7 @@ std::string wind_by_sections(std::string coilString, size_t repetitions, std::st
 
         process_coil_configuration(coil, coilString, repetitions, proportionPerWinding, pattern);
 
-        coil.set_bobbin(coilJson["bobbin"]);
+        coil.set_bobbin_from_json(coilJson["bobbin"]);
         coil.set_functional_description(winding);
         if (proportionPerWinding.size() == winding.size()) {
             if (pattern.size() > 0 && repetitions > 0) {
@@ -2188,7 +2188,7 @@ std::string wind_by_layers(std::string coilString) {
 
         process_coil_configuration(coil, coilString);
 
-        coil.set_bobbin(coilJson["bobbin"]);
+        coil.set_bobbin_from_json(coilJson["bobbin"]);
         coil.set_functional_description(winding);
         coil.set_sections_description(coilSectionsDescription);
         coil.wind_by_layers();
@@ -2213,7 +2213,7 @@ std::string wind_by_turns(std::string coilString) {
 
         process_coil_configuration(coil, coilString);
 
-        coil.set_bobbin(coilJson["bobbin"]);
+        coil.set_bobbin_from_json(coilJson["bobbin"]);
         coil.set_functional_description(winding);
         coil.set_sections_description(coilSectionsDescription);
         coil.set_layers_description(coilLayersDescription);
@@ -2240,7 +2240,7 @@ static std::string delimit_and_compact_impl(const std::string& coilString, const
 
         process_coil_configuration(coil, coilString);
 
-        coil.set_bobbin(coilJson["bobbin"]);
+        coil.set_bobbin_from_json(coilJson["bobbin"]);
         coil.set_functional_description(winding);
         coil.set_sections_description(coilSectionsDescription);
         coil.set_layers_description(coilLayersDescription);
@@ -2292,7 +2292,7 @@ std::string wind_layers_and_turns_with_columns(std::string coilString, std::stri
 
         process_coil_configuration(coil, coilString);
 
-        coil.set_bobbin(coilJson["bobbin"]);
+        coil.set_bobbin_from_json(coilJson["bobbin"]);
         coil.set_functional_description(winding);
         coil.set_sections_description(coilSectionsDescription);
         if (coilJson.contains("groupsDescription") && !coilJson["groupsDescription"].is_null()) {
