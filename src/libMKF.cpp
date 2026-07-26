@@ -1962,6 +1962,13 @@ void process_coil_configuration(OpenMagnetics::Coil& coil, json configuration, s
         }
     }
 
+    // Winding-style overrides (winding studio): winding name → forced
+    // consecutive-parallels (multifilar bundle) / consecutive-turns.
+    if (configuration.contains("_windingStyle") && configuration["_windingStyle"].is_object()) {
+        auto windingStyleOverrides = std::map<std::string, WindingStyle>(configuration["_windingStyle"]);
+        coil.preload_winding_style_overrides(windingStyleOverrides);
+    }
+
     if (configuration.contains("_interleavingLevel")) {
         coil.set_interleaving_level(configuration["_interleavingLevel"]);
     }
