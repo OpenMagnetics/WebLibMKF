@@ -2098,6 +2098,21 @@ std::string wind(std::string coilString, size_t repetitions, std::string proport
     return wind_impl(coilString, "", repetitions, proportionPerWindingString, patternString, marginPairsString);
 }
 
+// The engine's automatic per-winding proportions (physical turn area per
+// winding from turns × parallels × wire area) — what wind() uses when no
+// proportions are given. Backs the studio's Auto-fit button.
+std::string calculate_proportion_per_winding_based_on_wires(std::string coilString) {
+    try {
+        auto coilJson = json::parse(coilString);
+        OpenMagnetics::Coil coil(coilJson, false);
+        json result = coil.get_proportion_per_winding_based_on_wires();
+        return result.dump();
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
 // Multi-column variant of wind(): identical, plus the core columns JSON
 // (core.processedDescription.columns) so placements into non-main winding
 // windows (windingWindow on winding/group/section) can be wound, an optional
@@ -5014,6 +5029,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("check_requirement", &check_requirement);
     function("wind", &wind);
     function("wind_with_columns", &wind_with_columns);
+    function("calculate_proportion_per_winding_based_on_wires", &calculate_proportion_per_winding_based_on_wires);
     function("wind_planar", &wind_planar);
     function("wind_by_sections", &wind_by_sections);
     function("wind_by_layers", &wind_by_layers);
