@@ -1491,22 +1491,16 @@ std::string calculate_reflected_primary(std::string secondaryExcitationString, d
 double calculate_instantaneous_power(std::string excitationString){
     OperatingPointExcitation excitation(json::parse(excitationString));
 
-    if (!excitation.get_current().value().get_processed().value().get_rms().value()) {
-        auto current = excitation.get_current().value();
-        auto processed = OpenMagnetics::Inputs::calculate_processed_data(current.get_harmonics().value(), current.get_waveform().value(), true);
-        current.set_processed(processed);
-        excitation.set_current(current);
-    }
-    if (!excitation.get_voltage().value().get_processed().value().get_rms().value()) {
-        auto voltage = excitation.get_voltage().value();
-        auto processed = OpenMagnetics::Inputs::calculate_processed_data(voltage.get_harmonics().value(), voltage.get_waveform().value(), true);
-        voltage.set_processed(processed);
-        excitation.set_voltage(voltage);
-    }
-
-    auto instantaneousPower = OpenMagnetics::Inputs::calculate_instantaneous_power(excitation);
-
-    return instantaneousPower;
+    // ABT #223: this used to "guard" with
+    //     if (!excitation.get_current().value().get_processed().value().get_rms().value())
+    // which dereferences the very optionals it is meant to test — on the DEFAULT
+    // manual operating-point view the excitations carry a waveform but no
+    // `processed` block yet, so the guard itself threw bad_optional_access and the
+    // worker reported a generic "Error calling calculate_instantaneous_power".
+    // The processed data was never needed: Inputs::calculate_instantaneous_power
+    // works from the voltage/current WAVEFORMS and already throws specific
+    // MISSING_DATA messages when one is absent.
+    return OpenMagnetics::Inputs::calculate_instantaneous_power(excitation);
 }
 
 double calculate_rms_power(std::string excitationString){
