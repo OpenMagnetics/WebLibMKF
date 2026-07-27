@@ -4439,12 +4439,17 @@ std::string set_intersection_insulation(std::string coilString, double layerThic
 std::string calculate_filling_factor(std::string coilString) {
     try {
         OpenMagnetics::Coil coil(json::parse(coilString), false);
-        auto [areaFillingFactor, aux] = coil.calculate_filling_factor();
-        auto [overlappingFillingFactor, contiguousFillingFactor] = aux;
+        auto fillingFactors = coil.calculate_filling_factor();
         json result;
-        result["areaFillingFactor"] = areaFillingFactor;
-        result["overlappingFillingFactor"] = overlappingFillingFactor;
-        result["contiguousFillingFactor"] = contiguousFillingFactor;
+        // ABT #245: areaFillingFactor is the TRUE area fraction. The overfill that used
+        // to be folded into it is reported separately as maxLayerFillingFactor, and
+        // windingFits carries the "does this wind at all" verdict the UI needs — a coil
+        // with a degenerate section used to report 6077% area fill for a 2.35% winding.
+        result["areaFillingFactor"] = fillingFactors.areaFillingFactor;
+        result["maxLayerFillingFactor"] = fillingFactors.maxLayerFillingFactor;
+        result["overlappingFillingFactor"] = fillingFactors.overlappingFillingFactor;
+        result["contiguousFillingFactor"] = fillingFactors.contiguousFillingFactor;
+        result["windingFits"] = fillingFactors.windingFits;
         return result.dump(4);
     }
     catch(const std::runtime_error& re)
