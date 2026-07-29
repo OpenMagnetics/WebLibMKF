@@ -154,6 +154,7 @@ else()
         "-l embind"
         "--bind"
         "--use-preload-cache"
+        "--profiling-funcs"
     )
     
     # Debug flags (optional)
