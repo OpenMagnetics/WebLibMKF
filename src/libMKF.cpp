@@ -908,6 +908,21 @@ std::vector<std::string> get_available_core_materials(std::string manufacturer){
     return OpenMagnetics::get_core_material_names(manufacturer);
 }
 
+std::vector<std::string> get_available_core_materials_with_loss_model(std::string manufacturer){
+    // Materials characterised only for interference suppression (complex
+    // permeability, no volumetric/mass loss data) cannot feed any core-loss
+    // computation. Power/filter design flows list materials through this
+    // filtered variant so a selection can never end in MODEL_NOT_AVAILABLE;
+    // common-mode-choke flows keep the unfiltered list above (ABT #401).
+    std::vector<std::string> names;
+    for (auto& material : OpenMagnetics::get_materials(manufacturer)) {
+        if (!OpenMagnetics::CoreLossesModel::get_methods(material).empty()) {
+            names.push_back(material.get_name());
+        }
+    }
+    return names;
+}
+
 std::vector<std::string> get_available_core_shapes(){
     return OpenMagnetics::get_core_shape_names();
 }
@@ -4977,6 +4992,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("calculate_all_core_data_from_shapes", &calculate_all_core_data_from_shapes);
     function("get_shape_data", &get_shape_data);
     function("get_available_core_materials", &get_available_core_materials);
+    function("get_available_core_materials_with_loss_model", &get_available_core_materials_with_loss_model);
     function("get_available_core_manufacturers", &get_available_core_manufacturers);
     function("get_available_core_shape_families", &get_available_core_shape_families);
     function("get_available_core_shapes", &get_available_core_shapes);
