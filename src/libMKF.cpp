@@ -4176,6 +4176,70 @@ std::string plot_turns(std::string magneticString) {
 }
 
 
+// REAL WINDING (ABT #646 / #631 follow-up). plot_turns draws core + bobbin + turns and stops
+// there — it never draws how the turns are CONNECTED. paint_magnetic is the entry point that
+// does: XY adds the inter-layer links, dragbacks and terminal leads on top of the usual front
+// view; YZ is the connection-face projection where those leads are seen end-on.
+//
+// projection: "XY" (default) or "YZ", case-insensitive.
+//
+// The coil is (re-)wound when it has no turnsDescription, exactly like plot_turns. The caller
+// decides whether real-winding blocking applies by setting coilUseRealWindingGeometry through
+// set_settings first: that flag changes the LAYOUT (MKF reserves the lead and dragback
+// corridors), so painting with it off would draw a different coil from the one the 3D builder
+// routes. One flag, one coil, both views.
+std::string plot_magnetic(std::string magneticString, std::string projectionString) {
+    try {
+        std::filesystem::path emptyFilepath;
+
+        auto magneticJson = json::parse(magneticString);
+        OpenMagnetics::Magnetic magnetic(magneticJson);
+
+        {
+            auto coil = magnetic.get_mutable_coil();
+            if (!coil.get_turns_description() || coil.get_turns_description()->empty()) {
+                coil.wind();
+                magnetic.set_coil(coil);
+            }
+        }
+
+        std::string projection = projectionString;
+        std::transform(projection.begin(), projection.end(), projection.begin(),
+                       [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+        OpenMagnetics::PainterProjection painterProjection;
+        if (projection == "YZ") {
+            painterProjection = OpenMagnetics::PainterProjection::YZ;
+        }
+        else if (projection.empty() || projection == "XY") {
+            painterProjection = OpenMagnetics::PainterProjection::XY;
+        }
+        else {
+            // Named explicitly rather than silently falling back to XY: a caller asking for a
+            // projection that does not exist is a bug in the caller, and a view that quietly
+            // is not the one requested is the worst way to find out.
+            throw std::runtime_error("plot_magnetic: unknown projection '" + projectionString +
+                                     "', expected 'XY' or 'YZ'");
+        }
+
+        OpenMagnetics::Painter painter(emptyFilepath);
+        painter.paint_magnetic(magnetic, painterProjection);
+        return painter.export_svg();
+    }
+    catch(const std::runtime_error& re)
+    {
+        return re.what();
+    }
+    catch(const std::exception& ex)
+    {
+        return ex.what();
+    }
+    catch(...)
+    {
+        return "Unknown failure occurred. Possible memory corruption";
+    }
+}
+
+
 std::string plot_magnetic_field(std::string magneticString, std::string operatingPointString) {
     try {
         OpenMagnetics::Settings::GetInstance().set_painter_simple_litz(true);
@@ -4496,6 +4560,11 @@ std::string get_settings() {
         settingsJson["coilTryRewind"] = OpenMagnetics::Settings::GetInstance().get_coil_try_rewind();
         settingsJson["coilMaximumLayersPlanar"] = OpenMagnetics::Settings::GetInstance().get_coil_maximum_layers_planar();
         settingsJson["coilIncludeAdditionalCoordinates"] = OpenMagnetics::Settings::GetInstance().get_coil_include_additional_coordinates();
+        // Real winding: MKF lays the turns out as they are actually wound (leads, pitch,
+        // dragbacks) instead of the idealised per-turn rings. The web 2D view paints
+        // through plot_turns, which reads this setting, so without it on the round trip
+        // the frontend has no way to ask for the real winding in 2D at all.
+        settingsJson["coilUseRealWindingGeometry"] = OpenMagnetics::Settings::GetInstance().get_coil_use_real_winding_geometry();
 
         settingsJson["useOnlyCoresInStock"] = OpenMagnetics::Settings::GetInstance().get_use_only_cores_in_stock();
         settingsJson["painterNumberPointsX"] = OpenMagnetics::Settings::GetInstance().get_painter_number_points_x();
@@ -4571,6 +4640,11 @@ void set_settings(std::string settingsString) {
     OpenMagnetics::Settings::GetInstance().set_coil_maximum_layers_planar(settingsJson["coilMaximumLayersPlanar"]);
     if (settingsJson.contains("coilIncludeAdditionalCoordinates")) {
         OpenMagnetics::Settings::GetInstance().set_coil_include_additional_coordinates(settingsJson["coilIncludeAdditionalCoordinates"]);
+    }
+    // Guarded like the key above: older callers that hand back a settings object from
+    // before this key existed must keep working rather than throw on a missing field.
+    if (settingsJson.contains("coilUseRealWindingGeometry")) {
+        OpenMagnetics::Settings::GetInstance().set_coil_use_real_winding_geometry(settingsJson["coilUseRealWindingGeometry"]);
     }
 
     OpenMagnetics::Settings::GetInstance().set_use_only_cores_in_stock(settingsJson["useOnlyCoresInStock"]);
@@ -5132,6 +5206,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("plot_sections", &plot_sections);
     function("plot_layers", &plot_layers);
     function("plot_turns", &plot_turns);
+    function("plot_magnetic", &plot_magnetic);
     function("plot_magnetic_field", &plot_magnetic_field);
     function("plot_electric_field", &plot_electric_field);
     function("plot_temperature_field", &plot_temperature_field);
