@@ -4188,6 +4188,12 @@ std::string plot_turns(std::string magneticString) {
 // set_settings first: that flag changes the LAYOUT (MKF reserves the lead and dragback
 // corridors), so painting with it off would draw a different coil from the one the 3D builder
 // routes. One flag, one coil, both views.
+// Drain MKF's capture log to JS. Registering the sink also raises the logger to WARNING, so
+// call it once BEFORE the operation you want to observe, then again to read what it emitted.
+std::string read_log() {
+    return OpenMagnetics::read_log();
+}
+
 std::string plot_magnetic(std::string magneticString, std::string projectionString) {
     try {
         std::filesystem::path emptyFilepath;
@@ -5207,6 +5213,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("plot_layers", &plot_layers);
     function("plot_turns", &plot_turns);
     function("plot_magnetic", &plot_magnetic);
+    function("read_log", &read_log);
     function("plot_magnetic_field", &plot_magnetic_field);
     function("plot_electric_field", &plot_electric_field);
     function("plot_temperature_field", &plot_temperature_field);
