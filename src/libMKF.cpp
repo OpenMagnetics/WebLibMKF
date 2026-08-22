@@ -4148,7 +4148,17 @@ std::string plot_turns(std::string magneticString) {
         // Catalog magnetics often arrive with only functionalDescription populated.
         {
             auto coil = magnetic.get_mutable_coil();
-            if (!coil.get_turns_description() || coil.get_turns_description()->empty()) {
+            // ABT #849 (Alf, 2026-08-22): with REAL WINDING on, wind IN-PROCESS even when the MAS
+            // already carries turns. `_realWindingBlockingApplied` is a runtime member of Coil,
+            // set inside wind() and never serialized into MAS, so a coil deserialized from JSON
+            // always reports "blocking not applied" -- and paint_coil_connections then paints
+            // every terminal and link as a RED DASHED "declined" marker, which is what made the
+            // web view disagree with the same design's locally painted SVG. Winding is
+            // deterministic, so the layout is the one the app already stored; the flag now states
+            // the truth, and a genuine ABT #650 decline still shows as declined.
+            const bool realWinding =
+                OpenMagnetics::Settings::GetInstance().get_coil_use_real_winding_geometry();
+            if (realWinding || !coil.get_turns_description() || coil.get_turns_description()->empty()) {
                 coil.wind();
                 magnetic.set_coil(coil);
             }
@@ -4203,7 +4213,17 @@ std::string plot_magnetic(std::string magneticString, std::string projectionStri
 
         {
             auto coil = magnetic.get_mutable_coil();
-            if (!coil.get_turns_description() || coil.get_turns_description()->empty()) {
+            // ABT #849 (Alf, 2026-08-22): with REAL WINDING on, wind IN-PROCESS even when the MAS
+            // already carries turns. `_realWindingBlockingApplied` is a runtime member of Coil,
+            // set inside wind() and never serialized into MAS, so a coil deserialized from JSON
+            // always reports "blocking not applied" -- and paint_coil_connections then paints
+            // every terminal and link as a RED DASHED "declined" marker, which is what made the
+            // web view disagree with the same design's locally painted SVG. Winding is
+            // deterministic, so the layout is the one the app already stored; the flag now states
+            // the truth, and a genuine ABT #650 decline still shows as declined.
+            const bool realWinding =
+                OpenMagnetics::Settings::GetInstance().get_coil_use_real_winding_geometry();
+            if (realWinding || !coil.get_turns_description() || coil.get_turns_description()->empty()) {
                 coil.wind();
                 magnetic.set_coil(coil);
             }
@@ -4245,6 +4265,105 @@ std::string plot_magnetic(std::string magneticString, std::string projectionStri
     }
 }
 
+
+// ABT #849 (Alf, 2026-08-22): THE CONNECTION LAYOUT AS DATA, for the Coil Studio.
+// The Studio is pure JS/SVG built from the MAS, while connections are DERIVED in C++
+// (Coil::get_connection_reserved_spaces / get_connection_layout) and are deliberately not part
+// of the MAS contract -- they would go stale the moment anything is re-wound. So expose them:
+// one call returns every drawn marker, the routes they group into, and the ride levels those
+// routes impose, in the same winding-window frame the turns already use. The Studio draws them;
+// MKF stays the single source of truth for where they go.
+std::string get_connection_layout(std::string magneticString) {
+    try {
+        auto magneticJson = json::parse(magneticString);
+        OpenMagnetics::Magnetic magnetic(magneticJson);
+        auto& settings = OpenMagnetics::Settings::GetInstance();
+        const bool realWinding = settings.get_coil_use_real_winding_geometry();
+
+        auto coil = magnetic.get_mutable_coil();
+        // WIND IN-PROCESS whenever real winding is on. `_realWindingBlockingApplied` is a RUNTIME
+        // member of Coil (set inside wind()), never serialized into MAS, so a coil deserialized
+        // from JSON always reports "blocking not applied" however it was really wound -- which is
+        // what painted every web connection as a red dashed "declined" marker while the local
+        // (same-process) SVGs drew them filled. Winding here is deterministic -- same sections and
+        // layers in, same layout out -- so the geometry is the one the app already stored, and the
+        // flag then states the truth: when the ABT #650 gate really declines, consumers must show
+        // it rather than present an unpaid-for layout as real.
+        if (realWinding || !coil.get_turns_description() || coil.get_turns_description()->empty()) {
+            coil.wind();
+        }
+
+        auto enumName = [](auto value) { return std::string(magic_enum::enum_name(value)); };
+
+        json out;
+        out["realWinding"] = realWinding;
+        out["blockingApplied"] = coil.is_real_winding_blocking_applied();
+
+        json markers = json::array();
+        for (const auto& space : coil.get_connection_reserved_spaces()) {
+            json m;
+            m["winding"] = space.winding;
+            m["parallel"] = space.parallel;
+            m["section"] = space.section;
+            m["layer"] = space.layer;                  // non-empty = a squeeze on a CROSSED layer
+            m["coordinates"] = space.coordinates;      // centre, cartesian as turns are
+            m["dimensions"] = space.dimensions;
+            m["rotation"] = space.rotation;            // degrees; non-zero on diagonal links
+            m["coordinateSystem"] = enumName(space.coordinateSystem);
+            m["plane"] = enumName(space.plane);        // WINDOW_XY or FRONT_YZ (out of this view)
+            m["kind"] = enumName(space.kind);
+            m["isTerminal"] = space.isTerminal;
+            m["edgeDepth"] = space.edgeDepth;
+            m["fromTurn"] = space.fromTurn;
+            m["toTurn"] = space.toTurn;
+            if (space.routedLength) {
+                m["routedLength"] = space.routedLength.value();
+            }
+            markers.push_back(m);
+        }
+        out["markers"] = markers;
+
+        auto layout = coil.get_connection_layout();
+        json routes = json::array();
+        for (const auto& route : layout.routes) {
+            json r;
+            r["winding"] = route.winding;
+            r["parallel"] = route.parallel;
+            r["fromTurn"] = route.fromTurn;
+            r["toTurn"] = route.toTurn;
+            r["kind"] = enumName(route.kind);
+            r["side"] = route.side;
+            r["waypoints"] = route.waypoints;          // {layerAxis, turnAxis}, in path order
+            r["routedLength"] = route.routedLength;
+            routes.push_back(r);
+        }
+        out["routes"] = routes;
+
+        json rideLevels = json::array();
+        for (const auto& level : layout.rideLevels) {
+            json l;
+            l["side"] = level.side;
+            l["radius"] = level.radius;
+            l["height"] = level.height;
+            rideLevels.push_back(l);
+        }
+        out["rideLevels"] = rideLevels;
+
+        return out.dump();
+    }
+    catch(const std::runtime_error& re)
+    {
+        return json{{"error", re.what()}}.dump();
+    }
+    catch(const std::exception& ex)
+    {
+        return json{{"error", ex.what()}}.dump();
+    }
+    catch(...)
+    {
+        return json{{"error", "Unknown failure occurred. Possible memory corruption"}}.dump();
+    }
+}
 
 std::string plot_magnetic_field(std::string magneticString, std::string operatingPointString) {
     try {
@@ -5213,6 +5332,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("plot_layers", &plot_layers);
     function("plot_turns", &plot_turns);
     function("plot_magnetic", &plot_magnetic);
+    function("get_connection_layout", &get_connection_layout);   // ABT #849: connections as data
     function("read_log", &read_log);
     function("plot_magnetic_field", &plot_magnetic_field);
     function("plot_electric_field", &plot_electric_field);
