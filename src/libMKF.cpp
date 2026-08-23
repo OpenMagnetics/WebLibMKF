@@ -3521,9 +3521,40 @@ std::string calculate_leakage_inductance_matrix(std::string magneticString, doub
     }
 }
 
-std::string calculate_stray_capacitance(std::string coilString, std::string operatingPointString, std::string modelsData){
+// The capacitance entry points below used to take a bare COIL, so the turn-to-core
+// network (ABT #848: the exact cylinder-over-plane element, the core image factor from
+// the material's permittivity, and the real per-turn wire-to-core gap) could never act —
+// there was no core to act on. The panel was therefore structurally unable to agree with
+// the impedance sweep, which builds a full Magnetic. Measured on production before this:
+// designs whose resonance implied 43 nF and 220 nF of stray capacitance, where a wound
+// component is pF-class.
+//
+// Accepting a MAGNETIC costs nothing at the call site and keeps the arity identical, so
+// no caller can be handed the wrong number of arguments (the failure mode that took the
+// 3D view down twice this month). A bare coil is still accepted: if the JSON has a "coil"
+// key it is a Magnetic, otherwise it is the coil itself.
+//
+// frequency is deliberately NOT threaded here. It only sets the core image factor beta,
+// which is 1 for MnZn, nanocrystalline and any conductor — the impedance path passes its
+// own resonance because it has one to pass; a static panel does not, and inventing one
+// would be worse than the documented beta = 1 default.
+static std::pair<OpenMagnetics::Coil, std::optional<OpenMagnetics::Core>>
+coil_and_core_from(const std::string& magneticOrCoilString) {
+    json parsed = json::parse(magneticOrCoilString);
+    if (parsed.contains("coil")) {
+        // Go through Magnetic rather than constructing a Core by hand: that is the path
+        // every other binding uses, so the pre-1.0 migration and the core's own
+        // material/processed-description handling apply here identically instead of
+        // depending on which constructor flags I happened to pick.
+        OpenMagnetics::Magnetic magnetic(parsed);
+        return {magnetic.get_coil(), magnetic.get_core()};
+    }
+    return {OpenMagnetics::Coil(parsed, false), std::nullopt};
+}
+
+std::string calculate_stray_capacitance(std::string magneticString, std::string operatingPointString, std::string modelsData){
     try {
-        OpenMagnetics::Coil coil(json::parse(coilString), false);
+        auto [coil, core] = coil_and_core_from(magneticString);
         OperatingPoint operatingPoint(json::parse(operatingPointString));
         
         std::map<std::string, std::string> models = json::parse(modelsData).get<std::map<std::string, std::string>>();
@@ -3534,7 +3565,7 @@ std::string calculate_stray_capacitance(std::string coilString, std::string oper
         }
 
         OpenMagnetics::StrayCapacitance strayCapacitance(strayCapacitanceModelName);
-        auto strayCapacitanceOutput = strayCapacitance.calculate_capacitance(coil, operatingPoint);
+        auto strayCapacitanceOutput = strayCapacitance.calculate_capacitance(coil, operatingPoint, core);
 
         json result;
         to_json(result, strayCapacitanceOutput);
@@ -3545,9 +3576,9 @@ std::string calculate_stray_capacitance(std::string coilString, std::string oper
     }
 }
 
-std::string calculate_capacitance_matrix(std::string coilString, std::string modelsData){
+std::string calculate_capacitance_matrix(std::string magneticString, std::string modelsData){
     try {
-        OpenMagnetics::Coil coil(json::parse(coilString), false);
+        auto [coil, core] = coil_and_core_from(magneticString);
         
         std::map<std::string, std::string> models = json::parse(modelsData).get<std::map<std::string, std::string>>();
         
@@ -3557,7 +3588,7 @@ std::string calculate_capacitance_matrix(std::string coilString, std::string mod
         }
 
         OpenMagnetics::StrayCapacitance strayCapacitance(strayCapacitanceModelName);
-        auto strayCapacitanceOutput = strayCapacitance.calculate_capacitance(coil);
+        auto strayCapacitanceOutput = strayCapacitance.calculate_capacitance(coil, core);
 
         json result;
         if (strayCapacitanceOutput.get_capacitance_matrix()) {
@@ -3579,9 +3610,9 @@ std::string calculate_capacitance_matrix(std::string coilString, std::string mod
     }
 }
 
-std::string calculate_maxwell_capacitance_matrix(std::string coilString, std::string modelsData){
+std::string calculate_maxwell_capacitance_matrix(std::string magneticString, std::string modelsData){
     try {
-        OpenMagnetics::Coil coil(json::parse(coilString), false);
+        auto [coil, core] = coil_and_core_from(magneticString);
         
         std::map<std::string, std::string> models = json::parse(modelsData).get<std::map<std::string, std::string>>();
         
@@ -3591,7 +3622,7 @@ std::string calculate_maxwell_capacitance_matrix(std::string coilString, std::st
         }
 
         OpenMagnetics::StrayCapacitance strayCapacitance(strayCapacitanceModelName);
-        auto strayCapacitanceOutput = strayCapacitance.calculate_capacitance(coil);
+        auto strayCapacitanceOutput = strayCapacitance.calculate_capacitance(coil, core);
 
         json result = json::array();
         if (strayCapacitanceOutput.get_maxwell_capacitance_matrix()) {
