@@ -4568,33 +4568,14 @@ std::string plot_temperature_field(std::string magneticString, std::string opera
         mas.set_magnetic(magnetic);
         mas.get_mutable_inputs().set_operating_points({operatingPoint});  // Set the operating point for simulation
         auto simulatedMas = magneticSimulator.simulate(mas);
-        
-        double coreLosses = 0.0;
-        double windingLosses = 0.0;
-        std::optional<WindingLossesOutput> windingLossesOutput;
-        
-        if (!simulatedMas.get_outputs().empty()) {
-            auto outputs = simulatedMas.get_outputs()[0];
-            if (outputs.get_core_losses().has_value()) {
-                coreLosses = outputs.get_core_losses().value().get_core_losses();
-            }
-            if (outputs.get_winding_losses().has_value()) {
-                windingLosses = outputs.get_winding_losses().value().get_winding_losses();
-                // Also get the detailed per-turn losses (required for toroidal cores)
-                windingLossesOutput = outputs.get_winding_losses().value();
-            }
+        if (simulatedMas.get_outputs().empty()) {
+            throw std::runtime_error("plot_temperature_field: simulation produced no outputs");
         }
-        
-        // Create temperature configuration
-        OpenMagnetics::TemperatureConfig config;
-        config.ambientTemperature = ambientTemperature;
-        config.coreLosses = coreLosses;
-        config.windingLosses = windingLosses;
-        // Set per-turn losses (required for toroidal core thermal analysis)
-        if (windingLossesOutput) {
-            config.windingLossesOutput = windingLossesOutput;
-        }
-        
+
+        // Shared config builder (ABT #906): the same configuration MagneticSimulator uses
+        // for outputs[].temperature, so this plot and the exported MAS can never disagree.
+        auto config = OpenMagnetics::TemperatureConfig::fromSimulatedOutput(operatingPoint, simulatedMas.get_outputs()[0]);
+
         // Create temperature model and calculate temperatures
         OpenMagnetics::Temperature temperature(magnetic, config);
         auto thermalResult = temperature.calculateTemperatures();
