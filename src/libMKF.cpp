@@ -2068,7 +2068,15 @@ static std::string wind_impl(const std::string& coilString, const std::string& c
         }
 
         if (!coil.get_turns_description()) {
-            throw std::runtime_error("Turns not created");
+            {
+                // ABT #930: name why the wind produced nothing — a bare "Turns not created"
+                // reads as a broken winder even when MKF is right to refuse the geometry.
+                const auto& fitReason = coil.get_last_fit_failure();
+                throw std::runtime_error(fitReason.empty()
+                    ? std::string("Turns not created: the winding does not fit its window, and the "
+                                  "reason could not be narrowed further.")
+                    : "Turns not created. " + fitReason);
+            }
         }
 
         if (delimitAndCompact) {
@@ -2147,7 +2155,15 @@ std::string wind_planar(std::string coilString, std::string stackUpString, doubl
         coil.wind_planar(stackUp, borderToWireDistance, wireToWireDistance, insulationThickness, coreToLayerDistance);
 
         if (!coil.get_turns_description()) {
-            throw std::runtime_error("Turns not created");
+            {
+                // ABT #930: name why the wind produced nothing — a bare "Turns not created"
+                // reads as a broken winder even when MKF is right to refuse the geometry.
+                const auto& fitReason = coil.get_last_fit_failure();
+                throw std::runtime_error(fitReason.empty()
+                    ? std::string("Turns not created: the winding does not fit its window, and the "
+                                  "reason could not be narrowed further.")
+                    : "Turns not created. " + fitReason);
+            }
         }
 
         // Explicitly call delimit_and_compact to ensure proper compacting
@@ -2337,7 +2353,15 @@ std::string wind_layers_and_turns_with_columns(std::string coilString, std::stri
         }
 
         if (!coil.rewind_layers_and_turns()) {
-            throw std::runtime_error("Turns not created");
+            {
+                // ABT #930: name why the wind produced nothing — a bare "Turns not created"
+                // reads as a broken winder even when MKF is right to refuse the geometry.
+                const auto& fitReason = coil.get_last_fit_failure();
+                throw std::runtime_error(fitReason.empty()
+                    ? std::string("Turns not created: the winding does not fit its window, and the "
+                                  "reason could not be narrowed further.")
+                    : "Turns not created. " + fitReason);
+            }
         }
 
         json result;
