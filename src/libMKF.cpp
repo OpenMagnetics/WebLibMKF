@@ -4692,13 +4692,18 @@ std::string calculate_filling_factor(std::string coilString) {
         result["windingFits"] = fillingFactors.windingFits;
         return result.dump(4);
     }
+    // "Exception: " prefix, as 109 other bindings do. The JS side keys on that prefix to
+    // tell an error from a result; returning a bare what() made taskQueue.js JSON.parse
+    // the message, so a std::bad_optional_access surfaced as
+    //   SyntaxError: Unexpected token 'b', "bad_optional_access" is not valid JSON
+    // — the one string that says nothing about what failed or where.
     catch(const std::runtime_error& re)
     {
-        return re.what();
+        return "Exception: " + std::string(re.what());
     }
     catch(const std::exception& ex)
     {
-        return ex.what();
+        return "Exception: " + std::string(ex.what());
     }
     catch(...)
     {
