@@ -892,6 +892,22 @@ std::vector<std::string> get_available_core_shape_families(){
     return families;
 }
 
+// The families the ENGINE can build, which is not the same question as
+// get_available_core_shape_families() above: that one reports the families present in the
+// loaded shape database, so a buildable family that ships no bare-core record (MOLDED,
+// DRUM_SEMISHIELDED — the construction is reconstructed per part, not sold as a core) never
+// appeared in the UI at all. A catalogue browser must offer these; a custom shape in such a
+// family is a perfectly ordinary part.
+std::vector<std::string> get_supported_core_shape_families(){
+    std::vector<std::string> families;
+    for (auto& family : OpenMagnetics::get_supported_core_shape_families()) {
+        json familyJson;
+        to_json(familyJson, family);
+        families.push_back(familyJson);
+    }
+    return families;
+}
+
 std::vector<std::string> get_available_core_manufacturers(){
     std::vector<std::string> manufacturers;
     auto materials = OpenMagnetics::get_materials("");
@@ -5235,6 +5251,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_available_core_materials_with_loss_model", &get_available_core_materials_with_loss_model);
     function("get_available_core_manufacturers", &get_available_core_manufacturers);
     function("get_available_core_shape_families", &get_available_core_shape_families);
+    function("get_supported_core_shape_families", &get_supported_core_shape_families);
     function("get_available_core_shapes", &get_available_core_shapes);
     function("get_available_core_shapes_by_manufacturer", &get_available_core_shapes_by_manufacturer);
     function("get_available_core_shapes_by_family", &get_available_core_shapes_by_family);
