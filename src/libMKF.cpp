@@ -4835,6 +4835,10 @@ std::string get_settings() {
         settingsJson["coilOnlyOneTurnPerLayerInContiguousRectangular"] = OpenMagnetics::Settings::GetInstance().get_coil_only_one_turn_per_layer_in_contiguous_rectangular();
         settingsJson["coilTryRewind"] = OpenMagnetics::Settings::GetInstance().get_coil_try_rewind();
         settingsJson["coilMaximumLayersPlanar"] = OpenMagnetics::Settings::GetInstance().get_coil_maximum_layers_planar();
+        // ABT #1099: the manufacturer whose materials the core adviser searches first
+        // (standard-cores mode; a tiebreak, not a gate — see CoreAdviserMaterials).
+        settingsJson["preferredCoreMaterialFerriteManufacturer"] = OpenMagnetics::Settings::GetInstance().get_preferred_core_material_ferrite_manufacturer();
+        settingsJson["preferredCoreMaterialPowderManufacturer"] = OpenMagnetics::Settings::GetInstance().get_preferred_core_material_powder_manufacturer();
         settingsJson["coilIncludeAdditionalCoordinates"] = OpenMagnetics::Settings::GetInstance().get_coil_include_additional_coordinates();
         // Real winding: MKF lays the turns out as they are actually wound (leads, pitch,
         // dragbacks) instead of the idealised per-turn rings. The web 2D view paints
@@ -4914,6 +4918,12 @@ void set_settings(std::string settingsString) {
     OpenMagnetics::Settings::GetInstance().set_coil_only_one_turn_per_layer_in_contiguous_rectangular(settingsJson["coilOnlyOneTurnPerLayerInContiguousRectangular"]);
     OpenMagnetics::Settings::GetInstance().set_coil_try_rewind(settingsJson["coilTryRewind"]);
     OpenMagnetics::Settings::GetInstance().set_coil_maximum_layers_planar(settingsJson["coilMaximumLayersPlanar"]);
+    if (settingsJson.contains("preferredCoreMaterialFerriteManufacturer")) {
+        OpenMagnetics::Settings::GetInstance().set_preferred_core_material_ferrite_manufacturer(settingsJson["preferredCoreMaterialFerriteManufacturer"]);
+    }
+    if (settingsJson.contains("preferredCoreMaterialPowderManufacturer")) {
+        OpenMagnetics::Settings::GetInstance().set_preferred_core_material_powder_manufacturer(settingsJson["preferredCoreMaterialPowderManufacturer"]);
+    }
     if (settingsJson.contains("coilIncludeAdditionalCoordinates")) {
         OpenMagnetics::Settings::GetInstance().set_coil_include_additional_coordinates(settingsJson["coilIncludeAdditionalCoordinates"]);
     }
