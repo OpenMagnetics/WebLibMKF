@@ -939,6 +939,100 @@ std::vector<std::string> get_available_core_materials_with_loss_model(std::strin
     return names;
 }
 
+/**
+ * Catalogue summary of every core material, for the web material picker
+ * table (ABT #1072). One call instead of one get_material_data() per
+ * material, and only the properties a designer filters on, each resolved by
+ * MKF's own models (initial permeability, saturation, resistivity, losses)
+ * rather than re-read from the raw MAS record in JavaScript.
+ *
+ * Numbers are in SI. Properties a material's record does not carry come back
+ * as null, with the engine's reason in `missing` so the table can show it —
+ * a blank cell is an explicit "no data", never a substituted value. The loss
+ * reference point is the classic datasheet one: sinusoidal B̂ at the given
+ * frequency and temperature, W/m³, using the material's first loss method.
+ */
+std::string get_core_materials_summary(double temperatureA, double temperatureB, double lossFrequency, double lossMagneticFluxDensityPeak, double lossTemperature){
+    try {
+        json result = json::array();
+        for (auto& material : OpenMagnetics::get_materials("")) {
+            json row;
+            json missing = json::object();
+            row["name"] = material.get_name();
+            row["manufacturer"] = material.get_manufacturer_info().get_name();
+            row["commercialName"] = material.get_commercial_name() ? json(material.get_commercial_name().value()) : json(nullptr);
+            row["family"] = material.get_family() ? json(material.get_family().value()) : json(nullptr);
+            {
+                json materialType;
+                to_json(materialType, material.get_material());
+                row["materialType"] = materialType;
+            }
+            if (material.get_material_composition()) {
+                json composition;
+                to_json(composition, material.get_material_composition().value());
+                row["composition"] = composition;
+            }
+            else {
+                row["composition"] = nullptr;
+            }
+            {
+                json applications = json::array();
+                if (material.get_application()) {
+                    for (auto& application : material.get_application().value()) {
+                        json applicationJson;
+                        to_json(applicationJson, application);
+                        applications.push_back(applicationJson);
+                    }
+                }
+                row["applications"] = applications;
+            }
+            row["curieTemperature"] = material.get_curie_temperature() ? json(material.get_curie_temperature().value()) : json(nullptr);
+            row["density"] = material.get_density() ? json(material.get_density().value()) : json(nullptr);
+
+            auto resolve = [&](const std::string& key, auto&& compute) {
+                try {
+                    row[key] = compute();
+                }
+                catch (const std::exception& exc) {
+                    row[key] = nullptr;
+                    missing[key] = std::string{exc.what()};
+                }
+            };
+            resolve("initialPermeabilityA", [&]() { return OpenMagnetics::Core::get_initial_permeability(material, temperatureA); });
+            resolve("initialPermeabilityB", [&]() { return OpenMagnetics::Core::get_initial_permeability(material, temperatureB); });
+            resolve("saturationA", [&]() { return OpenMagnetics::Core::get_magnetic_flux_density_saturation(material, temperatureA, false); });
+            resolve("saturationB", [&]() { return OpenMagnetics::Core::get_magnetic_flux_density_saturation(material, temperatureB, false); });
+            resolve("resistivityA", [&]() { return OpenMagnetics::Core::get_resistivity(material, temperatureA); });
+
+            auto methods = OpenMagnetics::CoreLossesModel::get_methods_string(material);
+            row["lossMethods"] = methods;
+            row["hasLossModel"] = !methods.empty();
+            resolve("volumetricLossesReference", [&]() {
+                auto lossMethods = OpenMagnetics::CoreLossesModel::get_methods(material);
+                if (lossMethods.empty()) {
+                    throw std::runtime_error("No core losses method available for material " + material.get_name());
+                }
+                auto model = OpenMagnetics::CoreLossesModel::factory(lossMethods[0]);
+                auto waveform = OpenMagnetics::Inputs::create_waveform(WaveformLabel::SINUSOIDAL, 2 * lossMagneticFluxDensityPeak, lossFrequency);
+                SignalDescriptor magneticFluxDensity;
+                magneticFluxDensity.set_waveform(waveform);
+                magneticFluxDensity.set_processed(OpenMagnetics::Inputs::calculate_processed_data(waveform, lossFrequency));
+                OperatingPointExcitation excitation;
+                excitation.set_frequency(lossFrequency);
+                excitation.set_magnetic_flux_density(magneticFluxDensity);
+                return model->get_core_volumetric_losses(material, excitation, lossTemperature);
+            });
+
+            row["missing"] = missing;
+            result.push_back(row);
+        }
+        return result.dump();
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
 std::vector<std::string> get_available_core_shapes(){
     return OpenMagnetics::get_core_shape_names();
 }
@@ -5249,6 +5343,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_shape_data", &get_shape_data);
     function("get_available_core_materials", &get_available_core_materials);
     function("get_available_core_materials_with_loss_model", &get_available_core_materials_with_loss_model);
+    function("get_core_materials_summary", &get_core_materials_summary);
     function("get_available_core_manufacturers", &get_available_core_manufacturers);
     function("get_available_core_shape_families", &get_available_core_shape_families);
     function("get_supported_core_shape_families", &get_supported_core_shape_families);
