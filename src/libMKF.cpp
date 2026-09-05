@@ -954,6 +954,86 @@ std::vector<std::string> get_available_core_materials_with_loss_model(std::strin
  * reference point is the classic datasheet one: sinusoidal B̂ at the given
  * frequency and temperature, W/m³, using the material's first loss method.
  */
+// One row per catalogue wire for the web's wire table (ABT #1110): the identity and the
+// dimensions a designer filters on, every length in metres, absent data as null (never a
+// substitute). Litz rows carry their strand; coating is resolved through Wire::resolve_coating.
+std::string get_wires_summary() {
+    try {
+        auto dimensionOrNull = [](const std::optional<DimensionWithTolerance>& dimension) -> json {
+            if (!dimension) {
+                return nullptr;
+            }
+            return OpenMagnetics::resolve_dimensional_values(dimension.value());
+        };
+        json result = json::array();
+        for (auto& wire : OpenMagnetics::get_wires()) {
+            json row;
+            if (!wire.get_name()) {
+                throw std::runtime_error("A catalogue wire has no name");
+            }
+            row["name"] = wire.get_name().value();
+            json typeJson;
+            to_json(typeJson, wire.get_type());
+            row["type"] = typeJson;
+            if (wire.get_standard()) {
+                json standardJson;
+                to_json(standardJson, wire.get_standard().value());
+                row["standard"] = standardJson;
+            }
+            else {
+                row["standard"] = nullptr;
+            }
+            row["standardName"] = wire.get_standard_name() ? json(wire.get_standard_name().value()) : json(nullptr);
+            row["manufacturer"] = (wire.get_manufacturer_info() && wire.get_manufacturer_info()->get_name() != "") ? json(wire.get_manufacturer_info()->get_name()) : json(nullptr);
+            if (wire.get_material()) {
+                if (std::holds_alternative<std::string>(wire.get_material().value())) {
+                    row["material"] = std::get<std::string>(wire.get_material().value());
+                }
+                else {
+                    row["material"] = std::get<WireMaterial>(wire.get_material().value()).get_name();
+                }
+            }
+            else {
+                row["material"] = nullptr;
+            }
+            row["numberConductors"] = wire.get_number_conductors() ? json(wire.get_number_conductors().value()) : json(nullptr);
+            row["conductingDiameter"] = dimensionOrNull(wire.get_conducting_diameter());
+            row["outerDiameter"] = dimensionOrNull(wire.get_outer_diameter());
+            row["conductingWidth"] = dimensionOrNull(wire.get_conducting_width());
+            row["conductingHeight"] = dimensionOrNull(wire.get_conducting_height());
+            row["outerWidth"] = dimensionOrNull(wire.get_outer_width());
+            row["outerHeight"] = dimensionOrNull(wire.get_outer_height());
+            if (wire.get_type() == WireType::LITZ && wire.get_strand()) {
+                auto strand = wire.resolve_strand();
+                row["strandStandardName"] = strand.get_standard_name() ? json(strand.get_standard_name().value()) : json(nullptr);
+                row["strandConductingDiameter"] = dimensionOrNull(strand.get_conducting_diameter());
+            }
+            else {
+                row["strandStandardName"] = nullptr;
+                row["strandConductingDiameter"] = nullptr;
+            }
+            auto coating = wire.resolve_coating();
+            if (coating && coating->get_type()) {
+                json coatingTypeJson;
+                to_json(coatingTypeJson, coating->get_type().value());
+                row["coatingType"] = coatingTypeJson;
+                row["coatingGrade"] = coating->get_grade() ? json(coating->get_grade().value()) : json(nullptr);
+                row["coatingLayers"] = coating->get_number_layers() ? json(coating->get_number_layers().value()) : json(nullptr);
+            }
+            else {
+                row["coatingType"] = nullptr;
+                row["coatingGrade"] = nullptr;
+                row["coatingLayers"] = nullptr;
+            }
+            result.push_back(row);
+        }
+        return result.dump();
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
 std::string get_core_materials_summary(double temperatureA, double temperatureB, double lossFrequency, double lossMagneticFluxDensityPeak, double lossTemperature){
     try {
         json result = json::array();
@@ -4904,6 +4984,18 @@ std::string get_settings() {
         // (standard-cores mode; a tiebreak, not a gate — see CoreAdviserMaterials).
         settingsJson["preferredCoreMaterialFerriteManufacturer"] = OpenMagnetics::Settings::GetInstance().get_preferred_core_material_ferrite_manufacturer();
         settingsJson["preferredCoreMaterialPowderManufacturer"] = OpenMagnetics::Settings::GetInstance().get_preferred_core_material_powder_manufacturer();
+        // ABT #1110: wire standard the wire/coil advisers restrict to (null = no preference).
+        {
+            auto preferredWireStandard = OpenMagnetics::Settings::GetInstance().get_preferred_wire_standard();
+            if (preferredWireStandard) {
+                json preferredWireStandardJson;
+                to_json(preferredWireStandardJson, preferredWireStandard.value());
+                settingsJson["preferredWireStandard"] = preferredWireStandardJson;
+            }
+            else {
+                settingsJson["preferredWireStandard"] = nullptr;
+            }
+        }
         settingsJson["coilIncludeAdditionalCoordinates"] = OpenMagnetics::Settings::GetInstance().get_coil_include_additional_coordinates();
         // Real winding: MKF lays the turns out as they are actually wound (leads, pitch,
         // dragbacks) instead of the idealised per-turn rings. The web 2D view paints
@@ -4988,6 +5080,14 @@ void set_settings(std::string settingsString) {
     }
     if (settingsJson.contains("preferredCoreMaterialPowderManufacturer")) {
         OpenMagnetics::Settings::GetInstance().set_preferred_core_material_powder_manufacturer(settingsJson["preferredCoreMaterialPowderManufacturer"]);
+    }
+    if (settingsJson.contains("preferredWireStandard")) {
+        if (settingsJson["preferredWireStandard"].is_null()) {
+            OpenMagnetics::Settings::GetInstance().set_preferred_wire_standard(std::nullopt);
+        }
+        else {
+            OpenMagnetics::Settings::GetInstance().set_preferred_wire_standard(settingsJson["preferredWireStandard"].get<WireStandard>());
+        }
     }
     if (settingsJson.contains("coilIncludeAdditionalCoordinates")) {
         OpenMagnetics::Settings::GetInstance().set_coil_include_additional_coordinates(settingsJson["coilIncludeAdditionalCoordinates"]);
@@ -5419,6 +5519,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_available_core_materials", &get_available_core_materials);
     function("get_available_core_materials_with_loss_model", &get_available_core_materials_with_loss_model);
     function("get_core_materials_summary", &get_core_materials_summary);
+    function("get_wires_summary", &get_wires_summary);
     function("get_available_core_manufacturers", &get_available_core_manufacturers);
     function("get_available_core_shape_families", &get_available_core_shape_families);
     function("get_supported_core_shape_families", &get_supported_core_shape_families);
