@@ -857,6 +857,8 @@ std::string get_core_temperature_dependant_parameters(std::string coreData, doub
         result["magneticFieldStrengthSaturation"] = core.get_magnetic_field_strength_saturation(temperature);
         result["initialPermeability"] = core.get_initial_permeability(temperature);
         result["effectivePermeability"] = core.get_effective_permeability(temperature);
+        // Core mass from the material density and the core volume (NaN when the record has no density).
+        result["mass"] = core.get_mass();
         result["reluctance"] = core.get_reluctance(temperature);
         auto reluctanceModel = OpenMagnetics::ReluctanceModel::factory();
         result["permeance"] = 1.0 / reluctanceModel->get_ungapped_core_reluctance(core);
@@ -1265,7 +1267,12 @@ double calculate_inductance_from_number_turns_and_gapping(std::string coreData,
         std::map<std::string, std::string> models = json::parse(modelsData).get<std::map<std::string, std::string>>();
 
         auto reluctanceModelName = OpenMagnetics::Defaults().reluctanceModelDefault;
-        if (models.find("reluctance") != models.end()) {
+        // ABT #1085: the web passes the reluctance model as "gapReluctance" (the key
+        // the model settings use); "reluctance" is kept for older callers.
+        if (models.find("gapReluctance") != models.end()) {
+            OpenMagnetics::from_json(models["gapReluctance"], reluctanceModelName);
+        }
+        else if (models.find("reluctance") != models.end()) {
             OpenMagnetics::from_json(models["reluctance"], reluctanceModelName);
         }
 
@@ -1306,7 +1313,12 @@ double calculate_number_turns_from_gapping_and_inductance(std::string coreData,
         std::map<std::string, std::string> models = json::parse(modelsData).get<std::map<std::string, std::string>>();
 
         auto reluctanceModelName = OpenMagnetics::Defaults().reluctanceModelDefault;
-        if (models.find("reluctance") != models.end()) {
+        // ABT #1085: the web passes the reluctance model as "gapReluctance" (the key
+        // the model settings use); "reluctance" is kept for older callers.
+        if (models.find("gapReluctance") != models.end()) {
+            OpenMagnetics::from_json(models["gapReluctance"], reluctanceModelName);
+        }
+        else if (models.find("reluctance") != models.end()) {
             OpenMagnetics::from_json(models["reluctance"], reluctanceModelName);
         }
 
@@ -1333,7 +1345,12 @@ double calculate_number_turns_from_gapping_and_inductance_legacy(std::string cor
         std::map<std::string, std::string> models = json::parse(modelsData).get<std::map<std::string, std::string>>();
 
         auto reluctanceModelName = OpenMagnetics::Defaults().reluctanceModelDefault;
-        if (models.find("reluctance") != models.end()) {
+        // ABT #1085: the web passes the reluctance model as "gapReluctance" (the key
+        // the model settings use); "reluctance" is kept for older callers.
+        if (models.find("gapReluctance") != models.end()) {
+            OpenMagnetics::from_json(models["gapReluctance"], reluctanceModelName);
+        }
+        else if (models.find("reluctance") != models.end()) {
             OpenMagnetics::from_json(models["reluctance"], reluctanceModelName);
         }
 
@@ -1365,7 +1382,12 @@ std::string calculate_gapping_from_number_turns_and_inductance(std::string coreD
         OpenMagnetics::from_json(gappingTypeString, gappingType);
         
         auto reluctanceModelName = OpenMagnetics::Defaults().reluctanceModelDefault;
-        if (models.find("reluctance") != models.end()) {
+        // ABT #1085: the web passes the reluctance model as "gapReluctance" (the key
+        // the model settings use); "reluctance" is kept for older callers.
+        if (models.find("gapReluctance") != models.end()) {
+            OpenMagnetics::from_json(models["gapReluctance"], reluctanceModelName);
+        }
+        else if (models.find("reluctance") != models.end()) {
             OpenMagnetics::from_json(models["reluctance"], reluctanceModelName);
         }
 
@@ -1431,7 +1453,12 @@ std::string calculate_core_losses(std::string coreData,
         std::map<std::string, std::string> models = json::parse(modelsData).get<std::map<std::string, std::string>>();
 
         auto reluctanceModelName = OpenMagnetics::defaults.reluctanceModelDefault;
-        if (models.find("reluctance") != models.end()) {
+        // ABT #1085: the web passes the reluctance model as "gapReluctance" (the key
+        // the model settings use); "reluctance" is kept for older callers.
+        if (models.find("gapReluctance") != models.end()) {
+            OpenMagnetics::from_json(models["gapReluctance"], reluctanceModelName);
+        }
+        else if (models.find("reluctance") != models.end()) {
             OpenMagnetics::from_json(models["reluctance"], reluctanceModelName);
         }
         auto coreLossesModelName = OpenMagnetics::defaults.coreLossesModelDefault;
@@ -2586,7 +2613,12 @@ std::string simulate(std::string inputsString,
         }
 
         auto reluctanceModelName = OpenMagnetics::defaults.reluctanceModelDefault;
-        if (models.find("reluctance") != models.end()) {
+        // ABT #1085: the web passes the reluctance model as "gapReluctance" (the key
+        // the model settings use); "reluctance" is kept for older callers.
+        if (models.find("gapReluctance") != models.end()) {
+            OpenMagnetics::from_json(models["gapReluctance"], reluctanceModelName);
+        }
+        else if (models.find("reluctance") != models.end()) {
             OpenMagnetics::from_json(models["reluctance"], reluctanceModelName);
         }
         auto coreLossesModelName = OpenMagnetics::defaults.coreLossesModelDefault;
@@ -3569,7 +3601,12 @@ std::string calculate_inductance_matrix(std::string magneticString, double frequ
         std::map<std::string, std::string> models = json::parse(modelsData).get<std::map<std::string, std::string>>();
         
         auto reluctanceModelName = OpenMagnetics::Defaults().reluctanceModelDefault;
-        if (models.find("reluctance") != models.end()) {
+        // ABT #1085: the web passes the reluctance model as "gapReluctance" (the key
+        // the model settings use); "reluctance" is kept for older callers.
+        if (models.find("gapReluctance") != models.end()) {
+            OpenMagnetics::from_json(models["gapReluctance"], reluctanceModelName);
+        }
+        else if (models.find("reluctance") != models.end()) {
             OpenMagnetics::from_json(models["reluctance"], reluctanceModelName);
         }
 
@@ -3592,7 +3629,12 @@ std::string calculate_coupling_coefficient_matrix(std::string magneticString, do
         std::map<std::string, std::string> models = json::parse(modelsData).get<std::map<std::string, std::string>>();
         
         auto reluctanceModelName = OpenMagnetics::Defaults().reluctanceModelDefault;
-        if (models.find("reluctance") != models.end()) {
+        // ABT #1085: the web passes the reluctance model as "gapReluctance" (the key
+        // the model settings use); "reluctance" is kept for older callers.
+        if (models.find("gapReluctance") != models.end()) {
+            OpenMagnetics::from_json(models["gapReluctance"], reluctanceModelName);
+        }
+        else if (models.find("reluctance") != models.end()) {
             OpenMagnetics::from_json(models["reluctance"], reluctanceModelName);
         }
 
@@ -3639,7 +3681,12 @@ std::string calculate_leakage_inductance_matrix(std::string magneticString, doub
         std::map<std::string, std::string> models = json::parse(modelsData).get<std::map<std::string, std::string>>();
         
         auto reluctanceModelName = OpenMagnetics::Defaults().reluctanceModelDefault;
-        if (models.find("reluctance") != models.end()) {
+        // ABT #1085: the web passes the reluctance model as "gapReluctance" (the key
+        // the model settings use); "reluctance" is kept for older callers.
+        if (models.find("gapReluctance") != models.end()) {
+            OpenMagnetics::from_json(models["gapReluctance"], reluctanceModelName);
+        }
+        else if (models.find("reluctance") != models.end()) {
             OpenMagnetics::from_json(models["reluctance"], reluctanceModelName);
         }
 
@@ -4149,6 +4196,24 @@ std::string mas_autocomplete(std::string masString, bool simulate, std::string c
 
         json result;
         to_json(result, autocompletedMas);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+// Autocomplete a bare magnetic (no inputs): what the 3D visualizer needs to enrich a design
+// before MVB++ draws it (ABT #1100). The MAS variant above needs `inputs`, which a magnetic
+// on its own does not carry.
+std::string magnetic_autocomplete(std::string magneticString, std::string configurationString) {
+    try {
+        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
+        json configuration(json::parse(configurationString));
+        auto autocompletedMagnetic = OpenMagnetics::magnetic_autocomplete(magnetic, configuration);
+
+        json result;
+        to_json(result, autocompletedMagnetic);
         return result.dump(4);
     }
     catch (const std::exception &exc) {
@@ -5485,6 +5550,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("create_simple_bobbin_from_core_with_custom_thickness", &create_simple_bobbin_from_core_with_custom_thickness);
     function("create_simple_bobbin_from_core_with_custom_thicknesses", &create_simple_bobbin_from_core_with_custom_thicknesses);
     function("mas_autocomplete", &mas_autocomplete);
+    function("magnetic_autocomplete", &magnetic_autocomplete);
     function("calculate_steinmetz_coefficients", &calculate_steinmetz_coefficients);
     function("sweep_volumetric_losses_over_frequency", &sweep_volumetric_losses_over_frequency);
     function("get_initial_permeability_equations", &get_initial_permeability_equations);
