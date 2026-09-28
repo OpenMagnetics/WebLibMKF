@@ -5056,6 +5056,10 @@ std::string get_settings() {
         settingsJson["strayCapacitanceModel"] = static_cast<int>(OpenMagnetics::Settings::GetInstance().get_stray_capacitance_model());
         settingsJson["coilEnableUserWindingLossesModels"] = OpenMagnetics::Settings::GetInstance().get_coil_enable_user_winding_losses_models();
 
+        // ABT #1454: a turn overlapping its enclosure makes the thermal network throw (true,
+        // the default) or lose that face's conduction path with an ERROR logged (false).
+        settingsJson["thermalNetworkStrictGeometry"] = OpenMagnetics::Settings::GetInstance().get_thermal_network_strict_geometry();
+
         return settingsJson.dump(4);
     }
     catch (const std::exception &exc) {
@@ -5176,6 +5180,10 @@ void set_settings(std::string settingsString) {
     }
     if (settingsJson.contains("coilAdviserAllowLateralPlacement")) {
         OpenMagnetics::Settings::GetInstance().set_coil_adviser_allow_lateral_placement(settingsJson["coilAdviserAllowLateralPlacement"].get<bool>());
+    }
+    // Guarded: settings objects persisted before this key existed must keep working.
+    if (settingsJson.contains("thermalNetworkStrictGeometry")) {
+        OpenMagnetics::Settings::GetInstance().set_thermal_network_strict_geometry(settingsJson["thermalNetworkStrictGeometry"].get<bool>());
     }
 }
 void reset_settings(std::string settingsString) {
