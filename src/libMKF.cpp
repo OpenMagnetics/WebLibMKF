@@ -1584,10 +1584,8 @@ std::string calculate_core_losses(std::string coreData,
         return result.dump(4);
     }
     catch (const std::exception &exc) {
-        std::cerr << coreData << std::endl;
-        std::cerr << coilData << std::endl;
-        std::cerr << inputsData << std::endl;
-        std::cerr << modelsData << std::endl;
+        // The caller gets the error; the inputs are its own, so echoing them to
+        // stderr only flooded the browser console (ABT #1649).
         return "Exception: " + std::string{exc.what()};
     }
 }
