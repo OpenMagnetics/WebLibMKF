@@ -4555,6 +4555,64 @@ std::string read_log() {
     return OpenMagnetics::read_log();
 }
 
+// MKF's log for advanced users. The console sink keeps its own level (ERROR by default); the
+// collector is separate, off until set_log_collection names a level, and keeps structured records
+// for drain_log_collection. Both return "" on success or "Exception: <reason>" (an unknown level).
+std::string set_log_level(std::string level) {
+    try {
+        OpenMagnetics::Logger::getInstance().setLevel(OpenMagnetics::log_level_from_string(level));
+        return "";
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string get_log_level() {
+    return OpenMagnetics::to_string(OpenMagnetics::Logger::getInstance().getLevel());
+}
+
+// "OFF" stops collecting and discards what was not drained; any other level starts (or re-levels)
+// collection at that level.
+std::string set_log_collection(std::string level) {
+    try {
+        auto parsedLevel = OpenMagnetics::log_level_from_string(level);
+        if (parsedLevel == OpenMagnetics::LogLevel::OFF) {
+            OpenMagnetics::Logger::getInstance().disableCollector();
+        }
+        else {
+            OpenMagnetics::Logger::getInstance().enableCollector(parsedLevel);
+        }
+        return "";
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string get_log_collection() {
+    auto& logger = OpenMagnetics::Logger::getInstance();
+    return logger.isCollectorEnabled() ? OpenMagnetics::to_string(logger.getCollectorLevel()) : std::string("OFF");
+}
+
+// Everything collected since the last drain, oldest first, as a JSON array of
+// {"level", "module", "message", "count"}; "[]" when nothing was collected or collection is off.
+std::string drain_log_collection() {
+    try {
+        json records = json::array();
+        for (const auto& record : OpenMagnetics::Logger::getInstance().drainCollected()) {
+            records.push_back({{"level", OpenMagnetics::to_string(record.level)},
+                               {"module", record.moduleOfOrigin},
+                               {"message", record.message},
+                               {"count", record.count}});
+        }
+        return records.dump();
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
 std::string plot_magnetic(std::string magneticString, std::string projectionString) {
     try {
         std::filesystem::path emptyFilepath;
@@ -5063,10 +5121,14 @@ std::string get_settings() {
         settingsJson["corePerColumnWindingWindows"] = OpenMagnetics::Settings::GetInstance().get_core_per_column_winding_windows();
         settingsJson["coilAdviserAllowLateralPlacement"] = OpenMagnetics::Settings::GetInstance().get_coil_adviser_allow_lateral_placement();
 
-        // Temperature-filter settings were removed from Settings upstream;
-        // emit defaults so the frontend schema isn't broken.
-        settingsJson["coreAdviserEnableTemperatureFilter"] = false;
-        settingsJson["coreAdviserMaximumTemperature"] = 130.0;
+        // The adviser temperature gate, as the engine holds it (MKF's own default, unless set).
+        settingsJson["coreAdviserEnableTemperatureFilter"] = OpenMagnetics::Settings::GetInstance().get_core_adviser_enable_temperature_filter();
+        settingsJson["coreAdviserMaximumTemperature"] = OpenMagnetics::Settings::GetInstance().get_core_adviser_maximum_temperature();
+
+        // Explicit opt-in, off by default: use a core material outside its data (core-loss frequency
+        // outside the fitted Steinmetz span, temperature at or above Curie), extrapolating with a
+        // WARNING per use instead of throwing. Read the warnings with drain_log_collection().
+        settingsJson["allowMaterialDataExtrapolation"] = OpenMagnetics::Settings::GetInstance().get_allow_material_data_extrapolation();
 
         // Model selection settings
         settingsJson["magneticFieldStrengthModel"] = static_cast<int>(OpenMagnetics::Settings::GetInstance().get_magnetic_field_strength_model());
@@ -5162,9 +5224,16 @@ void set_settings(std::string settingsString) {
     OpenMagnetics::Settings::GetInstance().set_use_toroidal_cores(settingsJson["useToroidalCores"]);
     OpenMagnetics::Settings::GetInstance().set_use_concentric_cores(settingsJson["useConcentricCores"]);
 
-    // coreAdviserEnableTemperatureFilter / coreAdviserMaximumTemperature:
-    // setters were removed from Settings upstream; accept the keys for
-    // forward-compat but don't persist — no-op.
+    // Guarded: settings objects persisted before these keys were wired through must keep working.
+    if (settingsJson.contains("coreAdviserEnableTemperatureFilter")) {
+        OpenMagnetics::Settings::GetInstance().set_core_adviser_enable_temperature_filter(settingsJson["coreAdviserEnableTemperatureFilter"].get<bool>());
+    }
+    if (settingsJson.contains("coreAdviserMaximumTemperature")) {
+        OpenMagnetics::Settings::GetInstance().set_core_adviser_maximum_temperature(settingsJson["coreAdviserMaximumTemperature"].get<double>());
+    }
+    if (settingsJson.contains("allowMaterialDataExtrapolation")) {
+        OpenMagnetics::Settings::GetInstance().set_allow_material_data_extrapolation(settingsJson["allowMaterialDataExtrapolation"].get<bool>());
+    }
 
     // Model selection settings
     if (settingsJson.contains("magneticFieldStrengthModel")) {
@@ -5695,6 +5764,11 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("plot_magnetic", &plot_magnetic);
     function("get_connection_layout", &get_connection_layout);   // ABT #849: connections as data
     function("read_log", &read_log);
+    function("set_log_level", &set_log_level);
+    function("get_log_level", &get_log_level);
+    function("set_log_collection", &set_log_collection);
+    function("get_log_collection", &get_log_collection);
+    function("drain_log_collection", &drain_log_collection);
     function("plot_magnetic_field", &plot_magnetic_field);
     function("plot_electric_field", &plot_electric_field);
     function("plot_temperature_field", &plot_temperature_field);
