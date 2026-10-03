@@ -34,6 +34,15 @@ std::string calculate_insulation(std::string inputsString){
         auto insulationCoordinator = OpenMagnetics::InsulationCoordinator();
         // One call, one success-or-throw for all four distances.
         json computed = insulationCoordinator.calculate_insulation_coordination(inputs);
+        // MAS takes an absent key, never null, for an unset optional.
+        for (auto it = computed.begin(); it != computed.end();) {
+            if (it->is_null()) {
+                it = computed.erase(it);
+            }
+            else {
+                ++it;
+            }
+        }
         result = computed;
     }
     catch(const std::exception& ex)
