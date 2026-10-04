@@ -1661,27 +1661,13 @@ std::string calculate_induced_current(std::string excitationString, double magne
     }
 }
 
+// ABT #1698: both reflections are MKF's (Inputs::calculate_reflected_secondary / _primary).
+// This file used to carry its own copies, which kept the label-dispatched voltage reflection
+// MKF had fixed (#1670) and so threw on the web's default rectangle.
 std::string calculate_reflected_secondary(std::string primaryExcitationString, double turnRatio){
     try {
         OperatingPointExcitation primaryExcitation(json::parse(primaryExcitationString));
-
-        OperatingPointExcitation excitationOfThisWinding(primaryExcitation);
-        auto currentSignalDescriptorProcessed = OpenMagnetics::Inputs::calculate_basic_processed_data(primaryExcitation.get_current().value().get_waveform().value());
-        auto voltageSignalDescriptorProcessed = OpenMagnetics::Inputs::calculate_basic_processed_data(primaryExcitation.get_voltage().value().get_waveform().value());
-
-        auto voltageSignalDescriptor = OpenMagnetics::Inputs::reflect_waveform(primaryExcitation.get_voltage().value(), 1.0 / turnRatio, voltageSignalDescriptorProcessed.get_label());
-        auto currentSignalDescriptor = OpenMagnetics::Inputs::reflect_waveform(primaryExcitation.get_current().value(), turnRatio, currentSignalDescriptorProcessed.get_label());
-
-        auto voltageSampledWaveform = OpenMagnetics::Inputs::calculate_sampled_waveform(voltageSignalDescriptor.get_waveform().value(), excitationOfThisWinding.get_frequency());
-        voltageSignalDescriptor.set_harmonics(OpenMagnetics::Inputs::calculate_harmonics_data(voltageSampledWaveform, excitationOfThisWinding.get_frequency()));
-        voltageSignalDescriptor.set_processed(OpenMagnetics::Inputs::calculate_processed_data(voltageSignalDescriptor, voltageSampledWaveform, true));
-
-        auto currentSampledWaveform = OpenMagnetics::Inputs::calculate_sampled_waveform(currentSignalDescriptor.get_waveform().value(), excitationOfThisWinding.get_frequency());
-        currentSignalDescriptor.set_harmonics(OpenMagnetics::Inputs::calculate_harmonics_data(currentSampledWaveform, excitationOfThisWinding.get_frequency()));
-        currentSignalDescriptor.set_processed(OpenMagnetics::Inputs::calculate_processed_data(currentSignalDescriptor, currentSampledWaveform, true));
-
-        excitationOfThisWinding.set_voltage(voltageSignalDescriptor);
-        excitationOfThisWinding.set_current(currentSignalDescriptor);
+        auto excitationOfThisWinding = OpenMagnetics::Inputs::calculate_reflected_secondary(primaryExcitation, turnRatio);
 
         json result;
         to_json(result, excitationOfThisWinding);
@@ -1695,21 +1681,7 @@ std::string calculate_reflected_secondary(std::string primaryExcitationString, d
 std::string calculate_reflected_primary(std::string secondaryExcitationString, double turnRatio){
     try {
         OperatingPointExcitation secondaryExcitation(json::parse(secondaryExcitationString));
-
-        OperatingPointExcitation excitationOfThisWinding(secondaryExcitation);
-        auto voltageSignalDescriptor = OpenMagnetics::Inputs::reflect_waveform(secondaryExcitation.get_voltage().value(), turnRatio);
-        auto currentSignalDescriptor = OpenMagnetics::Inputs::reflect_waveform(secondaryExcitation.get_current().value(), 1.0 / turnRatio);
-
-        auto voltageSampledWaveform = OpenMagnetics::Inputs::calculate_sampled_waveform(voltageSignalDescriptor.get_waveform().value(), excitationOfThisWinding.get_frequency());
-        voltageSignalDescriptor.set_harmonics(OpenMagnetics::Inputs::calculate_harmonics_data(voltageSampledWaveform, excitationOfThisWinding.get_frequency()));
-        voltageSignalDescriptor.set_processed(OpenMagnetics::Inputs::calculate_processed_data(voltageSignalDescriptor, voltageSampledWaveform, true));
-
-        auto currentSampledWaveform = OpenMagnetics::Inputs::calculate_sampled_waveform(currentSignalDescriptor.get_waveform().value(), excitationOfThisWinding.get_frequency());
-        currentSignalDescriptor.set_harmonics(OpenMagnetics::Inputs::calculate_harmonics_data(currentSampledWaveform, excitationOfThisWinding.get_frequency()));
-        currentSignalDescriptor.set_processed(OpenMagnetics::Inputs::calculate_processed_data(currentSignalDescriptor, currentSampledWaveform, true));
-
-        excitationOfThisWinding.set_voltage(voltageSignalDescriptor);
-        excitationOfThisWinding.set_current(currentSignalDescriptor);
+        auto excitationOfThisWinding = OpenMagnetics::Inputs::calculate_reflected_primary(secondaryExcitation, turnRatio);
 
         json result;
         to_json(result, excitationOfThisWinding);
