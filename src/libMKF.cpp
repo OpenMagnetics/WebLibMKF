@@ -2921,11 +2921,31 @@ std::string sweep_magnetizing_inductance_over_dc_bias(std::string magneticString
     }
 }
 
-std::string sweep_core_losses_over_frequency(std::string magneticString, std::string operatingPointString, double start, double stop, size_t numberElements, double temperature, std::string mode, std::string title) {
+// The generated from_json leaves a Topology untouched for a name it does not know, so an unknown
+// name would reach the model as an uninitialised value: match it against each topology's own
+// spelling and throw when none matches.
+std::optional<MAS::Topology> parse_optional_topology(const json& topologyJson) {
+    if (topologyJson.is_null()) {
+        return std::nullopt;
+    }
+    for (auto candidate : magic_enum::enum_values<MAS::Topology>()) {
+        json spelling;
+        to_json(spelling, candidate);
+        if (spelling == topologyJson) {
+            return candidate;
+        }
+    }
+    throw std::invalid_argument("Unknown topology " + topologyJson.dump());
+}
+
+// topologyString: the design's designRequirements.topology as JSON, `null` when the design has
+// none. The magnetizing current that drives the core depends on it (ABT #1754).
+std::string sweep_core_losses_over_frequency(std::string magneticString, std::string operatingPointString, std::string topologyString, double start, double stop, size_t numberElements, double temperature, std::string mode, std::string title) {
     try {
         OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
         OperatingPoint operatingPoint(json::parse(operatingPointString));
-        auto resistanceOverFrequency = OpenMagnetics::Sweeper::sweep_core_losses_over_frequency(magnetic, operatingPoint, start, stop, numberElements, temperature, mode, title);
+        auto topology = parse_optional_topology(json::parse(topologyString));
+        auto resistanceOverFrequency = OpenMagnetics::Sweeper::sweep_core_losses_over_frequency(magnetic, operatingPoint, topology, start, stop, numberElements, temperature, mode, title);
 
         json result;
         to_json(result, resistanceOverFrequency);
