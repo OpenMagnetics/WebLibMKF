@@ -13,6 +13,7 @@
 #include "constructive_models/NumberTurns.h"
 #include "constructive_models/CorePiece.h"
 #include "processors/MagneticSimulator.h"
+#include "processors/ResultsAnalyzer.h"
 #include "physical_models/WindingOhmicLosses.h"
 #include "physical_models/WindingSkinEffectLosses.h"
 #include "physical_models/WindingLosses.h"
@@ -2704,6 +2705,24 @@ std::string simulate(std::string inputsString,
     }
 }
 
+
+// ABT #1855: the findings of a simulated MAS (as simulate / mas_autocomplete with simulate return it,
+// one output per operating point): MKF's verdict on its numbers -- a saturating core, a voltage that is
+// not volt-second balanced, a core or winding above a temperature limit its part states (or stating
+// none), a core driven past its material's data -- each naming its operating point. simulate itself
+// does not judge. Returns a JSON array of {operatingPointIndex, operatingPointName?, code, message}.
+std::string analyze_results(std::string masString) {
+    try {
+        OpenMagnetics::Mas mas(json::parse(masString));
+        auto findings = OpenMagnetics::ResultsAnalyzer::analyze_results(mas);
+        json result;
+        OpenMagnetics::to_json(result, findings);
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
 
 bool check_if_fits(std::string bobbinString, double dimension, bool isHorizontalOrRadial) {
     try {
@@ -5674,6 +5693,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_layers_by_section", &get_layers_by_section);
     function("get_sections_description_conduction", &get_sections_description_conduction);
     function("simulate", &simulate);
+    function("analyze_results", &analyze_results);
     function("are_sections_and_layers_fitting", &are_sections_and_layers_fitting);
     function("add_margin_to_section_by_index", &add_margin_to_section_by_index);
     function("check_if_fits", &check_if_fits);
