@@ -1562,7 +1562,11 @@ std::string calculate_core_losses(std::string coreData,
         // thermal-network model). Set it on Settings to honor the request payload.
         OpenMagnetics::Settings::GetInstance().set_core_temperature_model(coreTemperatureModelName);
         magneticSimulator.set_reluctance_model_name(reluctanceModelName);
-        auto coreLossesOutput = magneticSimulator.calculate_core_losses(operatingPoint, magnetic);
+        // ABT #1876 (Alf, 2026-10-14): a point with no thermal operating point gets its core losses at ambient and
+        // NO temperature (temperatureOutput stays empty); its coreLosses.temperature is the ambient they were
+        // evaluated at, not an operating temperature.
+        std::optional<TemperatureOutput> temperatureOutput;
+        auto coreLossesOutput = magneticSimulator.calculate_core_losses(operatingPoint, magnetic, nullptr, &temperatureOutput);
         json result;
         to_json(result, coreLossesOutput);
 
@@ -1578,10 +1582,14 @@ std::string calculate_core_losses(std::string coreData,
         result["voltageRms"] = operatingPoint.get_mutable_excitations_per_winding()[0].get_voltage().value().get_processed().value().get_rms().value();
         result["currentRms"] = operatingPoint.get_mutable_excitations_per_winding()[0].get_current().value().get_processed().value().get_rms().value();
         result["apparentPower"] = operatingPoint.get_mutable_excitations_per_winding()[0].get_voltage().value().get_processed().value().get_rms().value() * operatingPoint.get_mutable_excitations_per_winding()[0].get_current().value().get_processed().value().get_rms().value();
-        double coreTemperature = coreLossesOutput.get_temperature();
-        result["maximumCoreTemperature"] = coreTemperature;
-        result["maximumCoreTemperatureRise"] = coreTemperature - operatingPoint.get_conditions().get_ambient_temperature();
-        
+        // The core temperature the losses were solved at, only when the point has a thermal operating point:
+        // otherwise both keys are absent.
+        if (temperatureOutput) {
+            double coreTemperature = coreLossesOutput.get_temperature();
+            result["maximumCoreTemperature"] = coreTemperature;
+            result["maximumCoreTemperatureRise"] = coreTemperature - operatingPoint.get_conditions().get_ambient_temperature();
+        }
+
         return result.dump(4);
     }
     catch (const std::exception &exc) {
