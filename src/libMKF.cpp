@@ -3498,16 +3498,16 @@ std::string calculate_advised_magnetics_impl(std::string inputsString, std::stri
             // magnetic (k → 1) so we get a proper CMC.
             std::vector<OpenMagnetics::MagneticFilterOperation> cmcFilterFlow{
                 OpenMagnetics::MagneticFilterOperation(OpenMagnetics::MagneticFilters::CORE_MINIMUM_IMPEDANCE, true, true, true, std::max(1.0, wDims * 2.0)),
-                OpenMagnetics::MagneticFilterOperation(OpenMagnetics::MagneticFilters::COST,       true, true, wCost),
-                OpenMagnetics::MagneticFilterOperation(OpenMagnetics::MagneticFilters::LOSSES,     true, true, wLosses),
-                OpenMagnetics::MagneticFilterOperation(OpenMagnetics::MagneticFilters::DIMENSIONS, true, true, wDims),
-                OpenMagnetics::MagneticFilterOperation(OpenMagnetics::MagneticFilters::LEAKAGE_INDUCTANCE, true, true, wDims),
+                OpenMagnetics::MagneticFilterOperation(OpenMagnetics::MagneticFilters::COST,       true, true, false, wCost),
+                OpenMagnetics::MagneticFilterOperation(OpenMagnetics::MagneticFilters::LOSSES,     true, true, false, wLosses),
+                OpenMagnetics::MagneticFilterOperation(OpenMagnetics::MagneticFilters::DIMENSIONS, true, true, false, wDims),
+                OpenMagnetics::MagneticFilterOperation(OpenMagnetics::MagneticFilters::LEAKAGE_INDUCTANCE, true, true, false, wDims),
                 // Manufacturability proxy: penalises low-µ candidates that need an
                 // absurd turn count (e.g. powder on a CMC) even when their size/cost
                 // are attractive. Score = N_total × max(W, H, D); linear, inverted.
                 // Weight is 2× the efficiency weight so the N×dim penalty has enough
                 // magnitude to overcome the cost/size advantage powder cores often have.
-                OpenMagnetics::MagneticFilterOperation(OpenMagnetics::MagneticFilters::TURN_COUNT, true, false, std::max(wLosses, wDims)),
+                OpenMagnetics::MagneticFilterOperation(OpenMagnetics::MagneticFilters::TURN_COUNT, true, false, false, std::max(wLosses, wDims)),
             };
             if (ctx == nullptr) {
                 masMagnetics = magneticAdviser.get_advised_magnetic(inputs, cmcFilterFlow, maximumNumberResults);
