@@ -5152,6 +5152,9 @@ std::string get_settings() {
         // outside the fitted Steinmetz span, temperature at or above Curie), extrapolating with a
         // WARNING per use instead of throwing. Read the warnings with drain_log_collection().
         settingsJson["allowMaterialDataExtrapolation"] = OpenMagnetics::Settings::GetInstance().get_allow_material_data_extrapolation();
+        // On by default: the simulator iterates losses and temperature until they agree. Off: losses and
+        // material parameters at the ambient temperature, then one thermal pass publishes the temperature.
+        settingsJson["simulatorLossTemperatureLoop"] = OpenMagnetics::Settings::GetInstance().get_simulator_loss_temperature_loop();
 
         // Model selection settings
         settingsJson["magneticFieldStrengthModel"] = static_cast<int>(OpenMagnetics::Settings::GetInstance().get_magnetic_field_strength_model());
@@ -5256,6 +5259,9 @@ void set_settings(std::string settingsString) {
     }
     if (settingsJson.contains("allowMaterialDataExtrapolation")) {
         OpenMagnetics::Settings::GetInstance().set_allow_material_data_extrapolation(settingsJson["allowMaterialDataExtrapolation"].get<bool>());
+    }
+    if (settingsJson.contains("simulatorLossTemperatureLoop")) {
+        OpenMagnetics::Settings::GetInstance().set_simulator_loss_temperature_loop(settingsJson["simulatorLossTemperatureLoop"].get<bool>());
     }
 
     // Model selection settings
