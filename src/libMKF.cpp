@@ -858,8 +858,14 @@ std::string get_core_temperature_dependant_parameters(std::string coreData, doub
         result["magneticFieldStrengthSaturation"] = core.get_magnetic_field_strength_saturation(temperature);
         result["initialPermeability"] = core.get_initial_permeability(temperature);
         result["effectivePermeability"] = core.get_effective_permeability(temperature);
-        // Core mass from the material density and the core volume (NaN when the record has no density).
-        result["mass"] = core.get_mass();
+        // Core mass from the material density and the core volume. A material with no density has no
+        // known mass: the key is null and the card leaves the row out (get_mass() throws for it).
+        if (std::isnan(core.get_density())) {
+            result["mass"] = nullptr;
+        }
+        else {
+            result["mass"] = core.get_mass();
+        }
         result["reluctance"] = core.get_reluctance(temperature);
         auto reluctanceModel = OpenMagnetics::ReluctanceModel::factory();
         result["permeance"] = 1.0 / reluctanceModel->get_ungapped_core_reluctance(core);
