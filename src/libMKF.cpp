@@ -1308,7 +1308,8 @@ std::string calculate_gap_reluctance(std::string coreGapData, std::string modelN
 
         CoreGap coreGap(json::parse(coreGapData));
 
-        auto coreGapResult = reluctanceModel->get_gap_reluctance(coreGap);
+        // A standalone gap: no core material, so its storable energy is at the default reference flux density.
+        auto coreGapResult = reluctanceModel->get_gap_reluctance(coreGap, OpenMagnetics::Defaults().gapReluctanceEnergyFluxDensity);
         json result;
         to_json(result, coreGapResult);
         return result.dump(4);
