@@ -1333,7 +1333,9 @@ std::string get_gap_reluctance_model_information(){
     }
 }
 
-double calculate_inductance_from_number_turns_and_gapping(std::string coreData,
+// The magnetizing inductance as a JSON number, or "Exception: <message>". A point past the end of the
+// material's B(H) curve has no inductance: MKF throws CALCULATION_CORE_SATURATES and the message says so.
+std::string calculate_inductance_from_number_turns_and_gapping(std::string coreData,
                                                           std::string coilData,
                                                           std::string operatingPointData,
                                                           std::string modelsData){
@@ -1374,15 +1376,10 @@ double calculate_inductance_from_number_turns_and_gapping(std::string coreData,
             magnetizingInductance = magnetizingInductanceObj.calculate_inductance_from_number_turns_and_gapping(core, coil).get_magnetizing_inductance().get_nominal().value();
         }
 
-        return magnetizingInductance;
+        return json(magnetizingInductance).dump();
     }
     catch (const std::exception &exc) {
-        std::cerr << coreData << std::endl;
-        std::cerr << coilData << std::endl;
-        std::cerr << operatingPointData << std::endl;
-        std::cerr << modelsData << std::endl;
-        std::cerr << "Exception: " + std::string{exc.what()} << std::endl;
-        return -1;
+        return "Exception: " + std::string{exc.what()};
     }
 }
 
