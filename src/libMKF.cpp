@@ -4682,7 +4682,8 @@ std::string get_log_collection() {
 }
 
 // Everything collected since the last drain, oldest first, as a JSON array of
-// {"level", "module", "message", "count"}; "[]" when nothing was collected or collection is off.
+// {"level", "module", "message", "count", "detail"}; "[]" when nothing was collected or collection is off.
+// "detail" is the part that varies between repeats of the message (the latest repeat's), "" when none.
 std::string drain_log_collection() {
     try {
         json records = json::array();
@@ -4690,7 +4691,8 @@ std::string drain_log_collection() {
             records.push_back({{"level", OpenMagnetics::to_string(record.level)},
                                {"module", record.moduleOfOrigin},
                                {"message", record.message},
-                               {"count", record.count}});
+                               {"count", record.count},
+                               {"detail", record.detail}});
         }
         return records.dump();
     }
