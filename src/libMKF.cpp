@@ -41,6 +41,18 @@
 #include "processors/CircuitSimulatorInterface.h"
 #include <magic_enum.hpp>
 
+// ABT #2123: an entry point that needs a Settings value for its own work sets it for that call only.
+// The guard (MKF's SettingsGuard) restores the caller's previous value when the call returns or
+// throws, so a manual wind's coilWindEvenIfNotFit=true (or a plot's litz painter mode, an
+// adviser's delimit-and-compact) never leaks into the next call in the same engine instance.
+#define WEB_SCOPED_SETTING_CAT(a, b) a##b
+#define WEB_SCOPED_SETTING_VAR(name, line) WEB_SCOPED_SETTING_CAT(name##ScopedSetting, line)
+#define WEB_SCOPED_SETTING(name, value)                                                                         \
+    OpenMagnetics::SettingsGuard<std::decay_t<decltype(OpenMagnetics::Settings::GetInstance().get_##name())>> \
+        WEB_SCOPED_SETTING_VAR(name, __LINE__)(OpenMagnetics::Settings::GetInstance(),                         \
+                                               &OpenMagnetics::Settings::get_##name,                           \
+                                               &OpenMagnetics::Settings::set_##name, (value))
+
 
 using namespace MAS;
 using namespace emscripten;
@@ -1564,7 +1576,7 @@ std::string calculate_core_losses(std::string coreData,
         // The core-temperature-model knob moved from MagneticSimulator to Settings
         // (MKF commit 10aa82c: simulator now derives core-loss temperature via the
         // thermal-network model). Set it on Settings to honor the request payload.
-        OpenMagnetics::Settings::GetInstance().set_core_temperature_model(coreTemperatureModelName);
+        WEB_SCOPED_SETTING(core_temperature_model, coreTemperatureModelName);
         magneticSimulator.set_reluctance_model_name(reluctanceModelName);
         // ABT #1876 (Alf, 2026-10-14): a point with no thermal operating point gets its core losses at ambient and
         // NO temperature (temperatureOutput stays empty); its coreLosses.temperature is the ambient they were
@@ -2211,9 +2223,9 @@ static std::string wind_impl(const std::string& coilString, const std::string& c
         auto coilJson = json::parse(coilString);
         auto marginPairs = std::vector<std::vector<double>>(json::parse(marginPairsString));
 
-        OpenMagnetics::Settings::GetInstance().set_coil_wind_even_if_not_fit(true);
-        OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(delimitAndCompact);
-        OpenMagnetics::Settings::GetInstance().set_coil_include_additional_coordinates(true);
+        WEB_SCOPED_SETTING(coil_wind_even_if_not_fit, true);
+        WEB_SCOPED_SETTING(coil_delimit_and_compact, delimitAndCompact);
+        WEB_SCOPED_SETTING(coil_include_additional_coordinates, true);
 
         std::vector<double> proportionPerWinding = json::parse(proportionPerWindingString);
         std::vector<size_t> pattern = json::parse(patternString);
@@ -2342,9 +2354,9 @@ std::string wind_with_columns(std::string coilString, std::string coreColumnsStr
 
 std::string wind_planar(std::string coilString, std::string stackUpString, double borderToWireDistance, std::string wireToWireDistanceString, std::string insulationThicknessString, double coreToLayerDistance) {
     try {
-        OpenMagnetics::Settings::GetInstance().set_coil_wind_even_if_not_fit(true);
-        OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(true);
-        OpenMagnetics::Settings::GetInstance().set_coil_include_additional_coordinates(true);
+        WEB_SCOPED_SETTING(coil_wind_even_if_not_fit, true);
+        WEB_SCOPED_SETTING(coil_delimit_and_compact, true);
+        WEB_SCOPED_SETTING(coil_include_additional_coordinates, true);
         auto coilJson = json::parse(coilString);
         auto coil = OpenMagnetics::Coil(coilJson, false);
         std::vector<size_t> stackUp = json::parse(stackUpString);
@@ -2509,8 +2521,8 @@ static std::string delimit_and_compact_impl(const std::string& coilString, const
             coil.set_groups_description(groupsDescription);
         }
 
-        OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(true);
-        OpenMagnetics::Settings::GetInstance().set_coil_include_additional_coordinates(true);
+        WEB_SCOPED_SETTING(coil_delimit_and_compact, true);
+        WEB_SCOPED_SETTING(coil_include_additional_coordinates, true);
 
         coil.delimit_and_compact();
 
@@ -2530,8 +2542,8 @@ std::string wind_layers_and_turns_with_columns(std::string coilString, std::stri
     try {
         auto coilJson = json::parse(coilString);
 
-        OpenMagnetics::Settings::GetInstance().set_coil_wind_even_if_not_fit(true);
-        OpenMagnetics::Settings::GetInstance().set_coil_include_additional_coordinates(true);
+        WEB_SCOPED_SETTING(coil_wind_even_if_not_fit, true);
+        WEB_SCOPED_SETTING(coil_include_additional_coordinates, true);
 
         auto winding = std::vector<OpenMagnetics::Winding>(coilJson["functionalDescription"]);
         auto coilSectionsDescription = std::vector<Section>(coilJson["sectionsDescription"]);
@@ -2700,7 +2712,7 @@ std::string simulate(std::string inputsString,
         // The core-temperature-model knob moved from MagneticSimulator to Settings
         // (MKF commit 10aa82c: simulator now derives core-loss temperature via the
         // thermal-network model). Set it on Settings to honor the request payload.
-        OpenMagnetics::Settings::GetInstance().set_core_temperature_model(coreTemperatureModelName);
+        WEB_SCOPED_SETTING(core_temperature_model, coreTemperatureModelName);
         magneticSimulator.set_reluctance_model_name(reluctanceModelName);
         auto mas = magneticSimulator.simulate(inputs, magnetic);
 
@@ -3170,7 +3182,7 @@ std::string calculate_advised_cores_impl(std::string inputsString, std::string w
         // Drain stale entries (and enable log capture on first use) so the
         // log returned with this run's results covers exactly this run.
         OpenMagnetics::read_log();
-        OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(true);
+        WEB_SCOPED_SETTING(coil_delimit_and_compact, true);
 
         OpenMagnetics::Inputs inputs(json::parse(inputsString));
         OpenMagnetics::CoreAdviser::CoreAdviserModes coreMode;
@@ -3192,10 +3204,13 @@ std::string calculate_advised_cores_impl(std::string inputsString, std::string w
             && inputs.get_design_requirements().get_application().value()
                == "interferenceSuppression";
 
+        // Scoped to this call (ABT #2123): a CMC/DMC advise must not leave the next power advise toroid-only.
+        std::optional<OpenMagnetics::SettingsGuard<bool>> useToroidalCoresGuard, useOnlyCoresInStockGuard, useConcentricCoresGuard;
         if (filterMode || isSuppression) {
-            OpenMagnetics::Settings::GetInstance().set_use_toroidal_cores(true);
-            OpenMagnetics::Settings::GetInstance().set_use_only_cores_in_stock(false);
-            OpenMagnetics::Settings::GetInstance().set_use_concentric_cores(false);
+            auto& settings = OpenMagnetics::Settings::GetInstance();
+            useToroidalCoresGuard.emplace(settings, &OpenMagnetics::Settings::get_use_toroidal_cores, &OpenMagnetics::Settings::set_use_toroidal_cores, true);
+            useOnlyCoresInStockGuard.emplace(settings, &OpenMagnetics::Settings::get_use_only_cores_in_stock, &OpenMagnetics::Settings::set_use_only_cores_in_stock, false);
+            useConcentricCoresGuard.emplace(settings, &OpenMagnetics::Settings::get_use_concentric_cores, &OpenMagnetics::Settings::set_use_concentric_cores, false);
         }
         if (isSuppression && coreMode == OpenMagnetics::CoreAdviser::CoreAdviserModes::STANDARD_CORES) {
             coreMode = OpenMagnetics::CoreAdviser::CoreAdviserModes::AVAILABLE_CORES;
@@ -3345,7 +3360,7 @@ std::string calculate_advised_coil(std::string masString){
         std::cout << masString << std::endl;
         std::cout << "=== INPUT_JSON_END ===" << std::endl;
         
-        OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(true);
+        WEB_SCOPED_SETTING(coil_delimit_and_compact, true);
         OpenMagnetics::Mas mas(json::parse(masString));
 
         for (size_t windingIndex = 0; windingIndex < mas.get_magnetic().get_coil().get_functional_description().size(); ++windingIndex) {
@@ -3386,7 +3401,7 @@ std::string calculate_advised_wires(std::string windingString,
                                     size_t maximumNumberResults,
                                     bool usePlanarWires){
     try {
-        OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(true);
+        WEB_SCOPED_SETTING(coil_delimit_and_compact, true);
         OpenMagnetics::Winding winding(json::parse(windingString));
         OpenMagnetics::WireSolidInsulationRequirements wireSolidInsulationRequirements(json::parse(solidInsulationRequirementsString));
         Section section(json::parse(sectionString));
@@ -3454,7 +3469,7 @@ std::string get_solid_insulation_requirements_for_wires(std::string inputsString
 std::string calculate_advised_magnetics_impl(std::string inputsString, std::string weightsString, int maximumNumberResults, std::string coreModeString,
                                              const OpenMagnetics::LibraryContext* ctx, const OpenMagnetics::AdviserConstraints& adviserConstraints){
     try {
-        OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(true);
+        WEB_SCOPED_SETTING(coil_delimit_and_compact, true);
         OpenMagnetics::Inputs inputs(json::parse(inputsString));
 
         OpenMagnetics::CoreAdviser::CoreAdviserModes coreMode;
@@ -3581,7 +3596,7 @@ std::string calculate_advised_magnetics(std::string inputsString, std::string we
 
 std::string calculate_advised_magnetics_from_catalog(std::string inputsString, std::string catalogString, int maximumNumberResults){
     try {
-        OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(true);
+        WEB_SCOPED_SETTING(coil_delimit_and_compact, true);
         OpenMagnetics::Inputs inputs(json::parse(inputsString));
         std::map<OpenMagnetics::MagneticFilters, double> weights;
 
@@ -3625,7 +3640,7 @@ std::string calculate_advised_magnetics_from_catalog(std::string inputsString, s
 
 std::string calculate_advised_magnetics_from_cache(std::string inputsString, std::string filterFlowString, int maximumNumberResults){
     try {
-        OpenMagnetics::Settings::GetInstance().set_coil_delimit_and_compact(true);
+        WEB_SCOPED_SETTING(coil_delimit_and_compact, true);
         OpenMagnetics::Inputs inputs(json::parse(inputsString));
 
         std::vector<OpenMagnetics::MagneticFilterOperation> filterFlow;
@@ -4523,8 +4538,8 @@ static std::string embed_winding_fit_failure(const std::string& svg, const std::
 
 std::string plot_turns(std::string magneticString) {
     try {
-        OpenMagnetics::Settings::GetInstance().set_painter_simple_litz(true);
-        OpenMagnetics::Settings::GetInstance().set_painter_advanced_litz(false);
+        WEB_SCOPED_SETTING(painter_simple_litz, true);
+        WEB_SCOPED_SETTING(painter_advanced_litz, false);
         std::filesystem::path emptyFilepath;
         
         auto magneticJson = json::parse(magneticString);
@@ -4789,8 +4804,8 @@ std::string get_connection_layout(std::string magneticString) {
 
 std::string plot_magnetic_field(std::string magneticString, std::string operatingPointString) {
     try {
-        OpenMagnetics::Settings::GetInstance().set_painter_simple_litz(true);
-        OpenMagnetics::Settings::GetInstance().set_painter_advanced_litz(false);
+        WEB_SCOPED_SETTING(painter_simple_litz, true);
+        WEB_SCOPED_SETTING(painter_advanced_litz, false);
         std::filesystem::path emptyFilepath;
         OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
         OperatingPoint operatingPoint(json::parse(operatingPointString));
@@ -4828,8 +4843,8 @@ std::string plot_magnetic_field(std::string magneticString, std::string operatin
 
 std::string plot_electric_field(std::string magneticString, std::string operatingPointString) {
     try {
-        OpenMagnetics::Settings::GetInstance().set_painter_simple_litz(true);
-        OpenMagnetics::Settings::GetInstance().set_painter_advanced_litz(false);
+        WEB_SCOPED_SETTING(painter_simple_litz, true);
+        WEB_SCOPED_SETTING(painter_advanced_litz, false);
         std::filesystem::path emptyFilepath;
         OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
         OperatingPoint operatingPoint(json::parse(operatingPointString));
@@ -4867,8 +4882,8 @@ std::string plot_electric_field(std::string magneticString, std::string operatin
 
 std::string plot_wire_losses(std::string magneticString, std::string operatingPointString) {
     try {
-        OpenMagnetics::Settings::GetInstance().set_painter_simple_litz(true);
-        OpenMagnetics::Settings::GetInstance().set_painter_advanced_litz(false);
+        WEB_SCOPED_SETTING(painter_simple_litz, true);
+        WEB_SCOPED_SETTING(painter_advanced_litz, false);
         std::filesystem::path emptyFilepath;
         OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
         OperatingPoint operatingPoint(json::parse(operatingPointString));
@@ -4903,8 +4918,8 @@ std::string plot_wire_losses(std::string magneticString, std::string operatingPo
 
 std::string plot_wire(std::string wireString) {
     try {
-        OpenMagnetics::Settings::GetInstance().set_painter_simple_litz(false);
-        OpenMagnetics::Settings::GetInstance().set_painter_advanced_litz(true);
+        WEB_SCOPED_SETTING(painter_simple_litz, false);
+        WEB_SCOPED_SETTING(painter_advanced_litz, true);
         std::filesystem::path emptyFilepath;
         OpenMagnetics::Wire wire(json::parse(wireString));
         OpenMagnetics::Painter painter(emptyFilepath);
@@ -4928,8 +4943,8 @@ std::string plot_wire(std::string wireString) {
 
 std::string plot_temperature_field(std::string magneticString, std::string operatingPointString, std::string textColor = "#000000", std::string bgColor = "#FFFFFF") {
     try {
-        OpenMagnetics::Settings::GetInstance().set_painter_simple_litz(true);
-        OpenMagnetics::Settings::GetInstance().set_painter_advanced_litz(false);
+        WEB_SCOPED_SETTING(painter_simple_litz, true);
+        WEB_SCOPED_SETTING(painter_advanced_litz, false);
         std::filesystem::path emptyFilepath;
         OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
         OperatingPoint operatingPoint(json::parse(operatingPointString));
