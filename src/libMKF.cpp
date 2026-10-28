@@ -28,6 +28,7 @@
 #include "constructive_models/Core.h"
 #include "physical_models/ComplexPermeability.h"
 #include "physical_models/CoreLosses.h"
+#include "physical_models/CoreMaterialCheck.h"
 #include "physical_models/CoreTemperature.h"
 #include "physical_models/InitialPermeability.h"
 #include "physical_models/LeakageInductance.h"
@@ -3075,6 +3076,55 @@ std::string sweep_volumetric_losses_over_frequency(std::string materialString, d
     }
 }
 
+// ABT #1911: a core material judged on its own, without a design. materialString: a material name in
+// the library or a full CoreMaterial JSON (e.g. the copy a stored design embeds). Returns MKF's verdict
+// (OpenMagnetics::check_core_material) as JSON:
+//   {material, valid, problems: [{code, property, message, engineMessage, temperature: {minimum, maximum}|null,
+//    frequency: {minimum, maximum}|null}], coverage: {temperature, lossFrequency|null, lossMagneticFluxDensity|null},
+//    notChecked: [string]}
+// Each problem carries the code and message the design calculation throws when it refuses the material
+// (INVALID_LOSS_DATA, MATERIAL_INVALID_PROPERTY, ...). A material MKF cannot judge at all (no
+// temperature data) returns "Exception: [CODE] message", the convention of every call here.
+std::string check_core_material(std::string materialString) {
+    try {
+        CoreMaterial material = materialString.size() > 0 && materialString.front() == '{'
+            ? CoreMaterial(json::parse(materialString))
+            : OpenMagnetics::find_core_material_by_name(materialString);
+        json result;
+        OpenMagnetics::to_json(result, OpenMagnetics::check_core_material(material));
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+// ABT #1911: two copies of a core material priced with the design's core-loss path at points taken from
+// the REFERENCE copy's own data (OpenMagnetics::compare_core_material_volumetric_losses). Each argument is a
+// material name in the library or a full CoreMaterial JSON. Returns JSON:
+//   {reference, other, pointsSource, points: [{frequency, magneticFluxDensityPeak, temperature,
+//    reference: {volumetricLosses|null, code|null, message|null}, other: {...}, relativeDifference|null}],
+//    maximumAbsoluteRelativeDifference|null, pointsRefusedByReference, pointsRefusedByOther}
+// A reference whose data states no point to compare at returns "Exception: [CODE] message". For a Steinmetz-only
+// reference the flux densities (1/2, 1/4, 1/8 of its saturation flux density) are a chosen spread; pointsSource says so.
+std::string compare_core_material_volumetric_losses(std::string referenceString, std::string otherString) {
+    try {
+        auto parseMaterial = [](const std::string& materialString) {
+            return materialString.size() > 0 && materialString.front() == '{'
+                ? CoreMaterial(json::parse(materialString))
+                : OpenMagnetics::find_core_material_by_name(materialString);
+        };
+        CoreMaterial reference = parseMaterial(referenceString);
+        CoreMaterial other = parseMaterial(otherString);
+        json result;
+        OpenMagnetics::to_json(result, OpenMagnetics::compare_core_material_volumetric_losses(reference, other));
+        return result.dump(4);
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
 size_t load_core_materials(std::string fileToLoad){
     try {
         if (fileToLoad != "") {
@@ -5797,6 +5847,8 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("magnetic_autocomplete", &magnetic_autocomplete);
     function("calculate_steinmetz_coefficients", &calculate_steinmetz_coefficients);
     function("sweep_volumetric_losses_over_frequency", &sweep_volumetric_losses_over_frequency);
+    function("check_core_material", &check_core_material);
+    function("compare_core_material_volumetric_losses", &compare_core_material_volumetric_losses);
     function("get_initial_permeability_equations", &get_initial_permeability_equations);
     function("get_core_volumetric_losses_equations", &get_core_volumetric_losses_equations);
     function("calculate_complex_permeability", &calculate_complex_permeability);
