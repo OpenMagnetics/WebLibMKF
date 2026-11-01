@@ -323,7 +323,8 @@ std::string calculate_all_core_data_from_shapes(){
         
         json resultArray = json::array();
         
-        for (const auto& shape : allShapes) {
+        for (size_t shapeIndex = 0; shapeIndex < allShapes.size(); ++shapeIndex) {
+            const auto& shape = allShapes[shapeIndex];
             try {
                 OpenMagnetics::Core core;
                 CoreFunctionalDescription coreFunctionalDescription;
@@ -349,8 +350,11 @@ std::string calculate_all_core_data_from_shapes(){
                 resultArray.push_back(coreJson);
             }
             catch (const std::exception &exc) {
-                // Skip shapes that fail to process, log if needed
-                // std::cerr << "Failed to process shape: " << exc.what() << std::endl;
+                // A shape whose core data cannot be computed fails the whole call, named, instead of
+                // leaving the table one row short with nothing to say why.
+                std::string shapeName = shape.get_name() ? shape.get_name().value()
+                                                         : "shape " + std::to_string(shapeIndex) + " in the database, which has no name,";
+                throw std::runtime_error(shapeName + ": " + exc.what());
             }
         }
         
