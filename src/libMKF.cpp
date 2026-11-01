@@ -2755,6 +2755,32 @@ std::string get_sections_description_conduction(std::string coilString){
     }
 }
 
+// The thickness of an insulation section or layer of a stored coil, from MKF's own geometry: a
+// toroid's wall between contiguous sectors is stored as an angle, and MKF turns it back into the
+// tape thickness it was made from. The web must not convert the stored dimensions itself.
+// Returns the thickness in metres as a JSON number, or "Exception: ..." naming why it cannot.
+std::string get_insulation_section_thickness(std::string coilString, std::string sectionName) {
+    OpenMagnetics::LogOnceScope logOnceScope;  // one web call is one scope: an excitation's warning is logged once (ABT #2160)
+    try {
+        OpenMagnetics::Coil coil(json::parse(coilString), false);
+        return json(coil.get_insulation_section_thickness(sectionName)).dump();
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
+std::string get_insulation_layer_thickness(std::string coilString, std::string layerName) {
+    OpenMagnetics::LogOnceScope logOnceScope;  // one web call is one scope: an excitation's warning is logged once (ABT #2160)
+    try {
+        OpenMagnetics::Coil coil(json::parse(coilString), false);
+        return json(coil.get_insulation_layer_thickness(layerName)).dump();
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
 bool are_sections_and_layers_fitting(std::string coilString) {
     OpenMagnetics::LogOnceScope logOnceScope;  // one web call is one scope: an excitation's warning is logged once (ABT #2160)
     try {
@@ -5982,6 +6008,8 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("wind_layers_and_turns_with_columns", &wind_layers_and_turns_with_columns);
     function("get_layers_by_winding_index", &get_layers_by_winding_index);
     function("get_layers_by_section", &get_layers_by_section);
+    function("get_insulation_section_thickness", &get_insulation_section_thickness);
+    function("get_insulation_layer_thickness", &get_insulation_layer_thickness);
     function("get_sections_description_conduction", &get_sections_description_conduction);
     function("simulate", &simulate);
     function("analyze_results", &analyze_results);
