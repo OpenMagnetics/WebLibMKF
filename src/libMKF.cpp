@@ -1681,6 +1681,46 @@ std::string calculate_core_losses(std::string coreData,
     }
 }
 
+// ABT #2202: one period of the DYNAMIC Roshen B-H loop of the magnetic's core under the operating point's first
+// excitation, at `temperature` [C]. The flux density is the excitation's own, else MKF derives it from the voltage or
+// current on the magnetic. The field is the static Roshen loop widened by the fields of Roshen's eddy-current and excess
+// terms, so f * oint H dB over the samples is totalVolumetricLosses. `time` is non-decreasing over one period, closed
+// (last B = first B); where dB/dt jumps the instant is repeated with the field on either side. MKF throws (and this
+// returns "Exception: ...") for a DC-biased excitation, a flux density with minor loops, or a material without the
+// Roshen inputs.
+std::string calculate_dynamic_bh_loop(std::string magneticString, std::string operatingPointString, double temperature) {
+    OpenMagnetics::LogOnceScope logOnceScope;  // one web call is one scope: an excitation's warning is logged once (ABT #2160)
+    try {
+        OpenMagnetics::Magnetic magnetic(json::parse(magneticString));
+        OperatingPoint operatingPoint(json::parse(operatingPointString));
+        if (operatingPoint.get_excitations_per_winding().empty()) {
+            throw std::invalid_argument("The operating point has no excitations");
+        }
+        OperatingPointExcitation excitation = operatingPoint.get_excitations_per_winding()[0];
+        if (!excitation.get_magnetic_flux_density()) {
+            OpenMagnetics::MagnetizingInductance magnetizingInductance;
+            auto magneticFluxDensity = magnetizingInductance.calculate_inductance_and_magnetic_flux_density(magnetic, &operatingPoint).second;
+            excitation = operatingPoint.get_excitations_per_winding()[0];
+            excitation.set_magnetic_flux_density(magneticFluxDensity);
+        }
+        auto loop = OpenMagnetics::CoreLossesRoshenModel().get_dynamic_bh_loop(magnetic.get_core(), excitation, temperature);
+
+        json result;
+        result["frequency"] = loop.frequency;
+        result["time"] = loop.time;
+        result["magneticFluxDensity"] = loop.magneticFluxDensity;
+        result["magneticFieldStrength"] = loop.magneticFieldStrength;
+        result["hysteresisVolumetricLosses"] = loop.hysteresisVolumetricLosses;
+        result["eddyCurrentVolumetricLosses"] = loop.eddyCurrentVolumetricLosses;
+        result["excessVolumetricLosses"] = loop.excessVolumetricLosses;
+        result["totalVolumetricLosses"] = loop.totalVolumetricLosses;
+        return result.dump();
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
 std::string get_core_losses_model_information(std::string material){
     OpenMagnetics::LogOnceScope logOnceScope;  // one web call is one scope: an excitation's warning is logged once (ABT #2160)
     try {
@@ -5968,6 +6008,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("calculate_gapping_from_number_turns_and_inductance", &calculate_gapping_from_number_turns_and_inductance);
     function("calculate_core_losses", &calculate_core_losses);
     function("get_core_losses_model_information", &get_core_losses_model_information);
+    function("calculate_dynamic_bh_loop", &calculate_dynamic_bh_loop);
     function("get_core_temperature_model_information", &get_core_temperature_model_information);
     function("resolve_dimension_with_tolerance", &resolve_dimension_with_tolerance);
     function("calculate_induced_voltage", &calculate_induced_voltage);
