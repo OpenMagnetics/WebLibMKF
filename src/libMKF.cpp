@@ -365,6 +365,29 @@ std::string calculate_all_core_data_from_shapes(){
     }
 }
 
+// Fill factor k_f of a tape-wound core (nanocrystalline, amorphous, electrical steel wound as a toroid or C core) and
+// where it comes from, so the UI can show the k_f behind the effective area calculate_core_data returns (ABT #2234).
+// Takes a MAS core (material and shape may be names). Returns {"fillFactor": k_f, "source": "..."}, or null when the
+// core is not tape-wound (ferrite, powder, laminated stacks), or "Exception: ..." when MKF cannot place the material.
+std::string get_tape_wound_fill_factor(std::string coreString){
+    try {
+        OpenMagnetics::Core core(json::parse(coreString), false, false, false);
+        auto material = core.resolve_material();
+        auto family = core.resolve_shape().get_family();
+        auto fillFactor = OpenMagnetics::Core::get_tape_wound_fill_factor_with_source(material, family);
+        json result = nullptr;
+        if (fillFactor) {
+            result = json::object();
+            result["fillFactor"] = fillFactor->value;
+            result["source"] = fillFactor->source;
+        }
+        return result.dump();
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
 std::string calculate_core_data(std::string coreDataString, bool includeMaterialData){
     OpenMagnetics::LogOnceScope logOnceScope;  // one web call is one scope: an excitation's warning is logged once (ABT #2160)
     try {
@@ -5979,6 +6002,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("get_excitation_harmonic_indexes", &get_excitation_harmonic_indexes);
     function("calculate_processed", &calculate_processed);
     function("calculate_core_data", &calculate_core_data);
+    function("get_tape_wound_fill_factor", &get_tape_wound_fill_factor);
     function("calculate_bobbin_data", &calculate_bobbin_data);
     function("get_wire_data", &get_wire_data);
     function("get_wire_data_by_name", &get_wire_data_by_name);
