@@ -4888,6 +4888,11 @@ std::string plot_turns(std::string magneticString) {
         painter.paint_core(magnetic);
         painter.paint_bobbin(magnetic);
         painter.paint_coil_turns(magnetic);
+        // Copper that overlaps other copper, or lies outside its winding window (in the core or the
+        // bobbin), is painted red, as plot_magnetic's XY view does: a coil laid out for another core
+        // showed its turns inside the centre column in plain copper (ABT #2303, Alf 2026-11-07).
+        painter.paint_copper_overlaps(magnetic);
+        painter.paint_copper_outside_window(magnetic);
         if (fitFailure) {
             painter.paint_winding_fit_problems(magnetic);
         }
