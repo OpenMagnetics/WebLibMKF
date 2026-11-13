@@ -283,6 +283,29 @@ std::string calculate_processed(std::string harmonicsString, std::string wavefor
     }
 }
 
+// The MAS core type a shape family is built as ("twoPieceSet", "pieceAndPlate", "toroidal", ...), from
+// MKF's core_type_for_shape_family (ABT #2372). The builder sets the core's type from this whenever it
+// changes the shape family, instead of keeping the previous family's type. Takes the family's MAS
+// spelling ("ei"); an unknown family returns "Exception: ...".
+std::string get_core_type_for_shape_family(std::string familyString) {
+    try {
+        CoreShapeFamily family{};
+        json familyJson = familyString;
+        MAS::from_json(familyJson, family);
+        json roundTripped;
+        MAS::to_json(roundTripped, family);
+        if (roundTripped.get<std::string>() != familyString) {
+            throw std::invalid_argument("'" + familyString + "' is not a MAS core shape family");
+        }
+        json result;
+        MAS::to_json(result, OpenMagnetics::core_type_for_shape_family(family));
+        return result.get<std::string>();
+    }
+    catch (const std::exception &exc) {
+        return "Exception: " + std::string{exc.what()};
+    }
+}
+
 std::string calculate_core_data_from_shape(std::string shapeString){
     OpenMagnetics::LogOnceScope logOnceScope;  // one web call is one scope: an excitation's warning is logged once (ABT #2160)
     try {
@@ -292,17 +315,9 @@ std::string calculate_core_data_from_shape(std::string shapeString){
         coreFunctionalDescription.set_shape(shape);
         coreFunctionalDescription.set_material("Dummy");
         coreFunctionalDescription.set_number_stacks(1);
-        if (shape.get_magnetic_circuit() == MagneticCircuit::OPEN) {
-            coreFunctionalDescription.set_type(CoreType::TWO_PIECE_SET);
-        }
-        else {
-            if (shape.get_family() == CoreShapeFamily::T) {
-                coreFunctionalDescription.set_type(CoreType::TOROIDAL);
-            }
-            else {
-                coreFunctionalDescription.set_type(CoreType::CLOSED_SHAPE);
-            }
-        }
+        // The type follows the family through MKF's one rule (ABT #2372), not the open/closed flag:
+        // that flag made an EI a twoPieceSet (mirrored) and a UI or PQI a closedShape.
+        coreFunctionalDescription.set_type(OpenMagnetics::core_type_for_shape_family(shape.get_family()));
         core.set_functional_description(coreFunctionalDescription);
         core.process_data();
 
@@ -331,17 +346,9 @@ std::string calculate_all_core_data_from_shapes(){
                 coreFunctionalDescription.set_shape(shape);
                 coreFunctionalDescription.set_material("Dummy");
                 coreFunctionalDescription.set_number_stacks(1);
-                if (shape.get_magnetic_circuit() == MagneticCircuit::OPEN) {
-                    coreFunctionalDescription.set_type(CoreType::TWO_PIECE_SET);
-                }
-                else {
-                    if (shape.get_family() == CoreShapeFamily::T) {
-                        coreFunctionalDescription.set_type(CoreType::TOROIDAL);
-                    }
-                    else {
-                        coreFunctionalDescription.set_type(CoreType::CLOSED_SHAPE);
-                    }
-                }
+                // The type follows the family through MKF's one rule (ABT #2372), not the open/closed flag:
+                // that flag made an EI a twoPieceSet (mirrored) and a UI or PQI a closedShape.
+                coreFunctionalDescription.set_type(OpenMagnetics::core_type_for_shape_family(shape.get_family()));
                 core.set_functional_description(coreFunctionalDescription);
                 core.process_data();
                 
@@ -6029,6 +6036,7 @@ EMSCRIPTEN_BINDINGS(my_bindings) {
     function("load_core_data", &load_core_data);
     function("get_material_data", &get_material_data);
     function("get_core_temperature_dependant_parameters", &get_core_temperature_dependant_parameters);
+    function("get_core_type_for_shape_family", &get_core_type_for_shape_family);
     function("calculate_core_data_from_shape", &calculate_core_data_from_shape);
     function("calculate_all_core_data_from_shapes", &calculate_all_core_data_from_shapes);
     function("get_shape_data", &get_shape_data);
