@@ -1490,7 +1490,9 @@ std::string calculate_inductance_from_number_turns_and_gapping(std::string coreD
 
 // Canonical coil-aware form (preferred): turns are sized against the actual
 // winding via MKF's coil-taking overload.
-double calculate_number_turns_from_gapping_and_inductance(std::string coreData,
+// The number of turns as a JSON number, or "Exception: <message>" (ABT #2410: it returned -1 and printed MKF's
+// message to the worker console, so the Engine log said "worker returned -1" instead of why).
+std::string calculate_number_turns_from_gapping_and_inductance(std::string coreData,
                                                           std::string coilData,
                                                           std::string inputsData,
                                                           std::string modelsData){
@@ -1515,17 +1517,17 @@ double calculate_number_turns_from_gapping_and_inductance(std::string coreData,
         OpenMagnetics::MagnetizingInductance magnetizingInductanceObj(reluctanceModelName);
         double numberTurns = magnetizingInductanceObj.calculate_number_turns_from_gapping_and_inductance(core, coil, &inputs);
 
-        return numberTurns;
+        return json(numberTurns).dump();
     }
     catch (const std::exception &exc) {
-        std::cerr << "Exception: " + std::string{exc.what()} << std::endl;
-        return -1;
+        return "Exception: " + std::string{exc.what()};
     }
 }
 
 // Legacy 3-argument form (no coilData) — backward-compat backup. Forwards to
 // MKF's 3-argument overload, which synthesizes a single-primary-winding coil.
-double calculate_number_turns_from_gapping_and_inductance_legacy(std::string coreData,
+// The number of turns as a JSON number, or "Exception: <message>", as the canonical form.
+std::string calculate_number_turns_from_gapping_and_inductance_legacy(std::string coreData,
                                                                  std::string inputsData,
                                                                  std::string modelsData){
     OpenMagnetics::LogOnceScope logOnceScope;  // one web call is one scope: an excitation's warning is logged once (ABT #2160)
@@ -1548,11 +1550,10 @@ double calculate_number_turns_from_gapping_and_inductance_legacy(std::string cor
         OpenMagnetics::MagnetizingInductance magnetizingInductanceObj(reluctanceModelName);
         double numberTurns = magnetizingInductanceObj.calculate_number_turns_from_gapping_and_inductance(core, &inputs);
 
-        return numberTurns;
+        return json(numberTurns).dump();
     }
     catch (const std::exception &exc) {
-        std::cerr << "Exception: " + std::string{exc.what()} << std::endl;
-        return -1;
+        return "Exception: " + std::string{exc.what()};
     }
 }
 
