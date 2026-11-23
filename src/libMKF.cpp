@@ -5549,6 +5549,10 @@ std::string get_settings() {
         // the default) or lose that face's conduction path with an ERROR logged (false).
         settingsJson["thermalNetworkStrictGeometry"] = OpenMagnetics::Settings::GetInstance().get_thermal_network_strict_geometry();
 
+        // ABT #2208: whether a DC-biased excitation's core losses carry the DC-bias factor mu(0)/mu(H_dc)
+        // (true, the default) or ignore the bias (false).
+        settingsJson["coreLossesDcBiasEnabled"] = OpenMagnetics::Settings::GetInstance().get_core_losses_dc_bias_enabled();
+
         return settingsJson.dump(4);
     }
     catch (const std::exception &exc) {
@@ -5684,6 +5688,10 @@ void set_settings(std::string settingsString) {
     // Guarded: settings objects persisted before this key existed must keep working.
     if (settingsJson.contains("thermalNetworkStrictGeometry")) {
         OpenMagnetics::Settings::GetInstance().set_thermal_network_strict_geometry(settingsJson["thermalNetworkStrictGeometry"].get<bool>());
+    }
+    // Guarded: settings objects persisted before this key existed must keep working.
+    if (settingsJson.contains("coreLossesDcBiasEnabled")) {
+        OpenMagnetics::Settings::GetInstance().set_core_losses_dc_bias_enabled(settingsJson["coreLossesDcBiasEnabled"].get<bool>());
     }
 }
 void reset_settings(std::string settingsString) {
