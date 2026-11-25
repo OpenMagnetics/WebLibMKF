@@ -68,73 +68,61 @@ using ordered_json = nlohmann::ordered_json;
 
 // Forward declarations for new converter processing functions
 
-// Default frequency constant (100 kHz)
-constexpr double DEFAULT_FREQUENCY_HZ = 100000.0;
-
-// Helper function to process current signal descriptor if it lacks processed data
-// Returns true if processing succeeded or was not needed, false on error
-bool ensure_current_processed(SignalDescriptor& current, const std::string& functionName) {
-    if (current.get_processed() && current.get_processed()->get_rms()) {
-        return true;  // Already has processed data
+// ABT #2563: the wire calls need a current's harmonics, processed.rms and processed.effectiveFrequency. Whatever the
+// caller left out is computed from its waveform; what the caller supplied is kept (a supplied processed block is
+// completed, never replaced). Without a waveform to compute a missing field from, the call throws naming that field.
+// The waveform covers one period, so its period is its time span; one without a time axis or with a zero span
+// gives no frequency, and throws.
+void complete_current(SignalDescriptor& current) {
+    std::vector<std::string> missing;
+    if (!current.get_harmonics()) {
+        missing.push_back("harmonics");
     }
-    
+    if (!current.get_processed() || !current.get_processed()->get_rms()) {
+        missing.push_back("processed.rms");
+    }
+    if (!current.get_processed() || !current.get_processed()->get_effective_frequency()) {
+        missing.push_back("processed.effectiveFrequency");
+    }
+    if (missing.empty()) {
+        return;
+    }
+    std::string missingList;
+    for (const auto& field : missing) {
+        missingList += (missingList.empty() ? "" : ", ") + field;
+    }
     if (!current.get_waveform()) {
-        std::cerr << "Error in " << functionName << ": Current has no waveform to process" << std::endl;
-        return false;
+        throw OpenMagnetics::InvalidInputException(OpenMagnetics::ErrorCode::MISSING_DATA,
+            "The current is missing " + missingList + " and has no waveform to compute them from");
     }
-    
-    // Extract frequency from waveform time data or use default
-    double frequency = DEFAULT_FREQUENCY_HZ;
     auto waveform = current.get_waveform().value();
-    if (waveform.get_time() && waveform.get_time()->size() > 1) {
-        auto time = waveform.get_time().value();
-        double period = time.back() - time.front();
-        if (period > 0) {
-            frequency = 1.0 / period;
+    if (!waveform.get_time() || waveform.get_time()->size() < 2 || !(waveform.get_time()->back() > waveform.get_time()->front())) {
+        throw OpenMagnetics::InvalidInputException(OpenMagnetics::ErrorCode::MISSING_DATA,
+            "The current is missing " + missingList + ", and its waveform has no time span (one period) to take the frequency from");
+    }
+    const double frequency = 1.0 / (waveform.get_time()->back() - waveform.get_time()->front());
+
+    auto sampledWaveform = OpenMagnetics::Inputs::calculate_sampled_waveform(waveform, frequency);
+    auto harmonics = current.get_harmonics() ? current.get_harmonics().value()
+                                             : OpenMagnetics::Inputs::calculate_harmonics_data(sampledWaveform, frequency);
+    current.set_harmonics(harmonics);
+    auto computed = OpenMagnetics::Inputs::calculate_processed_data(harmonics, sampledWaveform, true);
+    if (!current.get_processed()) {
+        current.set_processed(computed);
+        return;
+    }
+    json supplied;
+    to_json(supplied, current.get_processed().value());
+    json computedJson;
+    to_json(computedJson, computed);
+    for (auto& [key, value] : computedJson.items()) {
+        if (!supplied.contains(key) || supplied[key].is_null()) {
+            supplied[key] = value;
         }
     }
-    
-    // Process the current: first calculate harmonics, then processed data
-    auto sampledWaveform = OpenMagnetics::Inputs::calculate_sampled_waveform(waveform, frequency);
-    auto harmonics = OpenMagnetics::Inputs::calculate_harmonics_data(sampledWaveform, frequency);
-    current.set_harmonics(harmonics);
-    auto processed = OpenMagnetics::Inputs::calculate_processed_data(harmonics, sampledWaveform, true);
-    current.set_processed(processed);
-    
-    return true;
-}
-
-// Helper function to process current signal descriptor if it lacks effective_frequency
-// Returns true if processing succeeded or was not needed, false on error
-bool ensure_current_processed_for_effective_frequency(SignalDescriptor& current, const std::string& functionName) {
-    if (current.get_processed() && current.get_processed()->get_effective_frequency()) {
-        return true;  // Already has processed data with effective frequency
-    }
-    
-    if (!current.get_waveform()) {
-        std::cerr << "Error in " << functionName << ": Current has no waveform to process" << std::endl;
-        return false;
-    }
-    
-    // Extract frequency from waveform time data or use default
-    double frequency = DEFAULT_FREQUENCY_HZ;
-    auto waveform = current.get_waveform().value();
-    if (waveform.get_time() && waveform.get_time()->size() > 1) {
-        auto time = waveform.get_time().value();
-        double period = time.back() - time.front();
-        if (period > 0) {
-            frequency = 1.0 / period;
-        }
-    }
-    
-    // Process the current: first calculate harmonics, then processed data
-    auto sampledWaveform = OpenMagnetics::Inputs::calculate_sampled_waveform(waveform, frequency);
-    auto harmonics = OpenMagnetics::Inputs::calculate_harmonics_data(sampledWaveform, frequency);
-    current.set_harmonics(harmonics);
-    auto processed = OpenMagnetics::Inputs::calculate_processed_data(harmonics, sampledWaveform, true);
-    current.set_processed(processed);
-    
-    return true;
+    ProcessedWaveform completed;
+    from_json(supplied, completed);
+    current.set_processed(completed);
 }
 
 std::map<std::string, double> get_constants() {
@@ -194,7 +182,12 @@ std::string standardize_signal_descriptor(std::string signalDescriptorString, do
             standardSignalDescriptor.set_processed(processed);
         }
         else {
-            auto processed = OpenMagnetics::Inputs::calculate_processed_data(standardSignalDescriptor.get_waveform().value(), frequency, true);
+            // ABT #2563: return the harmonics too. The wire calls (skin losses) read them, and handed this function's
+            // own output they used to refuse it for missing harmonics.
+            auto sampledWaveform = OpenMagnetics::Inputs::calculate_sampled_waveform(standardSignalDescriptor.get_waveform().value(), frequency);
+            auto harmonics = OpenMagnetics::Inputs::calculate_harmonics_data(sampledWaveform, frequency);
+            standardSignalDescriptor.set_harmonics(harmonics);
+            auto processed = OpenMagnetics::Inputs::calculate_processed_data(harmonics, sampledWaveform, true);
             standardSignalDescriptor.set_processed(processed);
         }
 
@@ -2153,10 +2146,7 @@ double calculate_dc_losses_per_meter(std::string wireString, std::string current
         auto wire = resolve_wire_from_string(wireString);
         SignalDescriptor current(json::parse(currentString));
         
-        // Ensure current has processed data
-        if (!ensure_current_processed(current, "calculate_dc_losses_per_meter")) {
-            return -1;
-        }
+        complete_current(current);
         
         auto dcLossesPerMeter = OpenMagnetics::WindingOhmicLosses::calculate_ohmic_losses_per_meter(wire, current, temperature);
         return dcLossesPerMeter;
@@ -2174,10 +2164,7 @@ double calculate_skin_ac_factor(std::string wireString, std::string currentStrin
         auto wire = resolve_wire_from_string(wireString);
         SignalDescriptor current(json::parse(currentString));
         
-        // Ensure current has processed data
-        if (!ensure_current_processed(current, "calculate_skin_ac_factor")) {
-            return -1;
-        }
+        complete_current(current);
         
         auto dcLossesPerMeter = OpenMagnetics::WindingOhmicLosses::calculate_ohmic_losses_per_meter(wire, current, temperature);
         auto [skinLossesPerMeter, _] = OpenMagnetics::WindingSkinEffectLosses::calculate_skin_effect_losses_per_meter(wire, current, temperature);
@@ -2197,10 +2184,7 @@ double calculate_skin_ac_losses_per_meter(std::string wireString, std::string cu
         auto wire = resolve_wire_from_string(wireString);
         SignalDescriptor current(json::parse(currentString));
         
-        // Ensure current has processed data
-        if (!ensure_current_processed(current, "calculate_skin_ac_losses_per_meter")) {
-            return -1;
-        }
+        complete_current(current);
         
         auto [skinLossesPerMeter, _] = OpenMagnetics::WindingSkinEffectLosses::calculate_skin_effect_losses_per_meter(wire, current, temperature);
         return skinLossesPerMeter;
@@ -2218,10 +2202,7 @@ double calculate_skin_ac_resistance_per_meter(std::string wireString, std::strin
         auto wire = resolve_wire_from_string(wireString);
         SignalDescriptor current(json::parse(currentString));
         
-        // Ensure current has processed data
-        if (!ensure_current_processed(current, "calculate_skin_ac_resistance_per_meter")) {
-            return -1;
-        }
+        complete_current(current);
         
         auto dcLossesPerMeter = OpenMagnetics::WindingOhmicLosses::calculate_ohmic_losses_per_meter(wire, current, temperature);
         auto [skinLossesPerMeter, _] = OpenMagnetics::WindingSkinEffectLosses::calculate_skin_effect_losses_per_meter(wire, current, temperature);
@@ -2243,10 +2224,7 @@ double calculate_effective_current_density(std::string wireString, std::string c
         auto wire = resolve_wire_from_string(wireString);
         SignalDescriptor current(json::parse(currentString));
         
-        // Ensure current has processed data
-        if (!ensure_current_processed(current, "calculate_effective_current_density")) {
-            return -1;
-        }
+        complete_current(current);
         
         auto effectiveCurrentDensity = wire.calculate_effective_current_density(current, temperature);
         return effectiveCurrentDensity;
@@ -2263,10 +2241,7 @@ double calculate_effective_skin_depth(std::string material, std::string currentS
     try {
         SignalDescriptor current(json::parse(currentString));
 
-        // Ensure current has processed data with effective frequency
-        if (!ensure_current_processed_for_effective_frequency(current, "calculate_effective_skin_depth")) {
-            return -1;
-        }
+        complete_current(current);
 
         auto currentEffectiveFrequency = current.get_processed()->get_effective_frequency().value();
         double effectiveSkinDepth = OpenMagnetics::WindingSkinEffectLosses::calculate_skin_depth(material, currentEffectiveFrequency, temperature);
@@ -2274,6 +2249,7 @@ double calculate_effective_skin_depth(std::string material, std::string currentS
     }
     catch(const std::exception& ex)
     {
+        std::cerr << "Error in calculate_effective_skin_depth: " << ex.what() << std::endl;
         return -1;
     }
 }
