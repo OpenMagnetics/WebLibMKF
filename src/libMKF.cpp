@@ -68,12 +68,14 @@ using ordered_json = nlohmann::ordered_json;
 
 // Forward declarations for new converter processing functions
 
-// ABT #2563: the wire calls need a current's harmonics, processed.rms and processed.effectiveFrequency. Whatever the
-// caller left out is computed from its waveform; what the caller supplied is kept (a supplied processed block is
-// completed, never replaced). Without a waveform to compute a missing field from, the call throws naming that field.
-// The waveform covers one period, so its period is its time span; one without a time axis or with a zero span
-// gives no frequency, and throws.
-void complete_current(SignalDescriptor& current) {
+// ABT #2563, #2279: the wire calls need a current's harmonics, processed.rms and processed.effectiveFrequency.
+// Whatever the caller left out is computed from its waveform at the excitation's frequency; what the caller supplied
+// is kept (a supplied processed block is completed, never replaced). The frequency comes from the excitation, never
+// from the waveform's time span: a sampled waveform whose axis stops one step before the period end (127/128 T) spans
+// less than a period, and MKF's sampler closes such an axis only when it knows the frequency. Harmonics are the exact
+// series of the waveform's own knots (ABT #1460), not of its resample. Without a current, a frequency or a waveform
+// to compute a missing field from, the call throws naming what is missing.
+SignalDescriptor complete_signal(SignalDescriptor current, double frequency, const std::string& what) {
     std::vector<std::string> missing;
     if (!current.get_harmonics()) {
         missing.push_back("harmonics");
@@ -85,7 +87,7 @@ void complete_current(SignalDescriptor& current) {
         missing.push_back("processed.effectiveFrequency");
     }
     if (missing.empty()) {
-        return;
+        return current;
     }
     std::string missingList;
     for (const auto& field : missing) {
@@ -93,23 +95,21 @@ void complete_current(SignalDescriptor& current) {
     }
     if (!current.get_waveform()) {
         throw OpenMagnetics::InvalidInputException(OpenMagnetics::ErrorCode::MISSING_DATA,
-            "The current is missing " + missingList + " and has no waveform to compute them from");
+            "The " + what + " is missing " + missingList + " and has no waveform to compute them from");
+    }
+    if (!(frequency > 0) || !std::isfinite(frequency)) {
+        throw OpenMagnetics::InvalidInputException(OpenMagnetics::ErrorCode::MISSING_DATA,
+            "The " + what + " is missing " + missingList + ", and the excitation has no valid frequency to compute them at (" + std::to_string(frequency) + " Hz)");
     }
     auto waveform = current.get_waveform().value();
-    if (!waveform.get_time() || waveform.get_time()->size() < 2 || !(waveform.get_time()->back() > waveform.get_time()->front())) {
-        throw OpenMagnetics::InvalidInputException(OpenMagnetics::ErrorCode::MISSING_DATA,
-            "The current is missing " + missingList + ", and its waveform has no time span (one period) to take the frequency from");
-    }
-    const double frequency = 1.0 / (waveform.get_time()->back() - waveform.get_time()->front());
-
     auto sampledWaveform = OpenMagnetics::Inputs::calculate_sampled_waveform(waveform, frequency);
     auto harmonics = current.get_harmonics() ? current.get_harmonics().value()
-                                             : OpenMagnetics::Inputs::calculate_harmonics_data(sampledWaveform, frequency);
+                                             : OpenMagnetics::Inputs::calculate_harmonics_data(waveform, sampledWaveform, frequency);
     current.set_harmonics(harmonics);
     auto computed = OpenMagnetics::Inputs::calculate_processed_data(harmonics, sampledWaveform, true);
     if (!current.get_processed()) {
         current.set_processed(computed);
-        return;
+        return current;
     }
     json supplied;
     to_json(supplied, current.get_processed().value());
@@ -123,6 +123,27 @@ void complete_current(SignalDescriptor& current) {
     ProcessedWaveform completed;
     from_json(supplied, completed);
     current.set_processed(completed);
+    return current;
+}
+
+SignalDescriptor complete_current(const OperatingPointExcitation& excitation) {
+    if (!excitation.get_current()) {
+        throw OpenMagnetics::InvalidInputException(OpenMagnetics::ErrorCode::MISSING_DATA, "The excitation has no current");
+    }
+    return complete_signal(excitation.get_current().value(), excitation.get_frequency(), "current");
+}
+
+// ABT #2279: the wire calls answer a JSON number, or "Exception: <reason>" (the web's convention for every string
+// call), never an in-band -1 a caller can mistake for a value.
+template <typename Compute>
+std::string wire_call_result(const char* name, Compute compute) {
+    try {
+        return json(compute()).dump();
+    }
+    catch (const std::exception& ex) {
+        std::cerr << "Error in " << name << ": " << ex.what() << std::endl;
+        return "Exception: " + std::string{ex.what()};
+    }
 }
 
 std::map<std::string, double> get_constants() {
@@ -185,7 +206,7 @@ std::string standardize_signal_descriptor(std::string signalDescriptorString, do
             // ABT #2563: return the harmonics too. The wire calls (skin losses) read them, and handed this function's
             // own output they used to refuse it for missing harmonics.
             auto sampledWaveform = OpenMagnetics::Inputs::calculate_sampled_waveform(standardSignalDescriptor.get_waveform().value(), frequency);
-            auto harmonics = OpenMagnetics::Inputs::calculate_harmonics_data(sampledWaveform, frequency);
+            auto harmonics = OpenMagnetics::Inputs::calculate_harmonics_data(standardSignalDescriptor.get_waveform().value(), sampledWaveform, frequency);  // exact series of the knots (ABT #1706)
             standardSignalDescriptor.set_harmonics(harmonics);
             auto processed = OpenMagnetics::Inputs::calculate_processed_data(harmonics, sampledWaveform, true);
             standardSignalDescriptor.set_processed(processed);
@@ -244,7 +265,7 @@ std::string calculate_harmonics(std::string waveformString, double frequency) {
         from_json(json::parse(waveformString), waveform);
 
         auto sampledCurrentWaveform = OpenMagnetics::Inputs::calculate_sampled_waveform(waveform, frequency);
-        auto harmonics = OpenMagnetics::Inputs::calculate_harmonics_data(sampledCurrentWaveform, frequency);
+        auto harmonics = OpenMagnetics::Inputs::calculate_harmonics_data(waveform, sampledCurrentWaveform, frequency);  // exact series of the knots (ABT #1706)
 
         json result;
         to_json(result, harmonics);
@@ -1888,45 +1909,19 @@ double calculate_instantaneous_power(std::string excitationString){
     return OpenMagnetics::Inputs::calculate_instantaneous_power(excitation);
 }
 
-double calculate_rms_power(std::string excitationString){
+// ABT #1706: Vrms * Irms of the excitation. Missing voltage, current or the data to compute their rms throws (the
+// caller sees "Exception: <reason>"), never a 0.0 that reads as a real result.
+std::string calculate_rms_power(std::string excitationString){
     OpenMagnetics::LogOnceScope logOnceScope;  // one web call is one scope: an excitation's warning is logged once (ABT #2160)
-    try {
+    return wire_call_result("calculate_rms_power", [&]() -> double {
         OperatingPointExcitation excitation(json::parse(excitationString));
-
-        if (!excitation.get_voltage() || !excitation.get_current()) {
-            return 0.0;
+        if (!excitation.get_voltage()) {
+            throw OpenMagnetics::InvalidInputException(OpenMagnetics::ErrorCode::MISSING_DATA, "The excitation has no voltage");
         }
-
-        auto voltageSignalDescriptor = excitation.get_voltage().value();
-        auto currentSignalDescriptor = excitation.get_current().value();
-
-        if (!voltageSignalDescriptor.get_waveform() || !currentSignalDescriptor.get_waveform()) {
-            return 0.0;
-        }
-
-        if (!voltageSignalDescriptor.get_processed() || !voltageSignalDescriptor.get_processed()->get_rms()) {
-            auto voltageSampledWaveform = OpenMagnetics::Inputs::calculate_sampled_waveform(voltageSignalDescriptor.get_waveform().value(), excitation.get_frequency());
-            voltageSignalDescriptor.set_harmonics(OpenMagnetics::Inputs::calculate_harmonics_data(voltageSampledWaveform, excitation.get_frequency()));
-            voltageSignalDescriptor.set_processed(OpenMagnetics::Inputs::calculate_processed_data(voltageSignalDescriptor, voltageSampledWaveform, true));
-        }
-
-        if (!currentSignalDescriptor.get_processed() || !currentSignalDescriptor.get_processed()->get_rms()) {
-            auto currentSampledWaveform = OpenMagnetics::Inputs::calculate_sampled_waveform(currentSignalDescriptor.get_waveform().value(), excitation.get_frequency());
-            currentSignalDescriptor.set_harmonics(OpenMagnetics::Inputs::calculate_harmonics_data(currentSampledWaveform, excitation.get_frequency()));
-            currentSignalDescriptor.set_processed(OpenMagnetics::Inputs::calculate_processed_data(currentSignalDescriptor, currentSampledWaveform, true));
-        }
-
-        if (!currentSignalDescriptor.get_processed()->get_rms() || !voltageSignalDescriptor.get_processed()->get_rms()) {
-            return 0.0;
-        }
-
-        double rmsPower = currentSignalDescriptor.get_processed().value().get_rms().value() * voltageSignalDescriptor.get_processed().value().get_rms().value();
-
-        return rmsPower;
-    }
-    catch (const std::exception &exc) {
-        return 0.0;
-    }
+        auto voltage = complete_signal(excitation.get_voltage().value(), excitation.get_frequency(), "voltage");
+        auto current = complete_current(excitation);
+        return voltage.get_processed()->get_rms().value() * current.get_processed()->get_rms().value();
+    });
 }
 
 double resolve_dimension_with_tolerance(std::string dimensionWithToleranceString) {
@@ -2140,118 +2135,88 @@ std::vector<double> calculate_dc_resistance_per_winding(std::string coilString, 
     return dcResistancePerWinding;
 }
 
-double calculate_dc_losses_per_meter(std::string wireString, std::string currentString, double temperature){
+std::string calculate_dc_losses_per_meter(std::string wireString, std::string excitationString, double temperature){
     OpenMagnetics::LogOnceScope logOnceScope;  // one web call is one scope: an excitation's warning is logged once (ABT #2160)
-    try {
+    return wire_call_result("calculate_dc_losses_per_meter", [&]() -> double {
         auto wire = resolve_wire_from_string(wireString);
-        SignalDescriptor current(json::parse(currentString));
-        
-        complete_current(current);
-        
+        OperatingPointExcitation excitation(json::parse(excitationString));
+
+        auto current = complete_current(excitation);
+
         auto dcLossesPerMeter = OpenMagnetics::WindingOhmicLosses::calculate_ohmic_losses_per_meter(wire, current, temperature);
         return dcLossesPerMeter;
-    }
-    catch(const std::exception& ex)
-    {
-        std::cerr << "Error in calculate_dc_losses_per_meter: " << ex.what() << std::endl;
-        return -1;
-    }
+    });
 }
 
-double calculate_skin_ac_factor(std::string wireString, std::string currentString, double temperature){
+std::string calculate_skin_ac_factor(std::string wireString, std::string excitationString, double temperature){
     OpenMagnetics::LogOnceScope logOnceScope;  // one web call is one scope: an excitation's warning is logged once (ABT #2160)
-    try {
+    return wire_call_result("calculate_skin_ac_factor", [&]() -> double {
         auto wire = resolve_wire_from_string(wireString);
-        SignalDescriptor current(json::parse(currentString));
-        
-        complete_current(current);
-        
+        OperatingPointExcitation excitation(json::parse(excitationString));
+
+        auto current = complete_current(excitation);
+
         auto dcLossesPerMeter = OpenMagnetics::WindingOhmicLosses::calculate_ohmic_losses_per_meter(wire, current, temperature);
         auto [skinLossesPerMeter, _] = OpenMagnetics::WindingSkinEffectLosses::calculate_skin_effect_losses_per_meter(wire, current, temperature);
         auto skinAcFactor = (skinLossesPerMeter + dcLossesPerMeter) / dcLossesPerMeter;
         return skinAcFactor;
-    }
-    catch(const std::exception& ex)
-    {
-        std::cerr << "Error in calculate_skin_ac_factor: " << ex.what() << std::endl;
-        return -1;
-    }
+    });
 }
 
-double calculate_skin_ac_losses_per_meter(std::string wireString, std::string currentString, double temperature){
+std::string calculate_skin_ac_losses_per_meter(std::string wireString, std::string excitationString, double temperature){
     OpenMagnetics::LogOnceScope logOnceScope;  // one web call is one scope: an excitation's warning is logged once (ABT #2160)
-    try {
+    return wire_call_result("calculate_skin_ac_losses_per_meter", [&]() -> double {
         auto wire = resolve_wire_from_string(wireString);
-        SignalDescriptor current(json::parse(currentString));
-        
-        complete_current(current);
-        
+        OperatingPointExcitation excitation(json::parse(excitationString));
+
+        auto current = complete_current(excitation);
+
         auto [skinLossesPerMeter, _] = OpenMagnetics::WindingSkinEffectLosses::calculate_skin_effect_losses_per_meter(wire, current, temperature);
         return skinLossesPerMeter;
-    }
-    catch(const std::exception& ex)
-    {
-        std::cerr << "Error in calculate_skin_ac_losses_per_meter: " << ex.what() << std::endl;
-        return -1;
-    }
+    });
 }
 
-double calculate_skin_ac_resistance_per_meter(std::string wireString, std::string currentString, double temperature){
+std::string calculate_skin_ac_resistance_per_meter(std::string wireString, std::string excitationString, double temperature){
     OpenMagnetics::LogOnceScope logOnceScope;  // one web call is one scope: an excitation's warning is logged once (ABT #2160)
-    try {
+    return wire_call_result("calculate_skin_ac_resistance_per_meter", [&]() -> double {
         auto wire = resolve_wire_from_string(wireString);
-        SignalDescriptor current(json::parse(currentString));
-        
-        complete_current(current);
-        
+        OperatingPointExcitation excitation(json::parse(excitationString));
+
+        auto current = complete_current(excitation);
+
         auto dcLossesPerMeter = OpenMagnetics::WindingOhmicLosses::calculate_ohmic_losses_per_meter(wire, current, temperature);
         auto [skinLossesPerMeter, _] = OpenMagnetics::WindingSkinEffectLosses::calculate_skin_effect_losses_per_meter(wire, current, temperature);
         auto skinAcFactor = (skinLossesPerMeter + dcLossesPerMeter) / dcLossesPerMeter;
         auto dcResistancePerMeter = OpenMagnetics::WindingOhmicLosses::calculate_dc_resistance_per_meter(wire, temperature);
 
         return dcResistancePerMeter * skinAcFactor;
-    }
-    catch(const std::exception& ex)
-    {
-        std::cerr << "Error in calculate_skin_ac_resistance_per_meter: " << ex.what() << std::endl;
-        return -1;
-    }
+    });
 }
 
-double calculate_effective_current_density(std::string wireString, std::string currentString, double temperature){
+std::string calculate_effective_current_density(std::string wireString, std::string excitationString, double temperature){
     OpenMagnetics::LogOnceScope logOnceScope;  // one web call is one scope: an excitation's warning is logged once (ABT #2160)
-    try {
+    return wire_call_result("calculate_effective_current_density", [&]() -> double {
         auto wire = resolve_wire_from_string(wireString);
-        SignalDescriptor current(json::parse(currentString));
-        
-        complete_current(current);
-        
+        OperatingPointExcitation excitation(json::parse(excitationString));
+
+        auto current = complete_current(excitation);
+
         auto effectiveCurrentDensity = wire.calculate_effective_current_density(current, temperature);
         return effectiveCurrentDensity;
-    }
-    catch(const std::exception& ex)
-    {
-        std::cerr << "Error in calculate_effective_current_density: " << ex.what() << std::endl;
-        return -1;
-    }
+    });
 }
 
-double calculate_effective_skin_depth(std::string material, std::string currentString, double temperature){
+std::string calculate_effective_skin_depth(std::string material, std::string excitationString, double temperature){
     OpenMagnetics::LogOnceScope logOnceScope;  // one web call is one scope: an excitation's warning is logged once (ABT #2160)
-    try {
-        SignalDescriptor current(json::parse(currentString));
+    return wire_call_result("calculate_effective_skin_depth", [&]() -> double {
+        OperatingPointExcitation excitation(json::parse(excitationString));
 
-        complete_current(current);
+        auto current = complete_current(excitation);
 
         auto currentEffectiveFrequency = current.get_processed()->get_effective_frequency().value();
         double effectiveSkinDepth = OpenMagnetics::WindingSkinEffectLosses::calculate_skin_depth(material, currentEffectiveFrequency, temperature);
         return effectiveSkinDepth;
-    }
-    catch(const std::exception& ex)
-    {
-        std::cerr << "Error in calculate_effective_skin_depth: " << ex.what() << std::endl;
-        return -1;
-    }
+    });
 }
 
 std::vector<std::string> get_available_winding_orientations(){
