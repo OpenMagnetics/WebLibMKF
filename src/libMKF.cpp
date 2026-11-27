@@ -5407,6 +5407,8 @@ std::string get_settings() {
         // (standard-cores mode; a tiebreak, not a gate — see CoreAdviserMaterials).
         settingsJson["preferredCoreMaterialFerriteManufacturer"] = OpenMagnetics::Settings::GetInstance().get_preferred_core_material_ferrite_manufacturer();
         settingsJson["preferredCoreMaterialPowderManufacturer"] = OpenMagnetics::Settings::GetInstance().get_preferred_core_material_powder_manufacturer();
+        // Proprietary core materials are hand-use only; advisers pick them only with this on.
+        settingsJson["useProprietaryMaterials"] = OpenMagnetics::Settings::GetInstance().get_use_proprietary_materials();
         // ABT #1110: wire standard the wire/coil advisers restrict to (null = no preference).
         {
             auto preferredWireStandard = OpenMagnetics::Settings::GetInstance().get_preferred_wire_standard();
@@ -5524,6 +5526,9 @@ void set_settings(std::string settingsString) {
     }
     if (settingsJson.contains("preferredCoreMaterialPowderManufacturer")) {
         OpenMagnetics::Settings::GetInstance().set_preferred_core_material_powder_manufacturer(settingsJson["preferredCoreMaterialPowderManufacturer"]);
+    }
+    if (settingsJson.contains("useProprietaryMaterials")) {
+        OpenMagnetics::Settings::GetInstance().set_use_proprietary_materials(settingsJson["useProprietaryMaterials"]);
     }
     if (settingsJson.contains("preferredWireStandard")) {
         if (settingsJson["preferredWireStandard"].is_null()) {
